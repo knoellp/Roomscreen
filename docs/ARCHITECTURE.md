@@ -1,6 +1,6 @@
 # Roomscreen Architecture
 
-Status: Phase 2 (section 8). Sections 1-6 were written in Phase 0; section 7 records
+Status: Phase 3 (sections 8 and 9). Sections 1-6 were written in Phase 0; section 7 records
 what Phase 1 resolved against the real Core (2026-10-17). Items are marked **[verified]**
 (read in source and/or observed on the real Core in this repo's LAN),
 **[source-only]** (read in reference source, not yet observed on the wire) or
@@ -410,3 +410,69 @@ Hit rate 4 of 6 zone rows with text (3 of 5 distinct tracks); the remaining two 
 `get` and `search` calls for the Bad and Schlafzimmer tracks returned 503 repeatedly, other tracks 200/404 within 0.1-0.5 s).
 It is not cached on disk, so the next track change asks again. For the Schlafzimmer track one run got through with a clean
 `none`: LRCLIB has no entry for it.
+
+### 9.2 LRCLIB behaviour (verified against the live API on 2026-10-17)
+
+- `GET /api/get?track_name&artist_name&album_name&duration` (album left out when empty, duration in whole seconds, left out when 0):
+  200 with `syncedLyrics` (LRC text), `plainLyrics`, `instrumental`; 404 `{"name":"TrackNotFound"}` when there is no entry.
+- `503 {"name":"ServerOverloaded"}` is frequent and not tied to the track: curl of the same `get` returned 503, 404, 404 in a row for one title, and `get` and
+  `search` for the Bad zone track returned 503 every time. It is retried (pauses of 1 s and 3 s, so 3 attempts) and, if it persists, reported as
+  `Unavailable`. It is never cached on disk (10 minutes in memory only) and is never shown as "No lyrics found".
+  Timeouts are 5 s (connect, read, write) and 10 s per call; I/O errors and 429 are handled like 5xx.
+- Titles from Roon carry additions ("Captain Jack (Album Version)" is 404, "Captain Jack" is a hit). `QueryNormalizer` builds variants that
+  accumulate: (1) exact; (2) title without trailing "(...)", "[...]" or "- ..." groups that name a version/remaster/edit/mix/mono/stereo/deluxe/bonus/single
+  ("(Live)" stays); (3) first artist of Roon's "A / B / C"; (4) without album. Equal variants are dropped. Each variant is tried with `get`;
+  if all are 404, `/api/search?track_name&artist_name` is asked with the last variant and the hits are filtered here to
+  |duration - wanted| <= 2 s (the endpoint returns the same song in 348/411/418/435 s versions); synced beats plain beats instrumental.
+- A variant that ends `Unavailable` ends the lookup at once (no point in asking the same overloaded server again for the next variant).
+- Lookup log line (app and CLI): `lyrics fetch=net|cache|memory variant=exact|title|artist|no-album|search|- result=synced|plain|instrumental|none|unavailable|cancelled lines=N ms=N`.
+
+### 9.3 Cache
+
+`FileLyricsCache`: one JSON file per track key (`title|artist|album|duration`) under `cacheDir/lyrics`, file name = SHA-1 of the key, at most 300 files
+(the oldest by modification time are deleted), written through a temp file. Found: kept without limit. Not found: 7 days. Unavailable: only in
+memory, 10 minutes. A corrupt file is deleted and treated as a miss. Verified on the device: after a restart the same track logged
+`lyrics fetch=cache variant=exact result=synced lines=77 ms=712`.
+
+### 9.4 Synchronization and rendering
+
+- `LyricsSync.activeIndex(lines, positionMs)` is the last line with `timeMs <= position + 250 ms` (binary search, -1 before the first line).
+- The position is the existing `ProgressInterpolator` read (10 Hz) in `NowPlayingScreen`. The lyrics list reads it inside a `derivedStateOf`, so the list
+  recomposes and scrolls (`animateScrollToItem`) only when the index changes, not on every tick. The active line (34 sp bold, white) is kept in the vertical
+  middle through a content padding of half the viewport height; the neighbours are 28 sp and fade with their distance from the active line. The upper edge
+  fades through a dark scrim; the lower edge only through the per-line alpha. A first version used an offscreen layer with a gradient mask for both edges;
+  it was replaced because it needs a full-size offscreen buffer on a 1 GB device. The memory runs below were taken with both versions and do not differ
+  measurably given the run-to-run spread (the table runs 1-3 are all the scrim version).
+- `[offset:+-ms]` is applied as `time - offset` (positive offset: lyrics appear earlier); stamps are clamped at 0.
+- Plain text is one scrollable column; D-pad up/down scroll it (`LyricsViewTest`).
+- The Lyrics button is the only switch; no request is made while it is off or while the "Lyrics (LRCLIB)" setting is off. A track change cancels the running
+  lookup (`collectLatest`; the OkHttp call is cancelled with the coroutine).
+
+### 9.5 Device measurements (Fire TV Stick HD, debug build, zone Büro; `scripts/phase3-device.sh`, `scripts/phase3-mem.sh`, `scripts/phase3-gl.sh`)
+
+- Lookup, cancellation, no request while off (log excerpts of the final run, German UI):
+  - `lyrics button=on`, then `lyrics fetch=net variant=exact result=synced lines=60 ms=953`.
+  - Cancellation on a track change during a running lookup: `lyrics fetch=net variant=artist result=cancelled lines=0 ms=5945` (also `... variant=artist result=cancelled lines=0 ms=2789`, `... variant=exact result=cancelled lines=0 ms=5941` in other runs). The quick-change test sends six track changes 1.2 s apart; whether one lookup is still running when the next track arrives depends on LRCLIB's answer time, so not every run shows a cancellation.
+  - With "Lyrics (LRCLIB)" off and the Lyrics button on (`"lyrics_on":true,"lyrics":"off"`, `lrclib=false` from DUMP_STATE), two track changes produced no `lyrics` log line at all. Switching the setting back on logged `lyrics fetch=net variant=artist result=synced lines=31 ms=3728` for the current track.
+  - With lyrics off (button), three track changes: no `lyrics` log line.
+  - After a force-stop and start: `"lyrics_on":true,"lyrics":"synced:77"`, the lyrics view is shown again (`p3-08-after-restart.png`).
+  - Answer times seen on the device: 250-1100 ms typically; 2-6 s when `get` was answered with 503 and retried; `result=unavailable ms=5079..5266` when it stayed 503 (not cached, the cover view stays).
+- Active line follows playback: `p3-03c-lyrics-a.png` and `p3-03d-lyrics-b-10s-later.png` (10 s apart) show different active lines and a progress bar that moved by about 12 px.
+- Memory (`dumpsys meminfo`, TOTAL PSS in MB; Phase 2 reference: 114 -> 134 -> 127 and 123 -> 126 -> 124). Protocol of the step-2/6 pairs: 10 track changes, 4 s apart; step 2 runs in the warm process with lyrics off, step 6 right after a force-stop and start with lyrics on (cold process, so it also contains the normal fill-up of the image caches):
+
+  | Run | Lyrics off, warm: before -> after 10 -> 30 s later | Lyrics on, cold: before -> after 10 -> 30 s later |
+  |---|---|---|
+  | 1 | 115.9 -> 137.6 -> 138.5 | 89.9 -> 175.5 -> 172.1 |
+  | 2 | 126.5 -> 135.8 -> 130.8 | 107.1 -> 154.9 -> 144.1 |
+  | 3 | 114.2 -> 135.8 -> 132.4 | 96.2 -> 177.5 -> 150.4 |
+
+  Fresh process (force-stop, start, switch, play, then 10 track changes, `phase3-mem.sh`): lyrics off 80.1 -> 126.3 -> 124.0 (mask version) and 90.6 -> 134.2 -> 127.1 (scrim version);
+  lyrics on 81.6 -> 123.9 -> 122.8 (mask version), 82.1 -> 163.8 -> 157.3 (scrim version) and 141.9 -> 193.9 (mask version, process had run before). With 10 warm-up changes first (mask version) the lyrics-on baseline was 198 MB and then fell (187, 178).
+  The growth is the GPU side: `GL mtrack` (the Skia/HWUI resource cache) rose from 40 MB to 94 MB over 12 track changes with lyrics on, then stayed flat, and was at 73 MB 30 s after lyrics were switched off and at 61 MB 30 s after they were switched on again (the cache is trimmed while idle); on a single track (no track change) it stays at 39-41 MB for 90 s with lyrics on and off alike (`phase3-gl.sh`). Java heap stays at 8-13 MB and native heap at 7-24 MB in all runs. So there is no growth trend, but with lyrics on the settled total is 10-50 MB above lyrics off (cold-start fill-up included), which does **not** meet the plan's +-10 MB tolerance against Phase 2. The cause of the larger GPU cache per track in the lyrics view was not isolated (text drawing versus image cache; the cache is purgeable and bounded).
+- Jank was not measured for the lyrics view (no `gfxinfo` run).
+
+### 9.6 Tooling findings
+
+- Maestro on the stick reads the UI hierarchy slowly while the screen animates and the control bar hides 5 s after the last key, so the flows navigate the bar while Büro is paused, keep slow steps out of key sequences, and `scripts/phase3-device.sh` repeats a flow until DUMP_STATE shows its effect (`lyrics_on:true`, `lrclib=false/true`). Key sequences from the focused play button: Left x2 = Lyrics, Left x3 = Settings (with the Lyrics button), Left x2 = Settings (without it).
+- Debug broadcasts added: `SET_LYRICS` and `SET_LRCLIB` (value on|off); a manifest receiver needs the action in `app/src/debug/AndroidManifest.xml`, otherwise the broadcast is silently dropped.
+- The lyrics module only depends on `roon-client` (Logger, OkHttp, coroutines, serialization); the app passes its `versionName` for the User-Agent, the CLI passes `cli`.

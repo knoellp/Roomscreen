@@ -10,7 +10,7 @@ service, no bridge and no WebView.
 
 Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHITECTURE.md`.
 
-## Status (Phase 2)
+## Status (Phase 3)
 
 | Area | Automated tests | Verified on device (Fire TV Stick HD, Fire OS 7.7.1.7, API 28) | Open |
 |---|---|---|---|
@@ -30,10 +30,18 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Settings screen and persistence | `SettingsPrefsTest`, screenshots (EN, DE) | `maestro/phase2-settings.yaml`, value survives a force-stop and restart | "Screen on: only while playing" not exercised on the device |
 | Artist image background | - | switched on in the settings, screenshot | - |
 | "via roon" hint | screenshots | - (see below) | the user has to approve the look first |
+| Synchronized lyrics (LRCLIB): lookup, cache, LRC parser, line sync | 48 JVM tests in `lyrics` (parser, sync, query variants, MockWebServer client, repository); `roon-cli lyrics` against the real LRCLIB (`docs/ARCHITECTURE.md` section 9) | "Lyrics" bar button, lookup log lines, cancellation on track change, no request while off, setting persists over a restart (`maestro/phase3-*.yaml`, `scripts/phase3-device.sh`) | see "Not verified" below |
+| Lyrics screens (synchronized, plain, none) | Roborazzi: `9-lyrics-synced`, `9b-lyrics-plain`, `9c-lyrics-none`, `6h-now-playing-controls-lyrics`, `9d-lyrics-none-de`, `7-settings`; `LyricsViewTest` (D-pad scroll of plain text) | synchronized view on the device (screenshots) | plain text and "No lyrics found" only in screenshots/tests (depends on the track Büro happens to play) |
 | Reconnect with "Search for Core again" | - | `maestro/phase2-connection.yaml`, log shows `endpoint=cache_skipped`, discovery, connected | - |
 
-Not implemented yet: synchronized lyrics (LRCLIB, Phase 3), Echo Show 15 (Live App Testing, touch layout),
-release signing. Memory: after the image cache was capped to 8 MB, 20 track changes moved the total PSS by
+Not implemented yet: Echo Show 15 (Live App Testing, touch layout), release signing.
+
+Not verified (Phase 3): the plain-text lyrics view and the "No lyrics found" line were only checked in screenshots and tests, not on the
+device (they depend on which track Büro plays); the D-pad scrolling of plain text is covered by a Compose test only; the physical remote was not
+pressed; jank of the lyrics view was not measured; the German lyrics strings were seen on the device only for the button and the settings row.
+LRCLIB often answers 503 (overloaded): the app then shows the normal view and asks again at the next track, so on some tracks no text appears.
+Memory: with lyrics on, the total PSS after 10 track changes was 123 to 193 MB (lyrics off: 121 to 138 MB), mostly purgeable GPU cache; the plan's
++-10 MB tolerance against Phase 2 is **not** met (details in `docs/ARCHITECTURE.md` section 9.5). Memory: after the image cache was capped to 8 MB, 20 track changes moved the total PSS by
 +3 to +13 MB after settling (two runs); the earlier uncapped cache grew by about 55 MB.
 
 ## Remote control
@@ -46,9 +54,27 @@ release signing. Memory: after the image cache was capped to 8 MB, 20 track chan
 | D-pad, select | shows the control bar; move between its buttons; select presses the focused one |
 | Back | closes Settings and the zone list, otherwise leaves the app |
 
-The control bar (Zones, Settings, previous, play/pause, next) is hidden by default and appears for 5 seconds
+The control bar (Zones, Settings, Lyrics, previous, play/pause, next) is hidden by default and appears for 5 seconds
 after any key press (or stays visible, see the setting). Commands are only sent if the zone reports the control as
 allowed (`is_play_allowed` and so on); otherwise they are ignored and logged.
+
+## Lyrics
+
+The control bar has a **Lyrics** button (German: **Liedtexte**) right of Settings. It switches the lyrics view on and off;
+the last choice is remembered. The text comes from [LRCLIB](https://lrclib.net) and is looked up per track (title, artist,
+album, duration):
+
+- Synchronized text (`syncedLyrics`): the active line is white and bold in the vertical middle, neighbouring lines are dimmed,
+  the list moves when the line changes. The line appears 250 ms before its time stamp.
+- Plain text only: static text; D-pad up/down scrolls it.
+- Nothing found: the normal Now Playing view with a small dim line "No lyrics found" under the album.
+- LRCLIB not reachable (overloaded, offline): the normal view, no message; the next track asks again.
+
+**Privacy.** Only when lyrics are switched on, the app sends title, artist, album, duration and the User-Agent
+(`Roomscreen/<version> (https://github.com/knoellp/Roomscreen)`) to lrclib.net. Nothing else is stored or transmitted beyond the Roon
+token and the settings, locally on the device. While the button is off no request is made, and the setting
+**Lyrics (LRCLIB)** turns LRCLIB off completely (the button disappears too). Results are cached in the app's cache directory
+(at most 300 files; "not found" for 7 days, found text without limit, "unreachable" is never stored on disk).
 
 ## Settings
 
@@ -61,6 +87,7 @@ Open **Settings** from the control bar; select changes a value, Back returns. Va
 | Controls | show on input, always visible |
 | Screen on | always, only while playing |
 | Show "via roon" | on, off |
+| Lyrics (LRCLIB) | on, off (off: no requests to lrclib.net at all, no Lyrics button) |
 | Core | shows the address; "Search for Core again" drops the manual address and runs discovery; "Switch zone" |
 
 The language follows the system (English, German). The "via roon" text is a plain text hint, not a Roon logo.
@@ -97,15 +124,18 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 `scripts/deploy-test.sh [--flow maestro/phase1.yaml]` does build, install, start, flow, screenshot and logcat in one go
 (set `FIRE_TV_IP` and `ROON_TEST_ZONE` in `config/local.env`, see `config/local.env.example`).
 `scripts/phase2-device.sh` and `scripts/phase2-perf.sh` run the Phase 2 flows and the jank/memory measurements (zone Büro only).
+`scripts/phase3-device.sh` runs the Phase 3 lyrics flows (`maestro/phase3-*.yaml`), `scripts/phase3-mem.sh` and `scripts/phase3-gl.sh` the memory probes (zone Büro only; Büro ends paused).
 
 ## Development
 
 - All tooling runs in Docker: `scripts/dock ./gradlew test` (JVM tests and Roborazzi screenshots).
 - `roon-client`: protocol library (no Android). `roon-cli`: command line tool for the real Core
-  (`discover`, `info`, `register`, `zones`, `now-playing`, `watch`, `image`, `artist-image`; playback commands are limited to `$ROON_TEST_ZONE`).
+  (`discover`, `info`, `register`, `zones`, `now-playing`, `watch`, `image`, `artist-image`, `lyrics`; playback commands are limited to `$ROON_TEST_ZONE`;
+  `lyrics [--zone NAME]` is read-only and asks the real LRCLIB for the current track of each zone).
+- `lyrics`: pure JVM module (LRC parser, line sync, query variants, LRCLIB client, cache), used by the app and the CLI.
 - `app`: the Android TV app. Debug builds accept broadcasts that must name the package (an implicit broadcast is
   silently dropped): `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_STATE`
-  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
+  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `SET_LYRICS` with `--es value on|off` (presses the Lyrics button; `DUMP_STATE` then shows `lyrics_on` and `lyrics`), `SET_LRCLIB` with `--es value on|off` (the "Lyrics (LRCLIB)" setting), `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
 
 Privacy: the app stores only the Roon token, the Core address, the chosen zone and the display settings, locally.
 
