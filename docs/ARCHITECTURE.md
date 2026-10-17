@@ -1,0 +1,282 @@
+# Roomscreen Architecture
+
+Status: Phase 0 (research and environment check). Written 2026-10-17. Nothing in
+this document describes implemented code yet. Items are marked **[verified]**
+(read in source and/or observed on the real Core in this repo's LAN),
+**[source-only]** (read in reference source, not yet observed on the wire) or
+**[unverified]**.
+
+## 1. Decision: Option A, native Kotlin implementation
+
+Roomscreen implements SOOD, MOO and the three required services (registry,
+transport, image) itself in Kotlin, using OkHttp for the WebSocket and a plain
+`DatagramSocket` for discovery.
+
+### Evaluation
+
+| Criterion | A: native Kotlin | B: roon-rs via JNI/UniFFI | C: rust-roon-api via JNI |
+|---|---|---|---|
+| Needed protocol scope | SOOD (~100 lines), MOO framing (~150), registry, ping, transport (zones, control, seek), image: small | Full SDK, we use a fraction | Same |
+| Build complexity | Plain Gradle, no NDK | Rust toolchain, NDK, cross-compile per ABI, reqwest/TLS deps to check | Same, plus alpha state, not on crates.io |
+| Debuggability | Full: JVM CLI, fake core, standard Android tooling | Native crashes across FFI boundary | Same |
+| Maintainability | One language, one build | Two languages, UniFFI glue, upstream is a small single-developer project (last push 2026-08-17) | Upstream last push 2024-08-01, explicitly alpha |
+| License | Own code, Apache-2.0 | Apache-2.0 per GitHub metadata | MIT |
+| Tests | Pure JVM unit tests plus fake core | Needs device/emulator for FFI | Same |
+
+Rationale: the protocol surface we need is small and fully documented by two
+independent sources (the official `node-roon-api` and `roon-rs` docs), and the
+brief prefers Option A when the scope is manageable. The reference files read
+for this decision total about 800 lines of JavaScript including the services
+(sood.js 233, moo.js 212, moomsg.js 96, transport-websocket.js 92, core.js 17,
+transport lib.js, image lib.js). No NDK, no cross-compilation, and the
+protocol code is a pure JVM module that is testable without a device.
+
+Not chosen: B and C add a second toolchain and an FFI boundary for functionality
+that is cheaper to write than to bind. Neither was build-tested on Android here.
+
+## 2. Protocol notes
+
+Sources: `RoonLabs/node-roon-api` (Apache-2.0, package.json version 1.2.3):
+`sood.js`, `moo.js`, `moomsg.js`, `transport-websocket.js`, `core.js`, `lib.js`;
+`RoonLabs/node-roon-api-transport` `lib.js` + JSDoc; `RoonLabs/node-roon-api-image`
+`lib.js`; `shin1ohno/roon-rs` `docs/protocols/SOOD.md` and `MOO.md`. Observations
+marked "live" come from `scripts/sood-probe.py` and `scripts/moo-info-probe.py`
+run on 2026-10-17 against the Core in this LAN (Roon Optimized Core Kit, 2.73
+build 1700 production).
+
+### 2.1 SOOD discovery
+
+- UDP port 9003, multicast group 239.255.90.90, TTL 1. node-roon-api sends each
+  query to the multicast group and to the per-interface subnet broadcast
+  address (`sood.js` `query`). **[verified]**
+- Packet: `"SOOD"` (4 bytes), version byte `0x02`, type byte `'Q'` or `'R'`, then
+  properties until end of datagram. Each property: `name_len` (1 byte, must be
+  > 0), name (UTF-8), `value_len` (2 bytes big-endian; `0xFFFF` = null, `0` =
+  empty string), value (UTF-8). Parser must reject truncated packets
+  (`sood.js` `_parse`). **[verified]**
+- Query properties: `query_service_id` = `00720724-5143-4a9b-abac-0e50cba674bb`
+  (Core service id, `lib.js`) and `_tid` (UUID v4; added automatically if
+  missing). A 104-byte packet results. **[verified live]**
+- Reserved properties: `_replyaddr` and `_replyport` override the sender
+  address/port and are stripped from the props (`sood.js`). Not seen in live
+  replies.
+- Live reply (type `R`), sent from 192.168.1.194:9003 to our ephemeral source
+  port:
+  `name=Roon Optimized Core Kit, display_version=2.73 (build 1700) production,
+  unique_id=b4fe5d4d-cdc1-45b6-8818-01a39eda3309, service_id=00720724-...,
+  tcp_port=9150, http_port=9330, https_port=55000, _tid=<echo>`. **[verified live]**
+  The client must filter on `service_id` and use `unique_id` as the Core key
+  (`lib.js`). The WebSocket port is `http_port` (9330 here); TCP connect to
+  9330, 9150 and 55000 succeeded.
+- Observation: one multicast query produced two replies, one echoing our `_tid`
+  and one with `_tid=00000000-0000-0000-0000-000000000000`. The subnet broadcast
+  (192.168.1.255) produced no reply from this host in a 3 s window. Clients
+  must therefore de-duplicate by `unique_id` and must not depend on broadcast.
+  The cause of the second reply is unknown. **[verified live, cause unverified]**
+- Scheduling in node-roon-api: query at start and on interface change, then every
+  10 s; while not paired, every tick for the first 6 ticks, afterwards every
+  6th tick (`lib.js` `periodic_scan`). Interfaces are re-polled every 5 s.
+  **[source-only]**
+
+### 2.2 Transport: WebSocket at `/api`
+
+- URL `ws://<host>:<http_port>/api`; all frames binary, client frames masked
+  (`transport-websocket.js`). **[verified]** Live: the HTTP upgrade to
+  `/api` on 192.168.1.194:9330 returned `101 Switching Protocols` and replies
+  arrive as WebSocket opcode 2 (binary). **[verified live]**
+- Heartbeat: client sends a WebSocket ping every 10 s and terminates the socket if
+  no pong arrived before the next tick (`transport-websocket.js`). OkHttp's
+  `pingInterval(10s)` gives equivalent behaviour. **[source-only]**
+- Separately, the Core calls `com.roonlabs.ping:1/ping` on the extension; node-roon-api
+  always provides this service and answers `COMPLETE Success` (`lib.js`
+  `init_services`). We must provide it. Consequence of not answering is
+  **[unverified]**.
+
+### 2.3 MOO framing
+
+```
+MOO/1 <VERB> <name>\n
+Header: value\n
+...\n
+\n
+<body bytes>
+```
+
+- Verbs: `REQUEST` (name = `service/method`), `CONTINUE` and `COMPLETE`
+  (name = status such as `Success`, `Subscribed`, `Changed`, `Registered`,
+  `InvalidRequest`). **[verified]** (`moo.js` `parse`, `moomsg.js`)
+- Headers: `Request-Id` (required), `Content-Length` and `Content-Type` (both
+  required if a body exists, and a `Content-Type` without `Content-Length` is
+  rejected), `Logging: quiet` optional. Other headers are kept in a map.
+  Header lines are matched with `([^:]+): *(.*)`. **[verified]**
+- Header order is not fixed: the live `registry:1/info` reply sent
+  `Content-Type` before `Request-Id` and `Content-Length`. The parser must not
+  depend on order. **[verified live]**
+- Body is JSON only if `Content-Type` is exactly `application/json`; any other
+  type is raw bytes (images). `Content-Length` counts bytes, not characters.
+  **[verified]**
+- Request ids: per-side counter starting at 0 and incrementing per REQUEST;
+  CONTINUE does not release an id, COMPLETE does. A reply with an unknown
+  `Request-Id` makes node-roon-api close the connection (`moo.js`
+  `handle_response`, `lib.js`). On close all pending callbacks are invoked
+  without arguments. **[verified]**
+- Subscriptions: client sends `service/subscribe_<name>` with
+  `{"subscription_key": n, ...args}` (`moo.js` `_subscribe_helper`; the key is a
+  per-connection counter). Reply stream: `CONTINUE Subscribed` then
+  `CONTINUE Changed` until `service/unsubscribe_<name>` with the same key.
+  **[source-only]**
+- Live `info` exchange, request `MOO/1 REQUEST com.roonlabs.registry:1/info`
+  `Request-Id: 0`; reply:
+  `MOO/1 COMPLETE Success`, `Content-Type: application/json`, `Request-Id: 0`,
+  `Content-Length: 140`, body
+  `{"core_id":"b4fe5d4d-cdc1-45b6-8818-01a39eda3309","display_name":"Roon Optimized Core Kit","display_version":"2.73 (build 1700) production"}`.
+  `core_id` equals the SOOD `unique_id`. **[verified live]**
+
+### 2.4 Registration and authorization
+
+- Flow (`lib.js` `ws_connect`): `registry:1/info` -> look up the stored token for
+  `core_id` -> `registry:1/register` with
+  `{extension_id, display_name, display_version, publisher, email, [website],
+  required_services[], optional_services[], provided_services[], [token]}`.
+  `email` and `publisher` are mandatory in node-roon-api. **[verified]**
+- Success response is named `Registered` and carries `core_id`, `display_name`,
+  `display_version`, `token`, `provided_services` (names the Core offers) and
+  `http_port`. node-roon-api reacts when `msg.name == "Registered"`; `roon-rs`
+  documents the verb as `CONTINUE` (request stays open for the whole
+  connection). **[source-only; verb not yet observed live]**
+- Token: stored keyed by `core_id` (`settings.tokens[core_id]`) and sent on later
+  registrations. **[verified]** (`lib.js`)
+- First authorization: the node-roon-api README says that if the extension uses
+  any Roon service, the user must press "Enable" in Roon settings; with no
+  services Roon auto-authorizes. Whether the `register` call stays pending until
+  the user enables, or answers immediately with another status, is
+  **[unverified]**; Phase 1 must observe it. We deliberately did not register
+  during Phase 0 so that no unwanted extension entry appears in Roon.
+- Menu path: node-roon-api README says "Settings->Setup->Extensions". The brief
+  mentions "Settings -> Extensions" as an alternative. Current Roon 2.73 UI
+  path is **[unverified]**; to be confirmed visually by the user and then
+  documented in the README and the in-app first-run hint.
+- Required services to request: `com.roonlabs.transport:2` and
+  `com.roonlabs.image:1`. Provided: `com.roonlabs.ping:1`. The pairing service
+  (`com.roonlabs.pairing:1`) is only needed to pin one Core; we do not provide it
+  and instead remember the selected Core ourselves. Impact of omitting it is
+  **[unverified]** but node-roon-api treats pairing as optional (only
+  registered when `core_paired` is set).
+- `ws_connect_with_token` / `register_one_time_token` is marked "DO NOT USE --
+  internal only" in node-roon-api; ignore.
+
+### 2.5 Transport service (`com.roonlabs.transport:2`)
+
+- `subscribe_zones` reply `Subscribed` body: `{zones: [Zone...]}`. `Changed`
+  body may contain `zones_removed` (array of zone ids), `zones_added` and
+  `zones_changed` (arrays of full Zone objects that replace the cached entry),
+  and `zones_seek_changed` (array of `{zone_id, seek_position,
+  queue_time_remaining}`) which only updates `now_playing.seek_position` and
+  `queue_time_remaining` on the cached zone (transport `lib.js`
+  `subscribe_zones`). **[source-only]**
+- Zone fields used by us: `zone_id`, `display_name`, `state`
+  (`playing|paused|loading|stopped`), `outputs`, `now_playing`
+  (`seek_position`, `length`, `image_key`, `one_line.line1`, `two_line.line1/line2`,
+  `three_line.line1/line2/line3`), `is_play_allowed`, `is_pause_allowed`,
+  `is_next_allowed`, `is_previous_allowed`, `is_seek_allowed` (JSDoc in
+  transport `lib.js`, `docs/Zone.html`). In `three_line`, line1 = title, line2 =
+  artist, line3 = album per Roon convention **[unverified: confirm from a
+  recorded message]**.
+- Control: `transport:2/control` with `{zone_or_output_id, control}`;
+  controls are `play`, `pause`, `playpause`, `stop`, `previous`, `next`.
+  Seek: `transport:2/seek` with `{zone_or_output_id, how: "relative"|"absolute",
+  seconds}`. Replies `COMPLETE Success` on success. Check `is_*_allowed` before
+  enabling a control. **[source-only]**
+- Seek update frequency: the node-roon-api sources only show how seek events are
+  applied, not how often the Core sends them. The brief cites roon-rs throttling
+  its CLI to 1 Hz per zone. Actual rate is **[unverified]**; measure with the
+  CLI recorder in Phase 1 (target: timestamps per `zones_seek_changed`
+  message). Until measured the design assumes about 1 Hz and interpolates
+  locally between events.
+
+### 2.6 Image service (`com.roonlabs.image:1`)
+
+- `image:1/get_image` with `{image_key, [scale: fit|fill|stretch, width, height,
+  format: image/jpeg|image/png]}`; `width` and `height` are required when
+  `scale` is set. On `Success` the body is binary with the image
+  `Content-Type`. Without `scale` the original size is returned and "could be
+  very large" (image `lib.js`). **[source-only]**
+- The same file documents a plain HTTP form:
+  `http://IP:PORT/api/image/<image_key>?scale=XXX&width=XXX&height=XXX&format=XXX`.
+  Using that URL with Coil/OkHttp would avoid MOO for covers. Whether it requires
+  the registered token or works unauthenticated is **[unverified]**. Phase 1
+  decides between the two based on a live test. Always request a scaled size
+  (e.g. 1080 px square) to keep memory low on the Fire TV.
+
+### 2.7 Other open questions
+
+| Question | Status |
+|---|---|
+| Multicast on Fire OS: need for `WifiManager.MulticastLock`, and whether the replies (sent unicast to our source port; multicast-addressed replies were not seen) arrive without it | Unverified. Android generally filters inbound multicast without the lock; our live replies were unicast, so discovery might work without it. Acquire the lock while discovering regardless; test on the device. Manual host:port fallback is a first-class path. |
+| Same `extension_id` on two devices (Fire TV and Echo Show): separate entries, shared authorization, pairing effects | Unverified. node-roon-api README only states one extension can connect to multiple Cores. Plan: test with two CLI instances in Phase 1. Fallback: per-install suffix in `extension_id` and `display_name`. |
+| Fire OS to API level | Unverified for the user's device. Working assumption: Fire OS 6 = Android 7.1 / API 25, Fire OS 7 = Android 9 / API 28, Fire OS 8 = Android 11 / API 30. Preliminary `minSdk 28` would exclude Fire OS 6 devices. Need the device's Fire OS version. |
+| Behaviour when the register request is unauthorized or while waiting for "Enable" | Unverified, see 2.4. |
+| Exact name of the "now playing" lines (title/artist/album) | Unverified until the first recorded zone message. |
+| `Registered` verb (CONTINUE vs COMPLETE) | Source-only, roon-rs says CONTINUE; observe in Phase 1. Implement handling of both. |
+| Reconnect behaviour after Core restart (token still valid, `core_id` stable) | Unverified; covered by the fake core and the real Core test in Phase 1/4. |
+| Live broadcast discovery | Subnet broadcast got no reply on this host; multicast works. |
+
+## 3. Environment (Phase 0 results)
+
+Toolchain lives in `docker/android-build/Dockerfile`, run through `scripts/dock`
+with `--network host`. Recorded outputs (2026-10-17):
+
+- `java -version`: OpenJDK 17.0.20.1 (Temurin-17.0.20.1+1)
+- `adb version`: Android Debug Bridge 1.0.41, Version 37.0.1-15733141
+- `sdkmanager --list_installed`: build-tools;36.0.0, platform-tools 37.0.1,
+  platforms;android-36 (rev 2)
+- `maestro --version`: 2.11.0
+- Host: Ubuntu VM, LAN IP 192.168.1.198/24 on `enp6s18`.
+- `adb connect` is skipped until the Fire TV IP is known.
+
+## 4. Candidate versions (checked 2026-10-17 on Maven metadata; to be verified by a real build in Phase 1)
+
+| Component | Latest stable seen | Notes |
+|---|---|---|
+| Android Gradle Plugin | 9.4.1 (9.5.0-alpha10 exists, ignore) | AGP 9 needs JDK 17+ and Gradle 9.x; check AGP 9 built-in Kotlin behaviour |
+| Gradle | 9.8.1 | from services.gradle.org/versions/current |
+| Kotlin | 2.4.21 (2.5.0-Beta1 exists, ignore) | |
+| Compose BOM | 2026.09.00 | |
+| `androidx.tv:tv-material` | 1.1.0 (stable) | compatibility with the BOM version to be confirmed |
+| Coil 3 (`coil-compose`, `coil-network-okhttp`) | 3.6.3 | use OkHttp network fetcher |
+| OkHttp | 5.5.0 | |
+| kotlinx-coroutines | 1.11.0 | |
+| kotlinx-serialization-json | 1.11.0 (1.12.0-RC exists, ignore) | |
+| Robolectric / Roborazzi | 4.17 / 1.76.0 | UI tests, Phase 2+ |
+| compileSdk / build-tools | 36 / 36.0.0 | already in the Docker image |
+
+These are Maven metadata readings only, not compatibility proof.
+
+## 5. Planned module layout (Phase 1)
+
+```
+roon-client/   pure Kotlin/JVM, no Android dependency
+  sood/        SoodCodec (encode/parse), SoodDiscovery (DatagramSocket, multicast + broadcast)
+  moo/         MooMessage (parse/serialize), MooConnection (OkHttp WebSocket, request ids, subscriptions)
+  RoonClient   registry handshake, token store interface, ping service, backoff reconnect
+  transport/   ZoneState (incremental updates, seek merge), TransportService (control, seek)
+  image/       ImageService (MOO get_image or HTTP URL builder)
+  src/test/    unit tests, FakeCore (SOOD responder + MOO WebSocket server), recorded fixtures
+roon-cli/      JVM CLI: discover, connect, zones, now-playing, play/pause/next/previous, --record
+app/           Android TV app: Compose for TV, MVVM, DataStore, Coil, MulticastLock
+docs/, scripts/, docker/, config/
+```
+
+Rules: `roon-client` has no Android imports; the clock and the socket factory are
+injected so progress interpolation and backoff are unit-testable. Fixtures are
+recorded from the real Core with `roon-cli --record` and must not contain tokens
+(redact before commit).
+
+## 6. Risks and next steps
+
+1. Observe the real registration/authorization behaviour (needs the user to enable the extension once).
+2. Measure `zones_seek_changed` rate.
+3. Decide HTTP vs MOO for images from a live test.
+4. Test two instances with the same `extension_id`.
+5. Confirm Fire OS version and API level, then fix `minSdk`.
+6. Confirm Roon's current extension menu path.
