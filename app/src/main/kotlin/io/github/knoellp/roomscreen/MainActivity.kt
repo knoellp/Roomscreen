@@ -64,7 +64,7 @@ private fun Root(vm: MainViewModel) {
             ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it) }
         }
         Screen.MissingZone -> MissingZoneScreen(onChoose = vm::openZoneList)
-        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, lastInput, vm::openZoneList, vm::openSettings, vm::control)
+        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, lastInput, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics)
         is Screen.SettingsPage -> {
             BackHandler { vm.closeSettings() }
             SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings)

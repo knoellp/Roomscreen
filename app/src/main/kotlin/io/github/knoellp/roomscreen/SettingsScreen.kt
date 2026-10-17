@@ -71,11 +71,11 @@ fun SettingsScreen(
     )
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { repeat(20) { if (runCatching { first.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; delay(50) } }
-    Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(top = 28.dp, start = 64.dp, end = 64.dp)) {
+    Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(top = 20.dp, start = 64.dp, end = 64.dp)) {
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = 680.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(R.string.settings_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             Text(stringResource(R.string.settings_hint), fontSize = 16.sp, color = Color(0xFF9DA7B3))
-            LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(top = 10.dp, bottom = 24.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)) {
                 items(rows, key = { it.id }) { row ->
                     Column {
                     if (row.id == "rediscover") {
@@ -108,7 +108,7 @@ private fun SettingRow(row: SettingItem, focus: FocusRequester?) {
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color(0xFF8FA3B5)))),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 42.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(row.label), fontSize = 22.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (row.swatch != null) {
                 Box(Modifier.size(22.dp).clip(CircleShape).background(row.swatch).border(1.5.dp, Color(0x99FFFFFF), CircleShape))

@@ -133,6 +133,27 @@ class ScreenshotTest {
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
     fun nowPlayingControlsGerman() = nowPlaying("6g-now-playing-controls-de", bar = true, zone = playing.copy(state = "paused"))
 
+    // ---- Lyrics (Phase 3). Placeholder text only; no real song lyrics in the repository. ----
+
+    private val sampleLines = (1..14).map { io.github.knoellp.roomscreen.lyrics.LrcLine(it * 10_000L, "Sample lyric line number $it goes here") }
+        .toMutableList().apply { this[8] = io.github.knoellp.roomscreen.lyrics.LrcLine(90_000L, "") }
+    private val lyricsZone = playing.copy(nowPlaying = playing.nowPlaying!!.copy(threeLine = Lines("Fortress Around Your Heart", "Sting", "The Dream Of The Blue Turtles"), seekPosition = 62, length = 280))
+
+    private fun lyrics(name: String, state: LyricsState, positionMs: Long = 62_000L, zone: Zone = lyricsZone, bar: Boolean = false, on: Boolean = true) =
+        shot(name) { NowPlayingContent(zone, { positionMs }, 280_000L, cover, backdrop, AppSettings(), barVisible = bar, lyrics = state, lyricsAvailable = true, lyricsOn = on) }
+
+    /** Active line (number 6 at 62 s, 10 s per line) in the vertical middle. */
+    @Test fun lyricsSynced() = lyrics("9-lyrics-synced", LyricsState.Synced(sampleLines))
+
+    @Test fun lyricsPlain() = lyrics("9b-lyrics-plain", LyricsState.Plain((1..30).joinToString("\n") { "Sample lyric line number $it goes here" }))
+
+    @Test fun lyricsNone() = lyrics("9c-lyrics-none", LyricsState.None)
+
+    @Test fun lyricsLoadingWithBar() = lyrics("6h-now-playing-controls-lyrics", LyricsState.Loading, bar = true)
+
+    @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
+    fun lyricsNoneGerman() = lyrics("9d-lyrics-none-de", LyricsState.None, bar = true, on = false)
+
     @Test fun settings() = shot("7-settings") { SettingsScreen(AppSettings(), "192.168.1.194:9330", {}, {}, {}) }
 
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")

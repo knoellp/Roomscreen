@@ -92,6 +92,10 @@ fun NowPlayingScreen(
     onZones: () -> Unit,
     onSettings: () -> Unit,
     onControl: (TransportControl) -> Unit,
+    lyrics: LyricsState = LyricsState.Off,
+    lyricsAvailable: Boolean = false,
+    lyricsOn: Boolean = false,
+    onLyrics: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var cover by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -123,6 +127,7 @@ fun NowPlayingScreen(
         cover = cover, backdrop = backdrop, settings = settings,
         barVisible = always || inputBarVisible, autoFocusBar = !always,
         onZones = onZones, onSettings = onSettings, onControl = onControl,
+        lyrics = lyrics, lyricsAvailable = lyricsAvailable, lyricsOn = lyricsOn, onLyrics = onLyrics,
     )
 }
 
@@ -141,6 +146,10 @@ fun NowPlayingContent(
     onZones: () -> Unit = {},
     onSettings: () -> Unit = {},
     onControl: (TransportControl) -> Unit = {},
+    lyrics: LyricsState = LyricsState.Off,
+    lyricsAvailable: Boolean = false,
+    lyricsOn: Boolean = false,
+    onLyrics: () -> Unit = {},
 ) {
     val lines = zone.nowPlaying?.threeLine
     Box(Modifier.fillMaxSize().background(settings.backgroundColor.color)) {
@@ -158,8 +167,10 @@ fun NowPlayingContent(
                 Text(zone.displayName, fontSize = 44.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                 Text(stringResource(R.string.now_playing_nothing), fontSize = 26.sp, color = Color(0xFFC9D1D9))
             }
+        } else if (lyrics is LyricsState.Synced || lyrics is LyricsState.Plain) {
+            LyricsView(Modifier, lyrics, zone, positionMs, lengthMs, cover)
         } else {
-            InfoStrip(Modifier.align(Alignment.BottomCenter), zone, positionMs, lengthMs, cover)
+            InfoStrip(Modifier.align(Alignment.BottomCenter), zone, positionMs, lengthMs, cover, noLyrics = lyrics is LyricsState.None)
         }
         if (settings.viaRoon) ViaRoon(Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 14.dp))
         if (barVisible) {
@@ -167,7 +178,7 @@ fun NowPlayingContent(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(0f to Color(0xB0000000), 1f to Color.Transparent)),
             ) {
-                ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, onZones, onSettings, onControl)
+                ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, lyricsAvailable, lyricsOn, onZones, onSettings, onLyrics, onControl)
             }
         }
     }
@@ -176,7 +187,7 @@ fun NowPlayingContent(
 const val CROSSFADE_MS = 600
 
 @Composable
-private fun InfoStrip(modifier: Modifier, zone: Zone, positionMs: () -> Long, lengthMs: Long?, cover: ImageBitmap?) {
+private fun InfoStrip(modifier: Modifier, zone: Zone, positionMs: () -> Long, lengthMs: Long?, cover: ImageBitmap?, noLyrics: Boolean = false) {
     val lines = zone.nowPlaying?.threeLine
     Row(
         modifier.fillMaxWidth().padding(start = 48.dp, end = 48.dp, top = 24.dp, bottom = 44.dp),
@@ -196,6 +207,7 @@ private fun InfoStrip(modifier: Modifier, zone: Zone, positionMs: () -> Long, le
                     color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(lines?.line2 ?: "", fontSize = 26.sp, color = Color(0xFFE6EDF3), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(lines?.line3 ?: "", fontSize = 22.sp, color = Color(0xFF9DA7B3), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (noLyrics) Text(stringResource(R.string.lyrics_none), fontSize = 16.sp, color = Color(0xFF7D8793), maxLines = 1)
             }
             ProgressRow(positionMs, lengthMs)
         }
@@ -245,8 +257,11 @@ private fun ControlBar(
     modifier: Modifier,
     zone: Zone,
     autoFocus: Boolean,
+    lyricsAvailable: Boolean,
+    lyricsOn: Boolean,
     onZones: () -> Unit,
     onSettings: () -> Unit,
+    onLyrics: () -> Unit,
     onControl: (TransportControl) -> Unit,
 ) {
     val playFocus = remember { FocusRequester() }
@@ -255,6 +270,10 @@ private fun ControlBar(
         BarButton(onZones) { Text(stringResource(R.string.zones_button), fontSize = 20.sp) }
         Spacer(Modifier.width(12.dp))
         BarButton(onSettings) { Text(stringResource(R.string.settings_button), fontSize = 20.sp) }
+        if (lyricsAvailable) {
+            Spacer(Modifier.width(12.dp))
+            BarButton(onLyrics, selected = lyricsOn) { Text(stringResource(R.string.lyrics_button), fontSize = 20.sp) }
+        }
         Spacer(Modifier.weight(1f))
         BarButton({ onControl(TransportControl.PREVIOUS) }, Modifier.size(BAR_BUTTON), description = stringResource(R.string.control_previous)) { TransportIcon(Icon.Previous) }
         Spacer(Modifier.width(12.dp))
@@ -270,13 +289,13 @@ private val BAR_BUTTON = 56.dp
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun BarButton(onClick: () -> Unit, modifier: Modifier = Modifier, description: String? = null, content: @Composable () -> Unit) {
+private fun BarButton(onClick: () -> Unit, modifier: Modifier = Modifier, description: String? = null, selected: Boolean = false, content: @Composable () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = modifier.heightOrMin().then(if (description != null) Modifier.semanticsDescription(description) else Modifier),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(28.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color(0x80000000),
+            containerColor = if (selected) Color(0x66FFFFFF) else Color(0x80000000),
             focusedContainerColor = Color.White,
             contentColor = Color.White,
             focusedContentColor = Color.Black,
