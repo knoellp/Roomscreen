@@ -51,10 +51,10 @@ private fun Page(content: @Composable BoxScope.() -> Unit) {
 }
 
 @Composable
-private fun Title(text: String) = Text(text, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+private fun Title(text: String) = Text(text, fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
 
 @Composable
-private fun Body(text: String, color: Color = Color(0xFFC9D1D9)) = Text(text, fontSize = 24.sp, color = color)
+private fun Body(text: String, color: Color = Color(0xFFC9D1D9)) = Text(text, fontSize = 24.sp, lineHeight = 34.sp, color = color)
 
 /** Screen 1: searching / connecting with status. */
 @Composable
@@ -88,11 +88,15 @@ fun ManualEntryScreen(
     var invalid by remember { mutableStateOf(false) }
     Column(Modifier.align(Alignment.CenterStart).width(640.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Title(stringResource(R.string.manual_title))
+        androidx.compose.material3.MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         OutlinedTextField(host, { host = it }, Modifier.fillMaxWidth(), singleLine = true,
             label = { androidx.compose.material3.Text(stringResource(R.string.manual_host)) })
         OutlinedTextField(port, { port = it.filter(Char::isDigit) }, Modifier.fillMaxWidth(), singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             label = { androidx.compose.material3.Text(stringResource(R.string.manual_port)) })
+        }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Button(onClick = {
                 val p = port.toIntOrNull()
@@ -162,20 +166,20 @@ fun MissingZoneScreen(onContinue: () -> Unit, autoContinueMs: Long = 4000) = Pag
 @Composable
 fun NowPlayingScreen(zone: Zone, coverUrl: String?) = Page {
     val lines = zone.nowPlaying?.threeLine
-    Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(64.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(640.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1C2833))) {
+    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(400.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1C2833))) {
             if (coverUrl != null) {
                 AsyncImage(coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             }
         }
-        Column(Modifier.width(960.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (lines == null) {
                 Title(zone.displayName)
                 Body(stringResource(R.string.now_playing_nothing))
             } else {
-                Text(lines.line1 ?: stringResource(R.string.now_playing_unknown), fontSize = 56.sp, fontWeight = FontWeight.Bold,
+                Text(lines.line1 ?: stringResource(R.string.now_playing_unknown), fontSize = 48.sp, lineHeight = 56.sp, fontWeight = FontWeight.Bold,
                     color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(lines.line2 ?: "", fontSize = 36.sp, color = Color(0xFFE6EDF3), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(lines.line2 ?: "", fontSize = 32.sp, color = Color(0xFFE6EDF3), maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(lines.line3 ?: "", fontSize = 28.sp, color = Color(0xFF9DA7B3), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(24.dp))
                 Text("${zone.displayName} · ${stateLabel(zone.state)}", fontSize = 22.sp, color = Color(0xFF9DA7B3))

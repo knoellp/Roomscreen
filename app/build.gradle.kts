@@ -26,6 +26,11 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
+            // In the container the uid has no passwd entry, so user.home would be "?" (Robolectric caches jars there).
+            all { test ->
+                // Always write the screenshots (no Roborazzi Gradle plugin in use).
+                test.systemProperty("roborazzi.test.record", "true")
+                System.getenv("HOME")?.let { test.systemProperty("user.home", it) } }
         }
     }
 }
