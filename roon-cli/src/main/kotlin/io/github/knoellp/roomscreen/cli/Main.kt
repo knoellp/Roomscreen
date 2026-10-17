@@ -88,9 +88,18 @@ private object ConsoleLogger : Logger {
     override fun warn(message: String, error: Throwable?) = println("${stamp()} WARN $message${error?.let { " error=$it" } ?: ""}")
 }
 
+/** Config dir: $ROOMSCREEN_CLI_CONFIG, else $XDG_CONFIG_HOME/roomscreen-cli, else $HOME/.config/roomscreen-cli. */
+private fun configDir(): File {
+    System.getenv("ROOMSCREEN_CLI_CONFIG")?.takeIf { it.isNotBlank() }?.let { return File(it) }
+    System.getenv("XDG_CONFIG_HOME")?.takeIf { it.isNotBlank() }?.let { return File(it, "roomscreen-cli") }
+    val home = System.getenv("HOME")?.takeIf { it.isNotBlank() }
+        ?: error("cannot locate config dir: set ROOMSCREEN_CLI_CONFIG or HOME")
+    return File(home, ".config/roomscreen-cli")
+}
+
 /** One file per Core in ~/.config/roomscreen-cli/tokens (chmod 600). Outside the repo. */
 private class FileTokenStore : TokenStore {
-    private val dir = File(System.getenv("ROOMSCREEN_CLI_CONFIG") ?: "${System.getProperty("user.home")}/.config/roomscreen-cli")
+    private val dir = configDir()
     val path: File get() = dir
 
     private fun file(coreId: String) = File(dir, "token-$coreId")

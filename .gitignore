@@ -17,3 +17,5 @@ config/local.env
 recordings/
 *.token
 out/
+# Safety net: JVM user.home can be "?" when the container uid has no passwd entry
+?/

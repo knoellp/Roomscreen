@@ -14,5 +14,7 @@ exec docker run --rm $TTY --network host \
   -v roomscreen-gradle-home:/gradle-home \
   -v "$HOME/.android":/home/dev/.android \
   -v "$HOME/.config/roomscreen-cli":/home/dev/.config/roomscreen-cli \
+  -e ROOMSCREEN_CLI_CONFIG=/home/dev/.config/roomscreen-cli \
+  -e JAVA_OPTS="-Duser.home=/home/dev" \
   -e GRADLE_OPTS="-Xmx1g" \
   "$IMAGE" "$@"
