@@ -1,0 +1,58 @@
+# Phase 2 device flow (Fire TV Stick HD, German UI, zone "Büro" selected and paused before the start).
+# Media keys act on the selected zone, so run this only with Büro selected (see scripts/phase2-device.sh).
+# Screenshots go to build/device-artifacts/p2-*.png.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Büro · Pausiert"
+    timeout: 30000
+# 1. Controls are hidden by default and appear on input for about 5 s.
+- assertNotVisible: "Einstellungen"
+- takeScreenshot: build/device-artifacts/p2-01-paused-no-bar
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- takeScreenshot: build/device-artifacts/p2-02-bar-visible
+- extendedWaitUntil:
+    notVisible: "Einstellungen"
+    timeout: 12000
+# 2. Play/pause key: the state flips at once (optimistic) and the Core confirms.
+- pressKey: Remote Media Play Pause
+- extendedWaitUntil:
+    visible: "Büro · Spielt"
+    timeout: 4000
+- takeScreenshot: build/device-artifacts/p2-03-playing
+# 3. Fast forward = next track, rewind = previous track (the log shows the track titles).
+- pressKey: Remote Media Fast Forward
+- extendedWaitUntil:
+    visible: "Büro · Spielt"
+    timeout: 10000
+- takeScreenshot: build/device-artifacts/p2-04-after-next
+- pressKey: Remote Media Rewind
+- extendedWaitUntil:
+    visible: "Büro · Spielt"
+    timeout: 10000
+- takeScreenshot: build/device-artifacts/p2-05-after-previous
+# 4. Pause again.
+- pressKey: Remote Media Play Pause
+- extendedWaitUntil:
+    visible: "Büro · Pausiert"
+    timeout: 4000
+- takeScreenshot: build/device-artifacts/p2-06-paused-again
+# 5. Control bar buttons via D-pad: select on play/pause starts, select again pauses.
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Büro · Spielt"
+    timeout: 4000
+# Second select within the 5 s window of the bar: pauses again.
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Büro · Pausiert"
+    timeout: 4000
+- takeScreenshot: build/device-artifacts/p2-07-bar-playpause-select

@@ -8,6 +8,8 @@
                 <action android:name="io.github.knoellp.roomscreen.SET_HOST" />
                 <action android:name="io.github.knoellp.roomscreen.RESET" />
                 <action android:name="io.github.knoellp.roomscreen.DUMP_ZONES" />
+                <action android:name="io.github.knoellp.roomscreen.SET_VIA_ROON" />
+                <action android:name="io.github.knoellp.roomscreen.SELECT_ZONE" />
             </intent-filter>
         </receiver>
     </application>

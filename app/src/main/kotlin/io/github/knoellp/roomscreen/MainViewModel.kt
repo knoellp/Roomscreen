@@ -136,11 +136,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (settingsOpen) return Screen.SettingsPage(ep?.let { "${it.host}:${it.port}" })
             val np = raw.nowPlaying
             // Cover for the small picture; the backdrop is shrunk to 32 px anyway, so a small download is enough.
-            val cover = np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, 600, 600) } }
+            val cover = np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, COVER_PX, COVER_PX) } }
             val backdrop = when {
                 st.background == BackgroundSource.ARTIST && np?.artistImageKeys?.isNotEmpty() == true ->
-                    ep?.let { ImageService.httpUrl(it.host, it.port, np.artistImageKeys.first(), 640, 360, scale = "fill") }
-                else -> np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, 320, 320) } }
+                    ep?.let { ImageService.httpUrl(it.host, it.port, np.artistImageKeys.first(), 320, 180, scale = "fill") }
+                else -> np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, BackdropCache.SOURCE_PX, BackdropCache.SOURCE_PX) } }
             }
             val shown = applyPending(raw, pend)
             return Screen.NowPlaying(shown, cover, backdrop)
@@ -407,6 +407,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             prefs.saveEndpoint(Endpoint(host, port)); prefs.setManual(true)
             disconnect(); connect()
         }
+    }
+
+    /** Debug hook: select a zone by display name (the same as choosing it in the list; sends no command). */
+    fun debugSelectZone(name: String) {
+        val zone = zones.value.values.firstOrNull { it.displayName == name }
+        if (zone == null) { log.info("debug select_zone=$name result=not_found"); return }
+        selectZone(zone)
     }
 
     fun debugReset() {

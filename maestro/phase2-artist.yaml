@@ -1,0 +1,41 @@
+# Background "Künstlerbild": switch, look, switch back. Sends no transport command.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 30000
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Hintergrund"
+    timeout: 5000
+- pressKey: Remote Dpad Center
+- assertVisible: "Künstlerbild"
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 5000
+- extendedWaitUntil:
+    notVisible: "Einstellungen"
+    timeout: 12000
+- takeScreenshot: p2-30-artist-background
+# back to "Albumcover"
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Hintergrund"
+    timeout: 5000
+- pressKey: Remote Dpad Center
+- assertVisible: "Albumcover"
+- pressKey: Back

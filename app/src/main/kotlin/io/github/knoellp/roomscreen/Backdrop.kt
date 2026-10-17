@@ -87,7 +87,7 @@ class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
     /** Backdrop for [url]: cached or computed off the main thread. Null if the image cannot be loaded. */
     suspend fun backdrop(context: Context, url: String): ImageBitmap? {
         get(url)?.let { return it }
-        val src = loadBitmap(context, url, 320) ?: return null
+        val src = loadBitmap(context, url, SOURCE_PX) ?: return null
         val blurred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { BackdropBlur.compute(src) }
         return blurred.asImageBitmap().also { put(url, it) }
     }
@@ -103,5 +103,7 @@ class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
 
     companion object {
         const val MAX_ENTRIES = 3
+        /** Decode size of the backdrop source; it is shrunk to 32 px anyway. */
+        const val SOURCE_PX = 160
     }
 }

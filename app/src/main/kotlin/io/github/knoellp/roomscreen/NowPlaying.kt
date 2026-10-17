@@ -68,6 +68,9 @@ const val BAR_VISIBLE_MS = 5000L
 /** The progress display is refreshed at 10 Hz, never faster. */
 private const val PROGRESS_TICK_MS = 100L
 
+/** The cover is shown at 200 dp (400 px on the 1080p Fire TV); a slightly larger source keeps it sharp on 4K sticks. */
+const val COVER_PX = 480
+
 /** Backdrops of the last tracks; shared by all Now Playing compositions. */
 private val backdropCache = BackdropCache()
 
@@ -90,7 +93,7 @@ fun NowPlayingScreen(
     val context = LocalContext.current
     var cover by remember { mutableStateOf<ImageBitmap?>(null) }
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(coverUrl) { cover = if (coverUrl == null) null else backdropCache.cover(context, coverUrl, 600) }
+    LaunchedEffect(coverUrl) { cover = if (coverUrl == null) null else backdropCache.cover(context, coverUrl, COVER_PX) }
     LaunchedEffect(backdropUrl) { backdrop = if (backdropUrl == null) null else backdropCache.backdrop(context, backdropUrl) }
 
     val interpolator = remember { ProgressInterpolator(android.os.SystemClock::elapsedRealtime) }

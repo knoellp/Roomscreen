@@ -1,0 +1,51 @@
+# Settings rows "Core neu suchen" and "Zone wechseln". Neither sends a transport command.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 30000
+# "Zone wechseln" opens the zone list; Back keeps the current zone (Büro).
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Core neu suchen"
+    timeout: 5000
+- repeat:
+    times: 6
+    commands:
+      - pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Zone wählen"
+    timeout: 5000
+- takeScreenshot: p2-20-zone-list-from-settings
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 5000
+# "Core neu suchen": the app drops the connection, skips the cached address and runs discovery again.
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Core neu suchen"
+    timeout: 5000
+- repeat:
+    times: 5
+    commands:
+      - pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 40000
+- takeScreenshot: p2-21-after-rediscover

@@ -1,0 +1,57 @@
+# Phase 2 settings flow: open settings from the control bar, change values, go back.
+# Leaves the colour on Mitternachtsblau (restart check follows) and "Bedienelemente" as at the start. Needs no transport command.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 30000
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+# Focus starts on play/pause; Settings is two to the left (previous track, then Einstellungen).
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Hintergrundfarbe"
+    timeout: 5000
+- takeScreenshot: build/device-artifacts/p2-10-settings
+# Colour: Anthrazit -> Mitternachtsblau
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- assertVisible: "Mitternachtsblau"
+- takeScreenshot: build/device-artifacts/p2-11-settings-color
+# Controls: always visible
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- assertVisible: "Immer sichtbar"
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 5000
+# No input for longer than 5 s: the bar is still there.
+- extendedWaitUntil:
+    notVisible: "Einstellungen"
+    timeout: 8000
+    optional: true
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- takeScreenshot: build/device-artifacts/p2-12-always-visible-midnight
+# Back to "Bei Bedienung einblenden": with the bar always visible the first key focuses "Zonen", Right is "Einstellungen".
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Right
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Hintergrundfarbe"
+    timeout: 5000
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- assertVisible: "Bei Bedienung einblenden"
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 5000

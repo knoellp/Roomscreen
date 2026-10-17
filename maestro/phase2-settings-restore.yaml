@@ -1,0 +1,24 @@
+# Restores the default colour (Anthrazit) after the restart check: Mitternachtsblau -> ... -> Anthrazit is 5 steps.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 30000
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Hintergrundfarbe"
+    timeout: 5000
+- pressKey: Remote Dpad Down
+- repeat:
+    times: 5
+    commands:
+      - pressKey: Remote Dpad Center
+- assertVisible: "Anthrazit"
+- pressKey: Back
