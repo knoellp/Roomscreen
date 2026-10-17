@@ -24,6 +24,7 @@ class Prefs(context: Context) : TokenStore {
     private val hostKey = stringPreferencesKey("host")
     private val portKey = intPreferencesKey("port")
     private val manualKey = booleanPreferencesKey("manual")
+    private val installKey = stringPreferencesKey("install_id")
     private val zoneKey = stringPreferencesKey("zone_id")
     private fun tokenKey(coreId: String) = stringPreferencesKey("token_$coreId")
 
@@ -46,5 +47,10 @@ class Prefs(context: Context) : TokenStore {
     suspend fun manual(): Boolean = store.data.first()[manualKey] ?: false
     suspend fun setManual(value: Boolean) { store.edit { it[manualKey] = value } }
 
-    suspend fun clearAll() { store.edit { it.clear() } }
+    /** Random per-installation id; two devices must not share an extension_id (the Core evicts the older connection). */
+    fun installId(): String = runBlocking {
+        store.data.first()[installKey] ?: java.util.UUID.randomUUID().toString().take(8).also { id -> store.edit { it[installKey] = id } }
+    }
+
+    suspend fun clearAll() { store.edit { val id = it[installKey]; it.clear(); if (id != null) it[installKey] = id } }
 }

@@ -1,0 +1,74 @@
+{
+ "zones_changed": [
+  {
+   "zone_id": "1601f6209616cb1d834da79777512205aa78",
+   "display_name": "Büro",
+   "outputs": [
+    {
+     "output_id": "1701f6209616cb1d834da79777512205aa78",
+     "zone_id": "1601f6209616cb1d834da79777512205aa78",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Büro",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 16,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Büro",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "playing",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": true,
+   "is_play_allowed": false,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 9,
+   "queue_time_remaining": 2444,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 10,
+    "length": 251,
+    "one_line": {
+     "line1": "The Logical Song - Supertramp"
+    },
+    "two_line": {
+     "line1": "The Logical Song",
+     "line2": "Supertramp"
+    },
+    "three_line": {
+     "line1": "The Logical Song",
+     "line2": "Supertramp",
+     "line3": "Breakfast in America"
+    },
+    "image_key": "f67c8ffff552b73e7f55e220e44ffdba",
+    "artist_image_keys": [
+     "929acdd509c7629ecc176a8bffaa33a8"
+    ]
+   }
+  }
+ ]
+}

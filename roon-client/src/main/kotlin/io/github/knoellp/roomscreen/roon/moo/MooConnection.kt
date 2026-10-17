@@ -81,6 +81,7 @@ class MooConnection(
 
     private fun handle(bytes: ByteArray) {
         recorder?.record(FrameRecorder.Direction.RECEIVE, clock(), bytes)
+        if (bytes.isEmpty()) { logger.info("moo=empty_frame"); return }
         val msg = try {
             MooMessage.parse(bytes)
         } catch (e: IllegalArgumentException) {

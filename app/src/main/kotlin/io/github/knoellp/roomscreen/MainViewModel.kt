@@ -83,6 +83,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (client != null) return
         viewModelScope.launch {
             if (client != null) return@launch
+            withContext(Dispatchers.IO) { identity() }
             val manual = prefs.manual()
             val fixed = if (manual) prefs.lastEndpoint() else null
             val c = RoonClient(
@@ -143,13 +144,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return last
     }
 
-    val extensionName: String get() = identity().displayName
+    @Volatile private var cachedIdentity: ExtensionIdentity? = null
+    val extensionName: String get() = cachedIdentity?.displayName ?: "Roomscreen"
 
-    private fun identity(): ExtensionIdentity {
+    private fun identity(): ExtensionIdentity = cachedIdentity ?: buildIdentity().also { cachedIdentity = it }
+
+    private fun buildIdentity(): ExtensionIdentity {
         val ctx = getApplication<Application>()
         val device = Settings.Global.getString(ctx.contentResolver, "device_name")?.takeIf { it.isNotBlank() } ?: Build.MODEL
         return ExtensionIdentity(
-            extensionId = "io.github.knoellp.roomscreen",
+            extensionId = "io.github.knoellp.roomscreen.${prefs.installId()}",
             displayName = "Roomscreen ($device)",
             displayVersion = "0.1.0",
             publisher = "knoellp",

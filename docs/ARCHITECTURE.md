@@ -295,10 +295,12 @@ recorded from the real Core with `roon-cli --record` and must not contain tokens
 | Zone fields beyond the doc | `queue_items_remaining`, `settings`, `artist_image_keys`, `outputs[].volume`, `outputs[].source_controls` are present and ignored. A stopped zone without queue has no `now_playing` and `is_play_allowed=false`: it cannot be started from an extension (no browse API). |
 | Image over HTTP without auth | **[verified live]** `GET http://<core>:9330/api/image/<key>?scale=fit&width=300&height=300` returns 200 `image/jpeg` (61437 bytes) without any token. An unknown key returns 404. |
 | Image over MOO | **[verified live]** `image:1/get_image` returns `COMPLETE Success` with `image/jpeg`, same size as via HTTP. For an unknown key the Core sends **no reply** (client timeout). Decision: use the HTTP URL (Coil), with 404 as the clean "missing cover" signal. |
-| `zones_seek_changed` rate | **[unverified]** Not measured: no zone was playing during the session and the test zone cannot be started by an extension. Measure with `roon-cli watch --zone <test zone> --duration 30` once something plays there. |
-| Two instances with the same `extension_id` | **[unverified]** Still open. |
+| `zones_seek_changed` rate | **[verified live]** 29 messages in 30 s = 1.00 Hz per playing zone (interval avg 996 ms, min 655 ms, max 1359 ms). Entry shape: `{"zone_id", "queue_time_remaining", "seek_position"}`. Nothing is sent while paused. Interpolating locally between events is only needed for smooth progress bars. |
+| Track change sequence | **[verified live]** `next` yields `zones_changed` with `state: "loading"` and a now_playing without `seek_position` (plus a `zones_seek_changed` entry with `seek_position: null`), then `zones_changed` with `state: "playing"`. Pause and resume are single `zones_changed` messages with the full zone object. |
+| Two connections with the same `extension_id` | **[observed live]** When a second connection registered with the same `extension_id` (a CLI control call while a `watch` was running), the older connection received an empty (0-byte) frame and was dropped. The older client then reconnected and in turn evicted the other. Two devices must therefore use distinct `extension_id`s: the app appends a per-installation suffix (generated once, stored in DataStore). Each distinct id needs its own "Enable" in Roon. |
+| Empty frame | **[observed live]** A 0-byte WebSocket frame precedes the eviction described above. The client ignores empty frames. |
 | Multicast on Fire OS | **[unverified]** Needs the device. |
-| Fire OS / API level | User-provided: Fire TV Stick HD (1st gen.), Fire OS 7.7.1.7 (API 28 expected, to verify with `getprop`). minSdk 28. This device is a 1080p stick, not a 4K stick. |
+| Fire OS / API level | **[verified]** Fire TV Stick HD (AFTSS "sheldon"), Fire OS 7.7.1.7, SDK 28 (Android 9), armeabi-v7a, 1920x1080, density 320. minSdk 28. This device is a 1080p stick, not a 4K stick. |
 
 Fixtures: `roon-client/src/test/resources/fixtures/` (see its README for recorded vs derived files).
 

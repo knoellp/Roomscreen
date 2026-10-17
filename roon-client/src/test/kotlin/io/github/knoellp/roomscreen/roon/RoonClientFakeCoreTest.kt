@@ -108,25 +108,36 @@ class RoonClientFakeCoreTest {
     }
 
     @Test
-    fun `track change, pause, seek and missing cover reach the zone state`() = runBlocking {
+    fun `recorded play, next track, seek, pause, resume and missing cover reach the zone state`() = runBlocking {
         core.requireEnable = false
         val c = connected()
-        core.pushFixture("changed_track.json")
-        withTimeout(10_000) { c.zones.first { it[schlaf]?.nowPlaying?.threeLine?.line1 == "Next Song" } }
-        assertEquals("playing", c.zones.value.getValue(schlaf).state)
-        assertEquals("aaaabbbbccccddddeeeeffff00001111", c.zones.value.getValue(schlaf).nowPlaying!!.imageKey)
+        fun title() = c.zones.value.getValue(buero).nowPlaying?.threeLine?.line1
+
+        core.pushFixture("changed_play.json")
+        withTimeout(10_000) { c.zones.first { it[buero]?.state == "playing" } }
+        assertEquals("The Logical Song", title())
+        assertEquals("Supertramp", c.zones.value.getValue(buero).nowPlaying!!.threeLine!!.line2)
 
         core.pushFixture("changed_seek.json")
-        withTimeout(10_000) { c.zones.first { it[schlaf]?.nowPlaying?.seekPosition == 42L } }
-        assertEquals("Next Song", c.zones.value.getValue(schlaf).nowPlaying!!.threeLine!!.line1)
+        withTimeout(10_000) { c.zones.first { it[buero]?.nowPlaying?.seekPosition != null && it[buero]?.queueTimeRemaining != null } }
+
+        // Next: the Core first reports `loading` without seek position, and seek_position null in the seek list.
+        core.pushFixture("changed_loading.json")
+        withTimeout(10_000) { c.zones.first { it[buero]?.state == "loading" } }
+        assertNull(c.zones.value.getValue(buero).nowPlaying!!.seekPosition)
+        assertEquals("Goodbye Stranger", title())
+        core.pushFixture("changed_track.json")
+        withTimeout(10_000) { c.zones.first { it[buero]?.state == "playing" } }
 
         core.pushFixture("changed_pause.json")
-        withTimeout(10_000) { c.zones.first { it[schlaf]?.state == "paused" } }
-        assertTrue(c.zones.value.getValue(schlaf).isPlayAllowed)
+        withTimeout(10_000) { c.zones.first { it[buero]?.state == "paused" } }
+        assertTrue(c.zones.value.getValue(buero).isPlayAllowed)
+        core.pushFixture("changed_resume.json")
+        withTimeout(10_000) { c.zones.first { it[buero]?.state == "playing" } }
 
         core.pushFixture("changed_nocover.json")
-        withTimeout(10_000) { c.zones.first { it[schlaf]?.state == "playing" } }
-        assertNull(c.zones.value.getValue(schlaf).nowPlaying!!.imageKey)
+        withTimeout(10_000) { c.zones.first { it[buero]?.state == "paused" && it[buero]?.nowPlaying?.imageKey == null } }
+        assertEquals("Goodbye Stranger", title())
         c.stop()
     }
 

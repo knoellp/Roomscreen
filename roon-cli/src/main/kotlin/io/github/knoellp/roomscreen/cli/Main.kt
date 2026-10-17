@@ -57,6 +57,7 @@ commands:
   now-playing --zone NAME       show what a zone plays
   image --key KEY [--size N] [--out FILE]   fetch a cover via MOO get_image (read-only)
   watch [--zone NAME] [--duration SECONDS]   print changes, measure zones_seek_changed rate
+  test-sequence --zone NAME     playpause, next, pause, playpause, pause on the test zone (ends paused)
   play|pause|playpause|next|previous --zone NAME   control; only allowed for ${'$'}ROON_TEST_ZONE
 options:
   --host H --port P             skip discovery (port default 9330)
@@ -134,6 +135,7 @@ private suspend fun run(opts: Options): Int {
         "discover" -> return discover()
         "info" -> return info(opts)
         "register", "zones", "now-playing", "watch", "image" -> return withClient(opts) { client, scope -> clientCommand(cmd, opts, client, scope) }
+        "test-sequence" -> return control(opts, null)
         in CONTROLS -> return control(opts, CONTROLS.getValue(cmd!!))
         else -> { System.err.print(USAGE); return 2 }
     }
@@ -288,7 +290,7 @@ private fun seekStats(times: List<Long>, elapsedSec: Double): String {
 }
 
 /** Control commands touch only the dedicated test zone; anything else is refused before connecting. */
-private suspend fun control(opts: Options, control: TransportControl): Int {
+private suspend fun control(opts: Options, control: TransportControl?): Int {
     val testZone = System.getenv("ROON_TEST_ZONE")?.takeIf { it.isNotBlank() }
         ?: run { println("REFUSED: ROON_TEST_ZONE is not set; control commands are disabled"); return 3 }
     val requested = opts["zone"] ?: run { println("ERROR --zone is required"); return 2 }
@@ -300,6 +302,18 @@ private suspend fun control(opts: Options, control: TransportControl): Int {
         val zones = awaitZones(client)
         val zone = findZone(zones, requested) ?: return@withClient 1
         check(zone.displayName == testZone) { "refusing to control zone ${zone.displayName}" }
+        if (control == null) {
+            // One connection for the whole sequence so every resulting Changed message is recorded. Ends paused.
+            val steps = listOf(TransportControl.PLAYPAUSE to 5, TransportControl.NEXT to 6, TransportControl.PAUSE to 4,
+                TransportControl.PLAYPAUSE to 4, TransportControl.PAUSE to 4)
+            for ((c, waitSec) in steps) {
+                println("${stamp()} sequence ${c.wire} zone=\"${zone.displayName}\"")
+                client.control(zone.zoneId, c)
+                kotlinx.coroutines.delay(waitSec * 1000L)
+                println("${stamp()} ${describe(client.zones.value.getValue(zone.zoneId))}")
+            }
+            return@withClient 0
+        }
         val allowed = when (control) {
             TransportControl.PLAY -> zone.isPlayAllowed
             TransportControl.PAUSE -> zone.isPauseAllowed
