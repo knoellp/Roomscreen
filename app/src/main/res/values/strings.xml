@@ -66,6 +66,9 @@
     <string name="setting_screen_always">Always</string>
     <string name="setting_screen_playing">Only while playing</string>
     <string name="setting_via_roon">Show \"via roon\"</string>
+    <string name="setting_lrclib">Lyrics (LRCLIB)</string>
+    <string name="lyrics_button">Lyrics</string>
+    <string name="lyrics_none">No lyrics found</string>
     <string name="setting_connection">Core</string>
     <string name="setting_core_unknown">not connected</string>
     <string name="setting_rediscover">Search for Core again</string>

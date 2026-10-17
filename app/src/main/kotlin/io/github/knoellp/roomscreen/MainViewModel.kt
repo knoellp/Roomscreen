@@ -27,8 +27,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
+import io.github.knoellp.roomscreen.lyrics.FileLyricsCache
+import io.github.knoellp.roomscreen.lyrics.LrclibClient
+import io.github.knoellp.roomscreen.lyrics.LyricsQuery
+import io.github.knoellp.roomscreen.lyrics.LyricsRepository
+import io.github.knoellp.roomscreen.lyrics.LyricsResult
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -86,13 +94,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val savedEndpoint = MutableStateFlow<Endpoint?>(null)
 
+    private val lyricsOn: StateFlow<Boolean> = prefs.lyricsOn.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    private val _lyrics = MutableStateFlow<LyricsState>(LyricsState.Off)
+    /** Lyrics of the selected zone's current track; [LyricsState.Off] while lyrics or LRCLIB are switched off. */
+    val lyrics: StateFlow<LyricsState> = _lyrics
+
     val screen: StateFlow<Screen> = combine(
         connection, zones, prefs.zoneId, showManual, endpoint, showZoneList, prefs.zoneOutputIds, settings, showSettings, pending,
+        _lyrics, lyricsOn,
     ) { v ->
         @Suppress("UNCHECKED_CAST")
         compute(
             v[0] as ConnectionState, v[1] as Map<String, Zone>, v[2] as String?, v[3] as Boolean, v[4] as Endpoint?, v[5] as Boolean,
-            v[6] as Set<String>, v[7] as AppSettings, v[8] as Boolean, v[9] as Pending?,
+            v[6] as Set<String>, v[7] as AppSettings, v[8] as Boolean, v[9] as Pending?, v[10] as LyricsState, v[11] as Boolean,
         )
     }
         .stateIn(viewModelScope, SharingStarted.Eagerly, Screen.Connecting(Status.Discovering))
@@ -102,12 +116,51 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         st.screenOn == ScreenOn.ALWAYS || (sc is Screen.NowPlaying && sc.zone.state == "playing")
     }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    /** Title/artist/album/length of the selected zone's track, independent of [screen] (no feedback loop). */
+    private val lyricsKey: Flow<LyricsQuery?> = combine(zones, prefs.zoneId, prefs.zoneOutputIds) { zoneMap, saved, outputs ->
+        val zone = saved?.let { resolveZone(zoneMap, it, outputs)?.zone }
+        val lines = zone?.nowPlaying?.threeLine
+        val title = lines?.line1?.takeIf { it.isNotBlank() }
+        if (title == null) null
+        else LyricsQuery(title, lines.line2.orEmpty(), lines.line3.orEmpty(), (zone.nowPlaying?.length ?: 0L).toInt())
+    }.distinctUntilChanged()
+
+    private val lyricsRepository: LyricsRepository by lazy {
+        val ctx = getApplication<Application>()
+        val version = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "unknown"
+        LyricsRepository(
+            LrclibClient(okhttp3.OkHttpClient(), userAgent = LrclibClient.userAgent(version), logger = log),
+            FileLyricsCache(java.io.File(ctx.cacheDir, "lyrics"), 300, log),
+            logger = log,
+        )
+    }
+
     init {
         StateRegistry.current = this
         viewModelScope.launch { savedEndpoint.value = prefs.lastEndpoint() }
+        // A new track (or switching lyrics/LRCLIB off) cancels the running lookup. No request while off.
+        viewModelScope.launch {
+            combine(lyricsKey, lyricsOn, settings.map { it.lrclib }.distinctUntilChanged()) { q, on, lrclib -> if (on && lrclib) q else null }
+                .distinctUntilChanged()
+                .collectLatest { q ->
+                    if (q == null) { _lyrics.value = LyricsState.Off; return@collectLatest }
+                    _lyrics.value = LyricsState.Loading
+                    _lyrics.value = when (val r = lyricsRepository.lookup(q)) {
+                        is LyricsResult.Synced -> LyricsState.Synced(r.lines)
+                        is LyricsResult.Plain -> LyricsState.Plain(r.text)
+                        is LyricsResult.Instrumental, LyricsResult.None -> LyricsState.None
+                        LyricsResult.Unavailable -> LyricsState.Unavailable
+                    }
+                }
+        }
     }
 
-    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?, listOpen: Boolean, savedOutputs: Set<String>, st: AppSettings, settingsOpen: Boolean, pend: Pending?): Screen {
+    /** The Lyrics button: switches lyrics on or off and remembers the choice. */
+    fun toggleLyrics() { setLyrics(!lyricsOn.value) }
+
+    fun setLyrics(on: Boolean) { viewModelScope.launch { prefs.setLyricsOn(on); log.info("lyrics button=${if (on) "on" else "off"}") } }
+
+    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?, listOpen: Boolean, savedOutputs: Set<String>, st: AppSettings, settingsOpen: Boolean, pend: Pending?, lyrics: LyricsState, lyricsOn: Boolean): Screen {
         if (manual) return Screen.Manual
         if (conn == ConnectionState.AwaitingAuthorization) return Screen.Authorization
         if (conn != ConnectionState.Connected) {
@@ -143,7 +196,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 else -> np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, BackdropCache.SOURCE_PX, BackdropCache.SOURCE_PX) } }
             }
             val shown = applyPending(raw, pend)
-            return Screen.NowPlaying(shown, cover, backdrop)
+            return Screen.NowPlaying(shown, cover, backdrop, lyrics, lyricsAvailable = st.lrclib, lyricsOn = st.lrclib && lyricsOn)
         }
         return Screen.ZoneList(sortedZones(zoneMap))
     }
@@ -388,6 +441,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             put("album", s.zone.nowPlaying?.threeLine?.line3 ?: "")
             put("backdrop", s.backdropUrl ?: "")
         }
+        put("lyrics_on", lyricsOn.value)
+        put("lyrics", when (val l = _lyrics.value) {
+            LyricsState.Off -> "off"; LyricsState.Loading -> "loading"; LyricsState.None -> "none"; LyricsState.Unavailable -> "unavailable"
+            is LyricsState.Synced -> "synced:${l.lines.size}"; is LyricsState.Plain -> "plain"
+        })
         put("settings", settings.value.toString())
     }.toString()
 

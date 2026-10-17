@@ -65,6 +65,7 @@ fun SettingsScreen(
         SettingItem("controls", R.string.setting_controls, stringResource(settings.controls.label)) { onChange(settings.copy(controls = settings.controls.next())) },
         SettingItem("screen", R.string.setting_screen_on, stringResource(settings.screenOn.label)) { onChange(settings.copy(screenOn = settings.screenOn.next())) },
         SettingItem("via", R.string.setting_via_roon, stringResource(if (settings.viaRoon) R.string.on else R.string.off)) { onChange(settings.copy(viaRoon = !settings.viaRoon)) },
+        SettingItem("lrclib", R.string.setting_lrclib, stringResource(if (settings.lrclib) R.string.on else R.string.off)) { onChange(settings.copy(lrclib = !settings.lrclib)) },
         SettingItem("rediscover", R.string.setting_rediscover, null, onSelect = onRediscover),
         SettingItem("zone", R.string.setting_switch_zone, null, onSelect = onSwitchZone),
     )

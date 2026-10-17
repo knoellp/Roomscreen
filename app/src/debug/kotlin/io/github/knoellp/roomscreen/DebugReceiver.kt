@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
  * (API 26+), so address the app: `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_ZONES`.
  * DUMP_STATE logs the UI state as JSON; SET_HOST takes extras host and port;
  * SET_VIA_ROON (extra value=on|off) writes the "via roon" setting, also while the app is not running.
+ * SET_LYRICS (extra value=on|off) presses the Lyrics button; DUMP_STATE then shows `lyrics` and `lyrics_on`.
  * SELECT_ZONE (extra name) selects a zone by display name without sending any command.
  * RESET clears all stored preferences (token, endpoint, zone) and must only be used after asking.
  */
@@ -44,6 +45,7 @@ class DebugReceiver : BroadcastReceiver() {
                 vm.debugSetHost(host, intent.getIntExtra("port", 9330))
             }
             "io.github.knoellp.roomscreen.SELECT_ZONE" -> vm.debugSelectZone(intent.getStringExtra("name") ?: return)
+            "io.github.knoellp.roomscreen.SET_LYRICS" -> vm.setLyrics(intent.getStringExtra("value") == "on")
             "io.github.knoellp.roomscreen.RESET" -> vm.debugReset()
         }
     }

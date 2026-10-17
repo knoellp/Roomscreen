@@ -35,6 +35,8 @@ class Prefs(context: Context) : TokenStore {
     private val controlsKey = stringPreferencesKey("setting_controls")
     private val screenKey = stringPreferencesKey("setting_screen_on")
     private val viaKey = booleanPreferencesKey("setting_via_roon")
+    private val lrclibKey = booleanPreferencesKey("setting_lrclib")
+    private val lyricsOnKey = booleanPreferencesKey("lyrics_on")
     private fun tokenKey(coreId: String) = stringPreferencesKey("token_$coreId")
 
     // TokenStore is synchronous by contract; the values are tiny.
@@ -50,15 +52,21 @@ class Prefs(context: Context) : TokenStore {
             controls = p[controlsKey].asEnum() ?: d.controls,
             screenOn = p[screenKey].asEnum() ?: d.screenOn,
             viaRoon = p[viaKey] ?: d.viaRoon,
+            lrclib = p[lrclibKey] ?: d.lrclib,
         )
     }
 
     suspend fun saveSettings(s: AppSettings) {
         store.edit {
             it[bgKey] = s.background.name; it[colorKey] = s.backgroundColor.name; it[controlsKey] = s.controls.name
-            it[screenKey] = s.screenOn.name; it[viaKey] = s.viaRoon
+            it[screenKey] = s.screenOn.name; it[viaKey] = s.viaRoon; it[lrclibKey] = s.lrclib
         }
     }
+
+    /** Last choice of the Lyrics button (default off). */
+    val lyricsOn: Flow<Boolean> = store.data.map { it[lyricsOnKey] ?: false }
+
+    suspend fun setLyricsOn(on: Boolean) { store.edit { it[lyricsOnKey] = on } }
 
     val zoneId: Flow<String?> = store.data.map { it[zoneKey] }
 

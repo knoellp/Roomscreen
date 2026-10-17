@@ -36,6 +36,8 @@ data class AppSettings(
     val controls: ControlsMode = ControlsMode.ON_INPUT,
     val screenOn: ScreenOn = ScreenOn.ALWAYS,
     val viaRoon: Boolean = true,
+    /** Opt-out switch: false means no request to lrclib.net is ever made and the Lyrics button disappears. */
+    val lrclib: Boolean = true,
 )
 
 /** Next value of an enum, wrapping around (used by the settings list: select cycles the value). */
