@@ -29,6 +29,7 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Control bar (Zones, Settings, previous, play/pause, next) | screenshot | `maestro/phase2.yaml`: appears on input, hides after 5 s, D-pad navigation, focus ring | - |
 | Settings screen and persistence | `SettingsPrefsTest`, screenshots (EN, DE) | `maestro/phase2-settings.yaml`, value survives a force-stop and restart | "Screen on: only while playing" not exercised on the device |
 | Artist image background | - | switched on in the settings, screenshot | - |
+| Sharp background and colour background | unit tests (crop, sharp decode size), Roborazzi screenshots `6i`, `6j`, `7c` | NOT verified on the device: the Fire TV screen was off (display asleep) during the test run and waking it was not permitted; only the install, the `SET_SHARPNESS` broadcast and the `DUMP_STATE` output were checked | memory in sharp mode not measured |
 | "via roon" hint | screenshots | - (see below) | the user has to approve the look first |
 | Synchronized lyrics (LRCLIB): lookup, cache, LRC parser, line sync | 48 JVM tests in `lyrics` (parser, sync, query variants, MockWebServer client, repository); `roon-cli lyrics` against the real LRCLIB (`docs/ARCHITECTURE.md` section 9) | "Lyrics" bar button, lookup log lines, cancellation on track change, no request while off, setting persists over a restart (`maestro/phase3-*.yaml`, `scripts/phase3-device.sh`) | see "Not verified" below |
 | Lyrics screens (synchronized, plain, none) | Roborazzi: `9-lyrics-synced`, `9b-lyrics-plain`, `9c-lyrics-none`, `6h-now-playing-controls-lyrics`, `9d-lyrics-none-de`, `7-settings`; `LyricsViewTest` (D-pad scroll of plain text) | synchronized view on the device (screenshots) | plain text and "No lyrics found" only in screenshots/tests (depends on the track Büro happens to play) |
@@ -82,7 +83,8 @@ Open **Settings** from the control bar; select changes a value, Back returns. Va
 
 | Setting | Values (default first) |
 |---|---|
-| Background | album cover, artist image (falls back to the cover when the track has no artist image) |
+| Background | album cover, artist image (falls back to the cover when the track has no artist image), colour (no image and no gradient: the whole area is the chosen background colour) |
+| Background sharpness | Soft (default, blurred 256 px backdrop) or Sharp (artist image loaded at 1280 x 720, cover at 720 x 720 and centre-cropped to 16:9, no blur, full opacity; the dark gradient stays so text remains readable). Hidden while the background is "Colour". |
 | Background colour | Anthracite, Black, Midnight blue, Dark green, Wine red, Warm grey (base under the image, and the colour without cover) |
 | Controls | show on input, always visible |
 | Screen on | always, only while playing |
@@ -135,7 +137,7 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 - `lyrics`: pure JVM module (LRC parser, line sync, query variants, LRCLIB client, cache), used by the app and the CLI.
 - `app`: the Android TV app. Debug builds accept broadcasts that must name the package (an implicit broadcast is
   silently dropped): `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_STATE`
-  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `SET_LYRICS` with `--es value on|off` (presses the Lyrics button; `DUMP_STATE` then shows `lyrics_on` and `lyrics`), `SET_LRCLIB` with `--es value on|off` (the "Lyrics (LRCLIB)" setting), `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
+  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `SET_LYRICS` with `--es value on|off` (presses the Lyrics button; `DUMP_STATE` then shows `lyrics_on` and `lyrics`), `SET_LRCLIB` with `--es value on|off` (the "Lyrics (LRCLIB)" setting), `SET_SHARPNESS` with `--es value soft|sharp`, `SET_BACKGROUND` with `--es value cover|artist|color`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
 
 Privacy: the app stores only the Roon token, the Core address, the chosen zone and the display settings, locally.
 

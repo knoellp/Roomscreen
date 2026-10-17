@@ -371,6 +371,15 @@ box blur passes (removes the visible 32 px grid), double to 256 x 144. The resul
 keeps the last three. JVM time for the whole computation is about 3 ms for a 320 px source (`BackdropTest`, not a device number).
 The source decode size is 160 px; the 480 px cover is requested separately (the small cover is shown at 200 dp).
 
+Sharp path (setting "Background sharpness" = Sharp): no blur. The artist image is requested as 1280 x 720 `scale=fill`, a cover as
+720 x 720; Coil decodes at that size (`allowHardware(false)`), `centerCrop16x9` (the crop shared with `BackdropBlur.compute`) cuts
+16:9 and the bitmap is cached under its URL (`MAX_ENTRIES` stays 3; the URL differs between modes, so no mixing). A 1280 x 720 ARGB
+bitmap is about 3.7 MB, three entries about 11 MB; the GPU scales it to 1080p. The image is drawn at alpha 1.0 (soft: 0.75) under the
+unchanged dark gradient. The Coil memory cache was raised from 8 MB to 16 MB for this. Not measured on the device yet (screen was off).
+
+Colour background (`BackgroundSource.COLOR`): `backdropUrl` is null (no image loads), no gradient is drawn, the area is the chosen
+`backgroundColor`; info strip, small cover and lyrics column are unchanged. The sharpness row is hidden in the settings then.
+
 ### 8.4 Progress
 
 `ProgressInterpolator` (roon-client, injected monotonic clock) anchors at each seek value; while `playing` it adds the elapsed
