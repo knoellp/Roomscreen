@@ -1,5 +1,11 @@
 package io.github.knoellp.roomscreen.cli
 
+import io.github.knoellp.roomscreen.lyrics.CacheEntry
+import io.github.knoellp.roomscreen.lyrics.LrclibClient
+import io.github.knoellp.roomscreen.lyrics.LyricsCache
+import io.github.knoellp.roomscreen.lyrics.LyricsQuery
+import io.github.knoellp.roomscreen.lyrics.LyricsRepository
+import io.github.knoellp.roomscreen.lyrics.LyricsResult
 import io.github.knoellp.roomscreen.roon.ConnectionState
 import io.github.knoellp.roomscreen.roon.Endpoint
 import io.github.knoellp.roomscreen.roon.ExtensionIdentity
@@ -60,6 +66,7 @@ commands:
   now-playing --zone NAME       show what a zone plays
   artist-image --zone NAME [--artists "A|B"] [--out DIR] [--browse true]   artist images via zone artist_image_keys and Browse search (read-only)
   image --key KEY [--size N] [--out FILE]   fetch a cover via MOO get_image (read-only)
+  lyrics [--zone NAME]          look up LRCLIB lyrics for the current track of every zone (or one); read-only, sends no control
   watch [--zone NAME] [--duration SECONDS]   print changes, measure zones_seek_changed rate
   test-sequence --zone NAME     playpause, next, pause, playpause, pause on the test zone (ends paused)
   play|pause|playpause|next|previous --zone NAME   control; only allowed for ${'$'}ROON_TEST_ZONE
@@ -138,7 +145,7 @@ private suspend fun run(opts: Options): Int {
     when (val cmd = opts.command) {
         "discover" -> return discover()
         "info" -> return info(opts)
-        "register", "zones", "now-playing", "watch", "image", "artist-image" -> return withClient(opts, optionalServices = if (cmd == "artist-image" && opts["browse"] == "true") listOf(BrowseService.SERVICE) else emptyList()) { client, scope -> clientCommand(cmd, opts, client, scope) }
+        "register", "zones", "now-playing", "watch", "image", "artist-image", "lyrics" -> return withClient(opts, optionalServices = if (cmd == "artist-image" && opts["browse"] == "true") listOf(BrowseService.SERVICE) else emptyList()) { client, scope -> clientCommand(cmd, opts, client, scope) }
         "test-sequence" -> return control(opts, null)
         in CONTROLS -> return control(opts, CONTROLS.getValue(cmd!!))
         else -> { System.err.print(USAGE); return 2 }
@@ -229,6 +236,7 @@ private suspend fun clientCommand(cmd: String, opts: Options, client: RoonClient
             return 0
         }
         "watch" -> return watch(opts, client)
+        "lyrics" -> return lyrics(opts, client)
         "artist-image" -> return artistImage(opts, client)
         "image" -> {
             awaitConnected(client)
@@ -308,6 +316,45 @@ private suspend fun artistImage(opts: Options, client: RoonClient): Int {
         println("search \"$name\": match=\"${match.title}\" exact=$exact image_key=$matchKey search_ms=$searchMs $img total_ms=$totalMs")
     }
     println("browse hits (exact title match with image): $hits/${names.size}")
+    return 0
+}
+
+/** Never caches: every run asks LRCLIB for real. */
+private object NoCache : LyricsCache {
+    override fun get(key: String): CacheEntry? = null
+    override fun put(key: String, entry: CacheEntry) {}
+}
+
+/** Read-only check against the real LRCLIB for the current track of each zone (no transport control is sent). */
+private suspend fun lyrics(opts: Options, client: RoonClient): Int {
+    val zones = awaitZones(client).values.filter { opts["zone"] == null || it.displayName == opts["zone"] }
+    if (zones.isEmpty()) { println("ERROR no matching zone"); return 1 }
+    val repo = LyricsRepository(
+        LrclibClient(OkHttpClient(), userAgent = LrclibClient.userAgent("cli"), logger = ConsoleLogger),
+        NoCache, logger = ConsoleLogger,
+    )
+    var hits = 0; var total = 0
+    for (z in zones) {
+        val l = z.nowPlaying?.threeLine
+        val title = l?.line1
+        if (z.nowPlaying == null || title == null) { println("zone \"${z.displayName}\" no track"); continue }
+        total++
+        val q = LyricsQuery(title, l.line2.orEmpty(), l.line3.orEmpty(), (z.nowPlaying?.length ?: 0L).toInt())
+        val t0 = System.nanoTime()
+        val r = repo.lookup(q)
+        val ms = (System.nanoTime() - t0) / 1_000_000
+        val (variant, label, first) = when (r) {
+            is LyricsResult.Synced -> Triple(r.variant, "synced lines=${r.lines.size}", r.lines.filter { it.text.isNotEmpty() }.take(3).map { it.text })
+            is LyricsResult.Plain -> Triple(r.variant, "plain lines=${r.text.lines().size}", r.text.lines().take(3))
+            is LyricsResult.Instrumental -> Triple(r.variant, "instrumental", emptyList())
+            LyricsResult.None -> Triple("-", "none", emptyList())
+            LyricsResult.Unavailable -> Triple("-", "unavailable", emptyList())
+        }
+        if (r !is LyricsResult.None && r !is LyricsResult.Unavailable) hits++
+        println("lyrics zone=\"${z.displayName}\" title=\"$title\" artist=\"${l.line2}\" duration=${q.durationSec} variant=$variant result=$label ms=$ms")
+        first.forEach { println("    $it") }
+    }
+    println("lyrics: hits=$hits/$total")
     return 0
 }
 

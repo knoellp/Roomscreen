@@ -387,3 +387,26 @@ read the state in the draw/derived scope so the rest of the screen is not recomp
   - Coil default memory cache: 108.2 MB before, 180.5 MB right after (+72), 162.9 MB 30 s later (+55).
   - Cache capped at 8 MB (`RoomscreenApp`): run A 123.4 -> 126.3 -> 124.2 MB; run B 114.0 -> 134.0 -> 126.8 MB (+20 peak, +12.8 settled).
   The graphics part (GPU texture caches) varies by about 10 MB between runs; the plan's +-10 MB is met in one run and exceeded by 3 MB (settled) in the other. No growth trend.
+
+## 9. Phase 3: synchronized lyrics (LRCLIB)
+
+### 9.1 Real-API check with the CLI (2026-10-17, read-only)
+
+`roon-cli lyrics` takes title (`three_line.line1`), artist (`line2`), album (`line3`) and `now_playing.length` of each zone's
+current track (all zones were paused) and runs the same `LyricsRepository` the app uses, without a cache and without sending any
+control. User-Agent `Roomscreen/cli (https://github.com/knoellp/Roomscreen)`. `ms` includes the retries (1 s and 3 s pauses).
+
+| Zone | Title | Variant that hit | Result | ms |
+|---|---|---|---|---|
+| Büro | Fortress Around Your Heart (Sting, 280 s) | exact | synced, 41 lines | 73 |
+| MacBook Pro | If the Stars Were Mine (Melody Gardot / Ken Pendergast, 168 s) | artist (first artist only) | synced, 23 lines | 10071 |
+| Kamin | The Main Thing (Roxy Music, 234 s) | exact | plain, 12 lines | 119 |
+| Fernseher | The Main Thing (Roxy Music, 234 s) | exact | plain, 12 lines | 105 |
+| Schlafzimmer | Echo45, We Are! (Nightmares on Wax / Oscar Jerome, 84 s) | none of exact/artist/search | none (run 3), unavailable (runs 1, 2) | 12618 / 5376 / 5135 |
+| Bad | Concierto de Aranjuez ... (Rodrigo / Romero / Marriner / Academy, 373 s) | - | unavailable (3 of 3 runs) | 5103-8248 |
+
+Hit rate 4 of 6 zone rows with text (3 of 5 distinct tracks); the remaining two tracks got `unavailable` or `none`.
+`unavailable` means LRCLIB answered `503 {"name":"ServerOverloaded"}` on every attempt (checked with curl at the same time: the
+`get` and `search` calls for the Bad and Schlafzimmer tracks returned 503 repeatedly, other tracks 200/404 within 0.1-0.5 s).
+It is not cached on disk, so the next track change asks again. For the Schlafzimmer track one run got through with a clean
+`none`: LRCLIB has no entry for it.
