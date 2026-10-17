@@ -25,3 +25,9 @@ RUN curl -fsSL -o /tmp/maestro.zip https://github.com/mobile-dev-inc/maestro/rel
     && rm /tmp/maestro.zip
 
 WORKDIR /work
+
+# Container runs as the host user (see scripts/dock). Provide writable homes
+# for arbitrary uids so no root-owned files appear in the project or caches.
+ENV HOME=/home/dev
+ENV GRADLE_USER_HOME=/gradle-home
+RUN mkdir -p /home/dev/.android /gradle-home && chmod -R 777 /home/dev /gradle-home

@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-# Run a command inside the roomscreen-android toolchain image.
+# Run a command inside the roomscreen-android toolchain image as the host user.
 # Host networking: needed for adb connect and SOOD multicast/broadcast.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 IMAGE=roomscreen-android
-mkdir -p "$HOME/.android"
+mkdir -p "$HOME/.android" "$HOME/.config/roomscreen-cli"
+ENVFILE=(); [ -f config/local.env ] && ENVFILE=(--env-file config/local.env)
 TTY=""; [ -t 0 ] && TTY="-it"
 exec docker run --rm $TTY --network host \
+  "${ENVFILE[@]}" \
+  --user "$(id -u):$(id -g)" \
   -v "$PWD":/work \
-  -v roomscreen-gradle-cache:/root/.gradle \
-  -v "$HOME/.android":/root/.android \
-  -e GRADLE_OPTS="-Xmx2g" \
+  -v roomscreen-gradle-home:/gradle-home \
+  -v "$HOME/.android":/home/dev/.android \
+  -v "$HOME/.config/roomscreen-cli":/home/dev/.config/roomscreen-cli \
+  -e GRADLE_OPTS="-Xmx1g" \
   "$IMAGE" "$@"
