@@ -10,7 +10,7 @@ service, no bridge and no WebView.
 
 Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHITECTURE.md`.
 
-## Status (Phase 1)
+## Status (Phase 2)
 
 | Area | Automated tests | Verified on device (Fire TV Stick HD, Fire OS 7.7.1.7, API 28) | Open |
 |---|---|---|---|
@@ -23,10 +23,47 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Reconnect after Core restart | fake Core | not tried on the real Core | needs a Roon Server restart |
 | Manual host/port entry | screenshot only | not exercised | open |
 | Several devices with the same Roon | - | - | two installs not tested together |
+| Now Playing layout (blurred backdrop, info strip, cover, progress) | Roborazzi: playing, paused, stopped, no cover, long texts, German | screenshots on the device, 0.5 % janky frames over 60 s of playback | - |
+| Progress between the 1 Hz seek events | `ProgressInterpolatorTest` (10 cases) | bar and time follow playback (screenshots) | - |
+| Remote media keys (play/pause, rewind, fast forward, next, previous) | key mapping tests | Maestro `pressKey` (codes 85, 89, 90, 87, 88) and `adb input keyevent`; commands arrive at the Core | the physical Fire TV remote was not pressed |
+| Control bar (Zones, Settings, previous, play/pause, next) | screenshot | `maestro/phase2.yaml`: appears on input, hides after 5 s, D-pad navigation, focus ring | - |
+| Settings screen and persistence | `SettingsPrefsTest`, screenshots (EN, DE) | `maestro/phase2-settings.yaml`, value survives a force-stop and restart | "Screen on: only while playing" not exercised on the device |
+| Artist image background | - | switched on in the settings, screenshot | - |
+| "via roon" hint | screenshots | - (see below) | the user has to approve the look first |
+| Reconnect with "Search for Core again" | - | `maestro/phase2-connection.yaml`, log shows `endpoint=cache_skipped`, discovery, connected | - |
 
-Not implemented yet: the full "now playing" design (large cover, progress, backgrounds), media-key
-control and a playback controls UI, synchronized lyrics (LRCLIB), Echo Show 15 (Live App Testing,
-touch layout), release signing. The app never sends playback commands in this phase.
+Not implemented yet: synchronized lyrics (LRCLIB, Phase 3), Echo Show 15 (Live App Testing, touch layout),
+release signing. Memory: after the image cache was capped to 8 MB, 20 track changes moved the total PSS by
++3 to +13 MB after settling (two runs); the earlier uncapped cache grew by about 55 MB.
+
+## Remote control
+
+| Key | Action |
+|---|---|
+| Play/Pause | play or pause the selected zone (the label switches at once, the Core confirms) |
+| Rewind / Media previous | previous track |
+| Fast forward / Media next | next track |
+| D-pad, select | shows the control bar; move between its buttons; select presses the focused one |
+| Back | closes Settings and the zone list, otherwise leaves the app |
+
+The control bar (Zones, Settings, previous, play/pause, next) is hidden by default and appears for 5 seconds
+after any key press (or stays visible, see the setting). Commands are only sent if the zone reports the control as
+allowed (`is_play_allowed` and so on); otherwise they are ignored and logged.
+
+## Settings
+
+Open **Settings** from the control bar; select changes a value, Back returns. Values are stored on the device.
+
+| Setting | Values (default first) |
+|---|---|
+| Background | album cover, artist image (falls back to the cover when the track has no artist image) |
+| Background colour | Anthracite, Black, Midnight blue, Dark green, Wine red, Warm grey (base under the image, and the colour without cover) |
+| Controls | show on input, always visible |
+| Screen on | always, only while playing |
+| Show "via roon" | on, off |
+| Core | shows the address; "Search for Core again" drops the manual address and runs discovery; "Switch zone" |
+
+The language follows the system (English, German). The "via roon" text is a plain text hint, not a Roon logo.
 
 ## Behaviour
 
@@ -35,12 +72,12 @@ touch layout), release signing. The app never sends playback commands in this ph
 - First run: the Core asks for authorization. The app shows where to enable it; once enabled the
   token is stored and reused.
 - Zone: pick it once; it is remembered. Press any remote key on Now Playing to show the **Zones**
-  button, select it to switch zones. Back from the zone list returns to Now Playing unchanged.
+  button in the control bar, select it to switch zones. Back from the zone list returns to Now Playing unchanged.
 
 - Groups: the selection follows Roon groups. Roon gives a group a new zone id but keeps the member output ids, so
   when the selected zone is grouped the app shows the group, and switches back when the group dissolves. The saved
   selection is never cleared automatically; if no zone matches, a hint is shown and the zone reappears by itself.
-- Screen: the display is kept on (no screensaver) for as long as Roomscreen is in the foreground, in every zone state.
+- Screen: by default the display is kept on (no screensaver) for as long as Roomscreen is in the foreground, in every zone state; the setting "Screen on" can limit this to playback.
 
 ## Roon setup
 
@@ -59,16 +96,17 @@ The app continues by itself.
 Always sign with the same key and use `install -r` so updates keep the stored token.
 `scripts/deploy-test.sh [--flow maestro/phase1.yaml]` does build, install, start, flow, screenshot and logcat in one go
 (set `FIRE_TV_IP` and `ROON_TEST_ZONE` in `config/local.env`, see `config/local.env.example`).
+`scripts/phase2-device.sh` and `scripts/phase2-perf.sh` run the Phase 2 flows and the jank/memory measurements (zone Büro only).
 
 ## Development
 
 - All tooling runs in Docker: `scripts/dock ./gradlew test` (JVM tests and Roborazzi screenshots).
 - `roon-client`: protocol library (no Android). `roon-cli`: command line tool for the real Core
-  (`discover`, `info`, `register`, `zones`, `now-playing`, `watch`, `image`; playback commands are limited to `$ROON_TEST_ZONE`).
+  (`discover`, `info`, `register`, `zones`, `now-playing`, `watch`, `image`, `artist-image`; playback commands are limited to `$ROON_TEST_ZONE`).
 - `app`: the Android TV app. Debug builds accept broadcasts that must name the package (an implicit broadcast is
   silently dropped): `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_STATE`
-  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
+  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
 
-Privacy: the app stores only the Roon token, the Core address and the chosen zone, locally.
+Privacy: the app stores only the Roon token, the Core address, the chosen zone and the display settings, locally.
 
 License: Apache-2.0.

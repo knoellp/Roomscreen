@@ -1,6 +1,6 @@
 # Roomscreen Architecture
 
-Status: Phase 1 in progress. Sections 1-6 were written in Phase 0; section 7 records
+Status: Phase 2 (section 8). Sections 1-6 were written in Phase 0; section 7 records
 what Phase 1 resolved against the real Core (2026-10-17). Items are marked **[verified]**
 (read in source and/or observed on the real Core in this repo's LAN),
 **[source-only]** (read in reference source, not yet observed on the wire) or
@@ -342,3 +342,48 @@ Decision: the "Artist image" background option is offered (first key of the list
 Browse API route (`com.roonlabs.browse:1`, `search` hierarchy): implemented in the CLI behind `--browse true` but **not run**.
 Requesting browse as an optional service makes the Core ask for authorization again ("Enable" in Settings -> Extensions);
 the CLI waited in `AwaitingAuthorization` and was stopped. Not needed given the direct keys.
+
+### 8.2 Keycodes (verified on the Fire TV Stick HD)
+
+`KeyEvent` codes the app received for Maestro `pressKey` (logged as `key code=... action=...`):
+
+| Maestro key | Code | Name | Mapped to |
+|---|---|---|---|
+| Remote Media Play Pause | 85 | KEYCODE_MEDIA_PLAY_PAUSE | `playpause` |
+| Remote Media Rewind | 89 | KEYCODE_MEDIA_REWIND | `previous` |
+| Remote Media Fast Forward | 90 | KEYCODE_MEDIA_FAST_FORWARD | `next` |
+| Remote Media Next | 87 | KEYCODE_MEDIA_NEXT | `next` |
+| Remote Media Previous | 88 | KEYCODE_MEDIA_PREVIOUS | `previous` |
+
+`KEYCODE_MEDIA_PLAY` (126) and `KEYCODE_MEDIA_PAUSE` (127) map to `play` and `pause`. The codes the Maestro/adb injection
+produces match the plan; whether the physical remote sends the same codes was not checked (nobody pressed it). The
+activity handles media keys in `dispatchKeyEvent` before the focus system: down with repeat 0 sends the command, both
+down and up are consumed. Commands are checked against `is_*_allowed` first.
+Control bar focus: with `ON_INPUT` the first key only shows the bar and focus lands on play/pause; with `ALWAYS` the first
+D-pad key focuses "Zones" (top left).
+
+### 8.3 Backdrop (no live blur)
+
+`RenderEffect` needs API 31, the target is API 28 with 1 GB RAM. `BackdropBlur.compute` runs once per track on a
+background dispatcher: centre crop to 16:9, shrink to 32 px, double with bilinear filtering up to 128 px, three 3x3-radius-3
+box blur passes (removes the visible 32 px grid), double to 256 x 144. The result (about 150 KB) is drawn with
+`ContentScale.Crop` at 75 % alpha over the chosen base colour, with a dark vertical gradient on top. `BackdropCache`
+keeps the last three. JVM time for the whole computation is about 3 ms for a 320 px source (`BackdropTest`, not a device number).
+The source decode size is 160 px; the 480 px cover is requested separately (the small cover is shown at 200 dp).
+
+### 8.4 Progress
+
+`ProgressInterpolator` (roon-client, injected monotonic clock) anchors at each seek value; while `playing` it adds the elapsed
+clock time, capped at `length`. A changed seek value (1 Hz drift correction, seek), state or track re-anchors. A pause without a
+new seek value (the optimistic UI flip) freezes at the interpolated position. The UI reads it at 10 Hz; the bar and the elapsed text
+read the state in the draw/derived scope so the rest of the screen is not recomposed.
+
+### 8.5 Device measurements (Fire TV Stick HD, debug build, zone Büro)
+
+- Jank: `dumpsys gfxinfo` reset after 10 warm-up track changes, 60 s of playback: 1269 frames, 6 janky (0.47 %), 90th percentile 8 ms,
+  99th 16 ms. A first run right after installing the APK (JIT not warm) had 143 of 1255 janky (11.4 %); another run with a second
+  script accidentally running at the same time is not valid and not used.
+- Memory (`dumpsys meminfo`, TOTAL PSS), 20 track changes through the media key, 4 s apart:
+  - Coil default memory cache: 108.2 MB before, 180.5 MB right after (+72), 162.9 MB 30 s later (+55).
+  - Cache capped at 8 MB (`RoomscreenApp`): run A 123.4 -> 126.3 -> 124.2 MB; run B 114.0 -> 134.0 -> 126.8 MB (+20 peak, +12.8 settled).
+  The graphics part (GPU texture caches) varies by about 10 MB between runs; the plan's +-10 MB is met in one run and exceeded by 3 MB (settled) in the other. No growth trend.
