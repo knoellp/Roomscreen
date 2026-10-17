@@ -31,8 +31,8 @@
     <string name="zones_state_stopped">Gestoppt</string>
 
     <string name="missing_zone_title">Gespeicherte Zone nicht gefunden</string>
-    <string name="missing_zone_body">Die zuletzt genutzte Zone ist nicht verfügbar. Bitte wähle eine andere Zone.</string>
-    <string name="missing_zone_continue">Zone wählen</string>
+    <string name="missing_zone_body">Die zuletzt genutzte Zone ist nicht verfügbar. Sie erscheint hier von selbst wieder, oder wähle eine andere Zone.</string>
+    <string name="missing_zone_continue">Andere Zone wählen</string>
 
     <string name="now_playing_nothing">In dieser Zone läuft gerade nichts.</string>
     <string name="now_playing_unknown">Unbekannt</string>

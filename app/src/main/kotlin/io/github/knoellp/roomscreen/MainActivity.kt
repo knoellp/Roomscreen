@@ -45,10 +45,10 @@ private fun Root(vm: MainViewModel) {
         }
         Screen.Authorization -> AuthorizationScreen(vm.extensionName)
         is Screen.ZoneList -> {
-            if (s.currentZoneId != null) BackHandler { vm.closeZoneList() }
-            ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it.zoneId) }
+            if (s.canGoBack) BackHandler { vm.closeZoneList() }
+            ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it) }
         }
-        Screen.MissingZone -> MissingZoneScreen(onContinue = vm::clearZone)
+        Screen.MissingZone -> MissingZoneScreen(onChoose = vm::openZoneList)
         is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, lastInput, vm::openZoneList)
     }
 }

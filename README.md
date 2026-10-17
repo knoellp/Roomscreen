@@ -37,6 +37,9 @@ touch layout), release signing. The app never sends playback commands in this ph
 - Zone: pick it once; it is remembered. Press any remote key on Now Playing to show the **Zones**
   button, select it to switch zones. Back from the zone list returns to Now Playing unchanged.
 
+- Groups: the selection follows Roon groups. Roon gives a group a new zone id but keeps the member output ids, so
+  when the selected zone is grouped the app shows the group, and switches back when the group dissolves. The saved
+  selection is never cleared automatically; if no zone matches, a hint is shown and the zone reappears by itself.
 - Screen: the display is kept on (no screensaver) for as long as Roomscreen is in the foreground, in every zone state.
 
 ## Roon setup
@@ -62,8 +65,9 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 - All tooling runs in Docker: `scripts/dock ./gradlew test` (JVM tests and Roborazzi screenshots).
 - `roon-client`: protocol library (no Android). `roon-cli`: command line tool for the real Core
   (`discover`, `info`, `register`, `zones`, `now-playing`, `watch`, `image`; playback commands are limited to `$ROON_TEST_ZONE`).
-- `app`: the Android TV app. Debug builds accept `adb shell am broadcast -a io.github.knoellp.roomscreen.DUMP_STATE`
-  (also `SET_HOST`, `RESET`); log tag `Roomscreen`.
+- `app`: the Android TV app. Debug builds accept broadcasts that must name the package (an implicit broadcast is
+  silently dropped): `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_STATE`
+  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
 
 Privacy: the app stores only the Roon token, the Core address and the chosen zone, locally.
 

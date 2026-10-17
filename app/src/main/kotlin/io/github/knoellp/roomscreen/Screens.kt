@@ -147,9 +147,16 @@ private fun stateLabel(state: String) = stringResource(
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (Zone) -> Unit) {
-    val currentFocus = remember { FocusRequester() }
-    LaunchedEffect(currentZoneId) {
-        if (currentZoneId != null) runCatching { currentFocus.requestFocus() }
+    // A row is always focused when the list opens: the current zone, else the first one.
+    val focusId = zones.firstOrNull { it.zoneId == currentZoneId }?.zoneId ?: zones.firstOrNull()?.zoneId
+    val initialFocus = remember { FocusRequester() }
+    LaunchedEffect(focusId) {
+        if (focusId == null) return@LaunchedEffect
+        // The row may not be attached yet on the first frame: retry briefly.
+        repeat(20) {
+            if (runCatching { initialFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
+            delay(50)
+        }
     }
     // No bottom page padding: the list runs to the screen edge and scrolls instead of being cut at a margin.
     Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(top = 32.dp, start = 64.dp, end = 64.dp)) {
@@ -166,7 +173,7 @@ fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (
             contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
         ) {
             items(zones, key = { it.zoneId }) { zone ->
-                ZoneRow(zone, zone.zoneId == currentZoneId, if (zone.zoneId == currentZoneId) currentFocus else null) { onSelect(zone) }
+                ZoneRow(zone, zone.zoneId == currentZoneId, if (zone.zoneId == focusId) initialFocus else null) { onSelect(zone) }
             }
         }
     }
@@ -217,14 +224,15 @@ private fun ZoneRow(zone: Zone, isCurrent: Boolean, focus: FocusRequester?, onCl
     }
 }
 
-/** Screen 5: the saved zone is gone; after a short notice the zone list opens. */
+/** Screen 5: the saved zone is not available (for example while it is grouped away). It returns here automatically. */
 @Composable
-fun MissingZoneScreen(onContinue: () -> Unit, autoContinueMs: Long = 4000) = Page {
-    LaunchedEffect(Unit) { delay(autoContinueMs); onContinue() }
+fun MissingZoneScreen(onChoose: () -> Unit) = Page {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { repeat(20) { if (runCatching { focus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; delay(50) } }
     Column(Modifier.align(Alignment.Center).width(900.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Title(stringResource(R.string.missing_zone_title))
         Body(stringResource(R.string.missing_zone_body))
-        Button(onClick = onContinue) { Text(stringResource(R.string.missing_zone_continue)) }
+        Button(onClick = onChoose, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.missing_zone_continue)) }
     }
 }
 

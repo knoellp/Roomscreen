@@ -56,7 +56,7 @@ class ScreenshotTest {
 
     @Test fun zoneList() = shot("4-zone-list") { ZoneListScreen(zones) {} }
 
-    @Test fun missingZone() = shot("5-missing-zone") { MissingZoneScreen(onContinue = {}, autoContinueMs = 600_000) }
+    @Test fun missingZone() = shot("5-missing-zone") { MissingZoneScreen(onChoose = {}) }
 
     @Test fun nowPlaying() = shot("6-now-playing") { NowPlayingContent(playing, null, showButton = false) {} }
 

@@ -31,8 +31,8 @@
     <string name="zones_state_stopped">Stopped</string>
 
     <string name="missing_zone_title">Saved zone not found</string>
-    <string name="missing_zone_body">The zone you used last is not available. Please choose another zone.</string>
-    <string name="missing_zone_continue">Choose a zone</string>
+    <string name="missing_zone_body">The zone you used last is not available. It will show up here again by itself, or choose another zone.</string>
+    <string name="missing_zone_continue">Choose another zone</string>
 
     <string name="now_playing_nothing">Nothing is playing in this zone.</string>
     <string name="now_playing_unknown">Unknown</string>

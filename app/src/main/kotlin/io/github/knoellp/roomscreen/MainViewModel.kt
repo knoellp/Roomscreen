@@ -16,7 +16,10 @@ import io.github.knoellp.roomscreen.roon.image.ImageService
 import io.github.knoellp.roomscreen.roon.resolveEndpoint
 import io.github.knoellp.roomscreen.roon.moo.MooConnection
 import io.github.knoellp.roomscreen.roon.sood.SoodDiscovery
+import io.github.knoellp.roomscreen.roon.transport.ResolvedVia
+import io.github.knoellp.roomscreen.roon.transport.ResolvedZone
 import io.github.knoellp.roomscreen.roon.transport.Zone
+import io.github.knoellp.roomscreen.roon.transport.resolveZone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,8 +56,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val savedEndpoint = MutableStateFlow<Endpoint?>(null)
 
     val screen: StateFlow<Screen> = combine(
-        connection, zones, prefs.zoneId, showManual, endpoint, showZoneList,
-    ) { v -> compute(v[0] as ConnectionState, @Suppress("UNCHECKED_CAST") (v[1] as Map<String, Zone>), v[2] as String?, v[3] as Boolean, v[4] as Endpoint?, v[5] as Boolean) }
+        connection, zones, prefs.zoneId, showManual, endpoint, showZoneList, prefs.zoneOutputIds,
+    ) { v ->
+        @Suppress("UNCHECKED_CAST")
+        compute(v[0] as ConnectionState, v[1] as Map<String, Zone>, v[2] as String?, v[3] as Boolean, v[4] as Endpoint?, v[5] as Boolean, v[6] as Set<String>)
+    }
         .stateIn(viewModelScope, SharingStarted.Eagerly, Screen.Connecting(Status.Discovering))
 
     init {
@@ -62,7 +68,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { savedEndpoint.value = prefs.lastEndpoint() }
     }
 
-    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?, listOpen: Boolean): Screen {
+    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?, listOpen: Boolean, savedOutputs: Set<String>): Screen {
         if (manual) return Screen.Manual
         if (conn == ConnectionState.AwaitingAuthorization) return Screen.Authorization
         if (conn != ConnectionState.Connected) {
@@ -76,12 +82,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (zoneMap.isEmpty()) return Screen.Connecting(Status.LoadingZones)
         if (savedZone != null) {
-            val zone = zoneMap[savedZone] ?: return Screen.MissingZone
-            if (listOpen) return Screen.ZoneList(sortedZones(zoneMap), savedZone)
+            val resolved = resolveZone(zoneMap, savedZone, savedOutputs)
+            logResolved(savedZone, resolved)
+            if (resolved == null) {
+                return if (listOpen) Screen.ZoneList(sortedZones(zoneMap), null, canGoBack = true) else Screen.MissingZone
+            }
+            if (resolved.via == ResolvedVia.ID) {
+                val outs = resolved.zone.outputs.map { it.outputId }.toSet()
+                if (outs.isNotEmpty() && outs != savedOutputs) viewModelScope.launch { prefs.setOutputIds(outs) }
+            }
+            val zone = resolved.zone
+            if (listOpen) return Screen.ZoneList(sortedZones(zoneMap), zone.zoneId, canGoBack = true)
             val cover = zone.nowPlaying?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key) } }
             return Screen.NowPlaying(zone, cover)
         }
         return Screen.ZoneList(sortedZones(zoneMap))
+    }
+
+    private var lastResolvedLog: String? = null
+
+    private fun logResolved(saved: String, r: ResolvedZone?) {
+        val line = "zone resolved id=${r?.zone?.zoneId ?: saved} via=${when (r?.via) { ResolvedVia.ID -> "id"; ResolvedVia.OUTPUT -> "output"; null -> "none" }}"
+        if (line != lastResolvedLog) { lastResolvedLog = line; log.info(line) }
     }
 
     private fun sortedZones(zoneMap: Map<String, Zone>) =
@@ -202,10 +224,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- UI actions ----
 
-    fun selectZone(id: String) { viewModelScope.launch { prefs.setZone(id); showZoneList.value = false; log.info("zone selected id=$id") } }
+    fun selectZone(zone: Zone) {
+        viewModelScope.launch {
+            prefs.setZone(zone.zoneId, zone.outputs.map { it.outputId }.toSet())
+            showZoneList.value = false
+            log.info("zone selected id=${zone.zoneId}")
+        }
+    }
     fun openZoneList() { showZoneList.value = true }
     fun closeZoneList() { showZoneList.value = false }
-    fun clearZone() { viewModelScope.launch { prefs.setZone(null) } }
     fun openManual() { showManual.value = true }
     fun closeManual() { showManual.value = false; _testResult.value = TestResult.Idle }
 

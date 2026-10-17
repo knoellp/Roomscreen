@@ -6,6 +6,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import io.github.knoellp.roomscreen.roon.fake.Fixtures
+import io.github.knoellp.roomscreen.roon.transport.ResolvedVia
+import io.github.knoellp.roomscreen.roon.transport.resolveZone
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -271,6 +273,30 @@ class RoonClientFakeCoreTest {
         withTimeout(10_000) { c.zones.first { z -> z.values.first { it.displayName == "Kamin" }.nowPlaying?.threeLine?.line1 == "The Space Between" } }
         assertEquals("playing", c.zones.value.values.first { it.displayName == "Kamin" }.state)
         assertEquals(6, c.zones.value.size)
+        c.stop()
+    }
+
+    @Test
+    fun `selected zone follows the group and returns when it dissolves`() = runBlocking {
+        core.requireEnable = false
+        core.subscribedFixture = "subscribed_six.json"
+        val c = connected()
+        val kamin = c.zones.value.values.first { it.displayName == "Kamin" }
+        val savedId = kamin.zoneId // what the app stores; it must never change
+        val savedOutputs = kamin.outputs.map { it.outputId }.toSet()
+        fun shown() = resolveZone(c.zones.value, savedId, savedOutputs)
+        assertEquals("Kamin", shown()!!.zone.displayName)
+
+        core.pushFixture("group_added.json")
+        withTimeout(10_000) { c.zones.first { z -> z.values.any { it.displayName == "Kamin + 1" } } }
+        assertEquals("Kamin + 1", shown()!!.zone.displayName)
+        assertEquals(ResolvedVia.OUTPUT, shown()!!.via)
+
+        core.pushFixture("group_removed.json")
+        withTimeout(10_000) { c.zones.first { z -> z.values.none { it.displayName == "Kamin + 1" } } }
+        assertEquals("Kamin", shown()!!.zone.displayName)
+        assertEquals(ResolvedVia.ID, shown()!!.via)
+        assertEquals(savedId, kamin.zoneId)
         c.stop()
     }
 }

@@ -8,7 +8,7 @@ sealed interface Screen {
     data object Manual : Screen
     data object Authorization : Screen
     /** [currentZoneId] is set when the user opened the list from Now Playing. */
-    data class ZoneList(val zones: List<Zone>, val currentZoneId: String? = null) : Screen
+    data class ZoneList(val zones: List<Zone>, val currentZoneId: String? = null, val canGoBack: Boolean = false) : Screen
     data object MissingZone : Screen
     data class NowPlaying(val zone: Zone, val coverUrl: String?) : Screen
 }

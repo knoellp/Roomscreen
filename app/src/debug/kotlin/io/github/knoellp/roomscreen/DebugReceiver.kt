@@ -6,7 +6,8 @@ import android.content.Intent
 import android.util.Log
 
 /**
- * Debug-build hooks for scripted device tests.
+ * Debug-build hooks for scripted device tests. Implicit broadcasts do not reach manifest receivers
+ * (API 26+), so address the app: `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_ZONES`.
  * DUMP_STATE logs the UI state as JSON; SET_HOST takes extras host and port;
  * RESET clears all stored preferences (token, endpoint, zone) and must only be used after asking.
  */

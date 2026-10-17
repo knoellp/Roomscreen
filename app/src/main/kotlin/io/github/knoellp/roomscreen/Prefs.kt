@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.knoellp.roomscreen.roon.Endpoint
 import io.github.knoellp.roomscreen.roon.TokenStore
@@ -25,6 +26,7 @@ class Prefs(context: Context) : TokenStore {
     private val portKey = intPreferencesKey("port")
     private val manualKey = booleanPreferencesKey("manual")
     private val installKey = stringPreferencesKey("install_id")
+    private val outputsKey = stringSetPreferencesKey("zone_output_ids")
     private val zoneKey = stringPreferencesKey("zone_id")
     private fun tokenKey(coreId: String) = stringPreferencesKey("token_$coreId")
 
@@ -34,7 +36,13 @@ class Prefs(context: Context) : TokenStore {
 
     val zoneId: Flow<String?> = store.data.map { it[zoneKey] }
 
-    suspend fun setZone(id: String?) { store.edit { if (id == null) it.remove(zoneKey) else it[zoneKey] = id } }
+    val zoneOutputIds: Flow<Set<String>> = store.data.map { it[outputsKey] ?: emptySet() }
+
+    /** Stores the selection: the zone id and its output ids (outputs survive grouping, zone ids do not). */
+    suspend fun setZone(id: String, outputIds: Set<String>) { store.edit { it[zoneKey] = id; it[outputsKey] = outputIds } }
+
+    /** Refreshes the output ids of the saved zone without touching the saved zone id. */
+    suspend fun setOutputIds(outputIds: Set<String>) { store.edit { it[outputsKey] = outputIds } }
 
     suspend fun lastEndpoint(): Endpoint? = store.data.first().let { p ->
         val h = p[hostKey]; val port = p[portKey]

@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.tv.material3.MaterialTheme
@@ -31,5 +32,23 @@ class ZoneListUpdateTest {
         zones = listOf(Zone("z1", "Kamin", state = "playing"))
         rule.waitForIdle()
         rule.onNodeWithText("Playing").assertIsDisplayed()
+    }
+
+    @Test
+    fun firstRowIsFocusedWithoutCurrentZone() {
+        val zones = listOf(Zone("z1", "Bad", state = "paused"), Zone("z2", "Büro", state = "playing"))
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { ZoneListScreen(zones, null) {} } }
+        rule.mainClock.advanceTimeBy(2000)
+        rule.waitForIdle()
+        rule.onNodeWithText("Bad").assertIsFocused()
+    }
+
+    @Test
+    fun currentZoneIsFocusedWhenPresent() {
+        val zones = listOf(Zone("z1", "Bad", state = "paused"), Zone("z2", "Büro", state = "playing"))
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { ZoneListScreen(zones, "z2") {} } }
+        rule.mainClock.advanceTimeBy(2000)
+        rule.waitForIdle()
+        rule.onNodeWithText("Büro").assertIsFocused()
     }
 }
