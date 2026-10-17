@@ -55,6 +55,7 @@ commands:
   register                      register and wait up to 10 min for "Enable" in Roon; saves the token
   zones                         list zones
   now-playing --zone NAME       show what a zone plays
+  image --key KEY [--size N] [--out FILE]   fetch a cover via MOO get_image (read-only)
   watch [--zone NAME] [--duration SECONDS]   print changes, measure zones_seek_changed rate
   play|pause|playpause|next|previous --zone NAME   control; only allowed for ${'$'}ROON_TEST_ZONE
 options:
@@ -132,7 +133,7 @@ private suspend fun run(opts: Options): Int {
     when (val cmd = opts.command) {
         "discover" -> return discover()
         "info" -> return info(opts)
-        "register", "zones", "now-playing", "watch" -> return withClient(opts) { client, scope -> clientCommand(cmd, opts, client, scope) }
+        "register", "zones", "now-playing", "watch", "image" -> return withClient(opts) { client, scope -> clientCommand(cmd, opts, client, scope) }
         in CONTROLS -> return control(opts, CONTROLS.getValue(cmd!!))
         else -> { System.err.print(USAGE); return 2 }
     }
@@ -221,6 +222,15 @@ private suspend fun clientCommand(cmd: String, opts: Options, client: RoonClient
             return 0
         }
         "watch" -> return watch(opts, client)
+        "image" -> {
+            awaitConnected(client)
+            val key = opts["key"] ?: run { println("ERROR --key is required"); return 2 }
+            val size = opts["size"]?.toInt() ?: 300
+            val img = client.getImage(key, size, size)
+            println("image key=$key content_type=${img.contentType} bytes=${img.bytes.size}")
+            opts["out"]?.let { File(it).writeBytes(img.bytes); println("image written to $it") }
+            return 0
+        }
     }
     return 2
 }
@@ -290,6 +300,14 @@ private suspend fun control(opts: Options, control: TransportControl): Int {
         val zones = awaitZones(client)
         val zone = findZone(zones, requested) ?: return@withClient 1
         check(zone.displayName == testZone) { "refusing to control zone ${zone.displayName}" }
+        val allowed = when (control) {
+            TransportControl.PLAY -> zone.isPlayAllowed
+            TransportControl.PAUSE -> zone.isPauseAllowed
+            TransportControl.PLAYPAUSE -> zone.isPlayAllowed || zone.isPauseAllowed
+            TransportControl.NEXT -> zone.isNextAllowed
+            TransportControl.PREVIOUS -> zone.isPreviousAllowed
+        }
+        if (!allowed) { println("NOT ALLOWED: zone \"${zone.displayName}\" state=${zone.state} does not allow ${control.wire} right now"); return@withClient 4 }
         println("${stamp()} control ${control.wire} zone=\"${zone.displayName}\"")
         client.control(zone.zoneId, control)
         println("${stamp()} control ${control.wire} ok")
