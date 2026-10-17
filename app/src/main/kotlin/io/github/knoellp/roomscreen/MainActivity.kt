@@ -8,6 +8,10 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 
@@ -16,13 +20,23 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Window-scoped: the screen stays on while this activity is in the foreground (no screensaver).
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Window-scoped keep-screen-on (no screensaver); the flag follows the "Screen on" setting, see below.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.keepScreenOn.collect { keep ->
+                    if (keep) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
+        }
         setContent { MaterialTheme(colorScheme = darkColorScheme()) { Root(viewModel) } }
     }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        AndroidLogger.info("key code=${event.keyCode} name=${android.view.KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} repeat=${event.repeatCount}")
         viewModel.onRemoteInput()
+        // Media keys: act once per press (ignore key repeat); both down and up are consumed when handled.
+        if (viewModel.onMediaKey(event.keyCode, isDown = event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0)) return true
         return super.dispatchKeyEvent(event)
     }
 
@@ -37,6 +51,7 @@ private fun Root(vm: MainViewModel) {
     val test by vm.testResult.collectAsState()
     val saved by vm.savedEndpoint.collectAsState()
     val lastInput by vm.lastInput.collectAsState()
+    val settings by vm.settings.collectAsState()
     when (val s = screen) {
         is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual)
         Screen.Manual -> {
@@ -49,6 +64,10 @@ private fun Root(vm: MainViewModel) {
             ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it) }
         }
         Screen.MissingZone -> MissingZoneScreen(onChoose = vm::openZoneList)
-        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, lastInput, vm::openZoneList)
+        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, lastInput, vm::openZoneList, vm::openSettings, vm::control)
+        is Screen.SettingsPage -> {
+            BackHandler { vm.closeSettings() }
+            SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings)
+        }
     }
 }

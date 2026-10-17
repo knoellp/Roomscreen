@@ -4,15 +4,35 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Debug-build hooks for scripted device tests. Implicit broadcasts do not reach manifest receivers
  * (API 26+), so address the app: `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_ZONES`.
  * DUMP_STATE logs the UI state as JSON; SET_HOST takes extras host and port;
+ * SET_VIA_ROON (extra value=on|off) writes the "via roon" setting, also while the app is not running.
  * RESET clears all stored preferences (token, endpoint, zone) and must only be used after asking.
  */
 class DebugReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == "io.github.knoellp.roomscreen.SET_VIA_ROON") {
+            // Works without a running activity (the process is started for the broadcast): "on" or "off".
+            val on = intent.getStringExtra("value") == "on"
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val prefs = Prefs(context)
+                    prefs.saveSettings(prefs.settings.first().copy(viaRoon = on))
+                    Log.i(AndroidLogger.TAG, "debug via_roon=${if (on) "on" else "off"}")
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
         val vm = StateRegistry.current
         if (vm == null) { Log.w(AndroidLogger.TAG, "debug action=${intent.action} result=no_viewmodel"); return }
         when (intent.action) {

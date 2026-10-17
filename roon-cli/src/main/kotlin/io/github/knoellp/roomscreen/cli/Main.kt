@@ -14,6 +14,7 @@ import io.github.knoellp.roomscreen.roon.moo.MooConnection
 import io.github.knoellp.roomscreen.roon.sood.SoodDiscovery
 import io.github.knoellp.roomscreen.roon.transport.TransportControl
 import io.github.knoellp.roomscreen.roon.transport.Zone
+import io.github.knoellp.roomscreen.roon.transport.allows
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
@@ -388,13 +389,7 @@ private suspend fun control(opts: Options, control: TransportControl?): Int {
             }
             return@withClient 0
         }
-        val allowed = when (control) {
-            TransportControl.PLAY -> zone.isPlayAllowed
-            TransportControl.PAUSE -> zone.isPauseAllowed
-            TransportControl.PLAYPAUSE -> zone.isPlayAllowed || zone.isPauseAllowed
-            TransportControl.NEXT -> zone.isNextAllowed
-            TransportControl.PREVIOUS -> zone.isPreviousAllowed
-        }
+        val allowed = zone.allows(control)
         if (!allowed) { println("NOT ALLOWED: zone \"${zone.displayName}\" state=${zone.state} does not allow ${control.wire} right now"); return@withClient 4 }
         println("${stamp()} control ${control.wire} zone=\"${zone.displayName}\"")
         client.control(zone.zoneId, control)

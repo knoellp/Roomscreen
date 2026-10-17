@@ -1,0 +1,107 @@
+package io.github.knoellp.roomscreen
+
+import android.content.Context
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
+import coil3.toBitmap
+import kotlin.math.max
+
+/**
+ * Blurred full-screen background, computed once per track. RenderEffect blur needs API 31 and the target
+ * (Fire TV Stick HD, API 28) is too weak for a live blur, so: crop to 16:9, shrink to about 32 px, then
+ * enlarge in doubling steps with bilinear filtering. The result is small (a few hundred pixels wide) and is
+ * stretched to the screen by the GPU with the normal image path.
+ */
+object BackdropBlur {
+    const val TINY_WIDTH = 32
+    const val OUTPUT_WIDTH = 256
+
+    fun compute(source: Bitmap): Bitmap {
+        val w = source.width; val h = source.height
+        // Centre crop to 16:9.
+        val cropH = minOf(h, (w * 9f / 16f).toInt().coerceAtLeast(1))
+        val cropW = minOf(w, (h * 16f / 9f).toInt().coerceAtLeast(1))
+        val x = (w - cropW) / 2; val y = (h - cropH) / 2
+        val cropped = Bitmap.createBitmap(source, x, y, cropW, cropH)
+        val tinyH = max(1, TINY_WIDTH * 9 / 16)
+        var current = Bitmap.createScaledBitmap(cropped, TINY_WIDTH, tinyH, true)
+        // Doubling steps with a filter give a smooth result; one big step shows bilinear diamonds.
+        while (current.width < OUTPUT_WIDTH) {
+            val nw = minOf(OUTPUT_WIDTH, current.width * 2)
+            val nh = max(1, nw * 9 / 16)
+            current = Bitmap.createScaledBitmap(current, nw, nh, true)
+            // Bilinear alone leaves the 32 px grid visible on hard edges; a few box passes at 128 px remove it.
+            if (nw == SMOOTH_WIDTH) current = boxBlur(current, radius = 3, passes = 3)
+        }
+        return current
+    }
+
+    private const val SMOOTH_WIDTH = 128
+
+    /** Separable box blur on ARGB pixels, edge pixels clamped. */
+    internal fun boxBlur(src: Bitmap, radius: Int, passes: Int): Bitmap {
+        val w = src.width; val h = src.height
+        var a = IntArray(w * h).also { src.getPixels(it, 0, w, 0, 0, w, h) }
+        var b = IntArray(w * h)
+        repeat(passes) {
+            blurLine(a, b, w, h, radius, horizontal = true)
+            blurLine(b, a, w, h, radius, horizontal = false)
+        }
+        return Bitmap.createBitmap(a, w, h, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun blurLine(src: IntArray, dst: IntArray, w: Int, h: Int, r: Int, horizontal: Boolean) {
+        val lines = if (horizontal) h else w
+        val len = if (horizontal) w else h
+        val n = 2 * r + 1
+        for (line in 0 until lines) {
+            for (i in 0 until len) {
+                var sa = 0; var sr = 0; var sg = 0; var sb = 0
+                for (k in -r..r) {
+                    val j = (i + k).coerceIn(0, len - 1)
+                    val px = if (horizontal) src[line * w + j] else src[j * w + line]
+                    sa += px ushr 24; sr += (px shr 16) and 0xFF; sg += (px shr 8) and 0xFF; sb += px and 0xFF
+                }
+                val out = ((sa / n) shl 24) or ((sr / n) shl 16) or ((sg / n) shl 8) or (sb / n)
+                if (horizontal) dst[line * w + i] = out else dst[i * w + line] = out
+            }
+        }
+    }
+}
+
+/** Loads cover and backdrop bitmaps through Coil; keeps the last [MAX_ENTRIES] backdrops. */
+class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
+    private val map = object : LinkedHashMap<String, ImageBitmap>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>?) = size > maxEntries
+    }
+
+    @Synchronized fun get(key: String): ImageBitmap? = map[key]
+    @Synchronized fun put(key: String, value: ImageBitmap) { map[key] = value }
+    val size: Int @Synchronized get() = map.size
+
+    /** Backdrop for [url]: cached or computed off the main thread. Null if the image cannot be loaded. */
+    suspend fun backdrop(context: Context, url: String): ImageBitmap? {
+        get(url)?.let { return it }
+        val src = loadBitmap(context, url, 320) ?: return null
+        val blurred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { BackdropBlur.compute(src) }
+        return blurred.asImageBitmap().also { put(url, it) }
+    }
+
+    suspend fun cover(context: Context, url: String, size: Int): ImageBitmap? = loadBitmap(context, url, size)?.asImageBitmap()
+
+    private suspend fun loadBitmap(context: Context, url: String, size: Int): Bitmap? {
+        val loader = SingletonImageLoader.get(context)
+        val request = ImageRequest.Builder(context).data(url).size(size, size).allowHardware(false).build()
+        val result = loader.execute(request) as? SuccessResult ?: return null
+        return result.image.toBitmap()
+    }
+
+    companion object {
+        const val MAX_ENTRIES = 3
+    }
+}

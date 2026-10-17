@@ -56,15 +56,15 @@ import kotlinx.coroutines.delay
 private val PagePadding = 64.dp
 
 @Composable
-private fun Page(content: @Composable BoxScope.() -> Unit) {
+internal fun Page(content: @Composable BoxScope.() -> Unit) {
     Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(PagePadding)) { content() }
 }
 
 @Composable
-private fun Title(text: String) = Text(text, fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+internal fun Title(text: String) = Text(text, fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
 
 @Composable
-private fun Body(text: String, color: Color = Color(0xFFC9D1D9)) = Text(text, fontSize = 24.sp, lineHeight = 34.sp, color = color)
+internal fun Body(text: String, color: Color = Color(0xFFC9D1D9)) = Text(text, fontSize = 24.sp, lineHeight = 34.sp, color = color)
 
 /** Screen 1: searching / connecting with status. */
 @Composable
@@ -134,7 +134,7 @@ fun AuthorizationScreen(extensionName: String) = Page {
 }
 
 @Composable
-private fun stateLabel(state: String) = stringResource(
+internal fun stateLabel(state: String) = stringResource(
     when (state) {
         "playing" -> R.string.zones_state_playing
         "paused" -> R.string.zones_state_paused
@@ -233,54 +233,5 @@ fun MissingZoneScreen(onChoose: () -> Unit) = Page {
         Title(stringResource(R.string.missing_zone_title))
         Body(stringResource(R.string.missing_zone_body))
         Button(onClick = onChoose, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.missing_zone_continue)) }
-    }
-}
-
-/** How long the Zones button stays visible after the last remote key event. */
-private const val BUTTON_VISIBLE_MS = 5000L
-
-/** Screen 6: minimal now playing. The Zones button appears on any remote input and hides after a few seconds. */
-@Composable
-fun NowPlayingScreen(zone: Zone, coverUrl: String?, lastInputMs: Long, onZones: () -> Unit) {
-    var showButton by remember { mutableStateOf(false) }
-    LaunchedEffect(lastInputMs) {
-        if (lastInputMs > 0) {
-            showButton = true
-            delay(BUTTON_VISIBLE_MS)
-            showButton = false
-        }
-    }
-    NowPlayingContent(zone, coverUrl, showButton, onZones)
-}
-
-@Composable
-fun NowPlayingContent(zone: Zone, coverUrl: String?, showButton: Boolean, onZones: () -> Unit) = Page {
-    val lines = zone.nowPlaying?.threeLine
-    val buttonFocus = remember { FocusRequester() }
-    LaunchedEffect(showButton) { if (showButton) runCatching { buttonFocus.requestFocus() } }
-    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(400.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1C2833))) {
-            if (coverUrl != null) {
-                AsyncImage(coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            }
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (lines == null) {
-                Title(zone.displayName)
-                Body(stringResource(R.string.now_playing_nothing))
-            } else {
-                Text(lines.line1 ?: stringResource(R.string.now_playing_unknown), fontSize = 48.sp, lineHeight = 56.sp, fontWeight = FontWeight.Bold,
-                    color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(lines.line2 ?: "", fontSize = 32.sp, color = Color(0xFFE6EDF3), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(lines.line3 ?: "", fontSize = 28.sp, color = Color(0xFF9DA7B3), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(24.dp))
-                Text("${zone.displayName} · ${stateLabel(zone.state)}", fontSize = 22.sp, color = Color(0xFF9DA7B3))
-            }
-        }
-    }
-    if (showButton) {
-        Button(onClick = onZones, modifier = Modifier.align(Alignment.TopEnd).focusRequester(buttonFocus)) {
-            Text(stringResource(R.string.zones_button))
-        }
     }
 }

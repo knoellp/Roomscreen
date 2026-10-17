@@ -39,4 +39,35 @@
     <string name="zones_button">Zones</string>
     <string name="zones_current">current</string>
     <string name="zones_hint">Back keeps the current zone</string>
+
+    <string name="settings_button">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_hint">Select changes a value. Back returns.</string>
+    <string name="control_previous">Previous track</string>
+    <string name="control_play_pause">Play or pause</string>
+    <string name="control_next">Next track</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+
+    <string name="setting_background">Background</string>
+    <string name="setting_bg_cover">Album cover</string>
+    <string name="setting_bg_artist">Artist image</string>
+    <string name="setting_background_color">Background colour</string>
+    <string name="color_black">Black</string>
+    <string name="color_anthracite">Anthracite</string>
+    <string name="color_midnight">Midnight blue</string>
+    <string name="color_forest">Dark green</string>
+    <string name="color_wine">Wine red</string>
+    <string name="color_warm_gray">Warm grey</string>
+    <string name="setting_controls">Controls</string>
+    <string name="setting_controls_on_input">Show on input</string>
+    <string name="setting_controls_always">Always visible</string>
+    <string name="setting_screen_on">Screen on</string>
+    <string name="setting_screen_always">Always</string>
+    <string name="setting_screen_playing">Only while playing</string>
+    <string name="setting_via_roon">Show \"via roon\"</string>
+    <string name="setting_connection">Core</string>
+    <string name="setting_core_unknown">not connected</string>
+    <string name="setting_rediscover">Search for Core again</string>
+    <string name="setting_switch_zone">Switch zone</string>
 </resources>

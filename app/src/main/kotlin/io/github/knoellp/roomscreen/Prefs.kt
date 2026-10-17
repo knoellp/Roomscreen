@@ -18,6 +18,8 @@ import kotlinx.coroutines.runBlocking
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("roomscreen")
 
+private inline fun <reified T : Enum<T>> String?.asEnum(): T? = this?.let { v -> enumValues<T>().firstOrNull { it.name == v } }
+
 /** Token, last working endpoint, manual-override flag and selected zone, all in one DataStore. */
 class Prefs(context: Context) : TokenStore {
     private val store = context.applicationContext.dataStore
@@ -28,11 +30,35 @@ class Prefs(context: Context) : TokenStore {
     private val installKey = stringPreferencesKey("install_id")
     private val outputsKey = stringSetPreferencesKey("zone_output_ids")
     private val zoneKey = stringPreferencesKey("zone_id")
+    private val bgKey = stringPreferencesKey("setting_background")
+    private val colorKey = stringPreferencesKey("setting_background_color")
+    private val controlsKey = stringPreferencesKey("setting_controls")
+    private val screenKey = stringPreferencesKey("setting_screen_on")
+    private val viaKey = booleanPreferencesKey("setting_via_roon")
     private fun tokenKey(coreId: String) = stringPreferencesKey("token_$coreId")
 
     // TokenStore is synchronous by contract; the values are tiny.
     override fun get(coreId: String): String? = runBlocking { store.data.first()[tokenKey(coreId)] }
     override fun put(coreId: String, token: String) { runBlocking { store.edit { it[tokenKey(coreId)] = token } } }
+
+    /** User settings; unknown or missing values fall back to the defaults. */
+    val settings: Flow<AppSettings> = store.data.map { p ->
+        val d = AppSettings()
+        AppSettings(
+            background = p[bgKey].asEnum() ?: d.background,
+            backgroundColor = p[colorKey].asEnum() ?: d.backgroundColor,
+            controls = p[controlsKey].asEnum() ?: d.controls,
+            screenOn = p[screenKey].asEnum() ?: d.screenOn,
+            viaRoon = p[viaKey] ?: d.viaRoon,
+        )
+    }
+
+    suspend fun saveSettings(s: AppSettings) {
+        store.edit {
+            it[bgKey] = s.background.name; it[colorKey] = s.backgroundColor.name; it[controlsKey] = s.controls.name
+            it[screenKey] = s.screenOn.name; it[viaKey] = s.viaRoon
+        }
+    }
 
     val zoneId: Flow<String?> = store.data.map { it[zoneKey] }
 

@@ -27,7 +27,7 @@ class ImageService(private val connection: MooConnection) {
         const val SERVICE = "com.roonlabs.image:1"
 
         /** Plain HTTP form documented in node-roon-api-image; whether it needs auth is verified live. */
-        fun httpUrl(host: String, port: Int, imageKey: String, width: Int = 1080, height: Int = 1080) =
-            "http://$host:$port/api/image/$imageKey?scale=fit&width=$width&height=$height"
+        fun httpUrl(host: String, port: Int, imageKey: String, width: Int = 1080, height: Int = 1080, scale: String = "fit") =
+            "http://$host:$port/api/image/$imageKey?scale=$scale&width=$width&height=$height"
     }
 }

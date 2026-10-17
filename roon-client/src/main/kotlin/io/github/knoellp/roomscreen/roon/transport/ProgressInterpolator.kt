@@ -12,7 +12,7 @@ class ProgressInterpolator(private val clock: () -> Long) {
     private var trackKey: String? = null
     private var lastSeek: Long? = null
     private var lastState: String? = null
-    private var anchorSeconds = 0L
+    private var anchorMs = 0L
     private var anchorAtMs = 0L
     private var playing = false
     private var lengthSeconds: Long? = null
@@ -20,10 +20,14 @@ class ProgressInterpolator(private val clock: () -> Long) {
     fun onZone(zone: Zone?) {
         val np = zone?.nowPlaying
         if (zone == null || np == null) {
-            trackKey = null; lastSeek = null; lastState = null; playing = false; lengthSeconds = null; anchorSeconds = 0
+            trackKey = null; lastSeek = null; lastState = null; playing = false; lengthSeconds = null; anchorMs = 0
             return
         }
         val key = "${np.imageKey}|${np.threeLine?.line1}|${np.length}"
+        val positionMsBefore = positionMs()
+        val wasPlaying = playing
+        val sameTrack = key == trackKey
+        val previousSeek = lastSeek
         val changed = key != trackKey || zone.state != lastState || np.seekPosition != lastSeek
         trackKey = key
         lastState = zone.state
@@ -31,15 +35,17 @@ class ProgressInterpolator(private val clock: () -> Long) {
         lengthSeconds = np.length
         playing = zone.state == "playing"
         if (changed) {
-            // A track change without a seek value (loading) starts at 0.
-            anchorSeconds = np.seekPosition ?: 0L
+            // Pausing without a new seek value (the optimistic UI update) freezes at the interpolated position
+            // instead of jumping back to the last whole second. A track change without a seek value starts at 0.
+            val freeze = sameTrack && wasPlaying && !playing && np.seekPosition == previousSeek
+            anchorMs = if (freeze) positionMsBefore else (np.seekPosition ?: 0L) * 1000
             anchorAtMs = clock()
         }
     }
 
     /** Current position in milliseconds, capped at the track length. */
     fun positionMs(): Long {
-        val base = anchorSeconds * 1000
+        val base = anchorMs
         val raw = if (playing) base + (clock() - anchorAtMs).coerceAtLeast(0) else base
         val cap = lengthSeconds?.times(1000)
         return if (cap != null && cap > 0) raw.coerceAtMost(cap) else raw

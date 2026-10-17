@@ -38,3 +38,12 @@ data class Zone(
     @SerialName("is_previous_allowed") val isPreviousAllowed: Boolean = false,
     @SerialName("is_seek_allowed") val isSeekAllowed: Boolean = false,
 )
+
+/** True if the zone currently allows [control] (`is_*_allowed`). `playpause` needs play or pause. */
+fun Zone.allows(control: TransportControl): Boolean = when (control) {
+    TransportControl.PLAY -> isPlayAllowed
+    TransportControl.PAUSE -> isPauseAllowed
+    TransportControl.PLAYPAUSE -> isPlayAllowed || isPauseAllowed
+    TransportControl.NEXT -> isNextAllowed
+    TransportControl.PREVIOUS -> isPreviousAllowed
+}

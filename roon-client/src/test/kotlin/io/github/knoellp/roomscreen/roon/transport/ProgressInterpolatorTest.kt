@@ -32,14 +32,22 @@ class ProgressInterpolatorTest {
     @Test fun pauseFreezesAndResumeContinues() {
         p.onZone(zone())
         now += 700
-        p.onZone(zone(state = "paused", seek = 42))
+        p.onZone(zone(state = "paused", seek = 43))
         val frozen = p.positionMs()
         now += 5_000
         assertEquals(frozen, p.positionMs())
-        assertEquals(42_000, frozen)
-        p.onZone(zone(state = "playing", seek = 42))
+        assertEquals(43_000, frozen)
+        p.onZone(zone(state = "playing", seek = 43))
         now += 250
-        assertEquals(42_250, p.positionMs())
+        assertEquals(43_250, p.positionMs())
+    }
+
+    @Test fun optimisticPauseFreezesAtTheInterpolatedPosition() {
+        p.onZone(zone())
+        now += 700
+        p.onZone(zone(state = "paused", seek = 42)) // same seek value as before: no Core confirmation yet
+        now += 5_000
+        assertEquals(42_700, p.positionMs())
     }
 
     @Test fun seekJumpReplacesTheAnchor() {

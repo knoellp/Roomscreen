@@ -18,14 +18,18 @@ import io.github.knoellp.roomscreen.roon.moo.MooConnection
 import io.github.knoellp.roomscreen.roon.sood.SoodDiscovery
 import io.github.knoellp.roomscreen.roon.transport.ResolvedVia
 import io.github.knoellp.roomscreen.roon.transport.ResolvedZone
+import io.github.knoellp.roomscreen.roon.transport.TransportControl
 import io.github.knoellp.roomscreen.roon.transport.Zone
+import io.github.knoellp.roomscreen.roon.transport.allows
 import io.github.knoellp.roomscreen.roon.transport.resolveZone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,7 +37,27 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-/** Holds the [RoonClient]; connects in onStart, disconnects in onStop. Selecting a zone never sends control commands. */
+/** Optimistic state shown right after a play/pause command until the Core confirms (state differs from [from]) or [PENDING_MS] pass. */
+internal data class Pending(val zoneId: String, val from: String, val to: String)
+
+/** The zone as shown: with the optimistic state while the Core still reports the old one, otherwise unchanged. */
+internal fun applyPending(zone: Zone, pend: Pending?): Zone =
+    if (pend != null && pend.zoneId == zone.zoneId && zone.state == pend.from) zone.copy(state = pend.to) else zone
+
+/** Optimistic state for a command, or null if the command does not change play state (next/previous) or nothing would change. */
+internal fun optimisticFor(zone: Zone, control: TransportControl): Pending? = when (control) {
+    TransportControl.PLAYPAUSE -> Pending(zone.zoneId, zone.state, if (zone.state == "playing") "paused" else "playing")
+    TransportControl.PLAY -> Pending(zone.zoneId, zone.state, "playing")
+    TransportControl.PAUSE -> Pending(zone.zoneId, zone.state, "paused")
+    else -> null
+}?.takeIf { it.from != it.to }
+
+private const val PENDING_MS = 3000L
+
+/**
+ * Holds the [RoonClient]; connects in onStart, disconnects in onStop. Selecting a zone never sends control commands;
+ * transport commands are sent only from the Now Playing screen (remote media keys and the control bar).
+ */
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = Prefs(app)
     private val log = AndroidLogger
@@ -49,6 +73,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Time of the last remote key event (ms); Now Playing shows the Zones button for a few seconds after it. */
     val lastInput: StateFlow<Long> = _lastInput
     private val endpoint = MutableStateFlow<Endpoint?>(null)
+    private val showSettings = MutableStateFlow(false)
+    private val pending = MutableStateFlow<Pending?>(null)
+    /** The selected zone as the Core reports it (without the optimistic change); set while Now Playing is computed. */
+    @Volatile private var currentZone: Zone? = null
+    @Volatile private var skipCachedEndpoint = false
+
+    val settings: StateFlow<AppSettings> = prefs.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
 
     private val _testResult = MutableStateFlow<TestResult>(TestResult.Idle)
     val testResult: StateFlow<TestResult> = _testResult
@@ -56,19 +87,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val savedEndpoint = MutableStateFlow<Endpoint?>(null)
 
     val screen: StateFlow<Screen> = combine(
-        connection, zones, prefs.zoneId, showManual, endpoint, showZoneList, prefs.zoneOutputIds,
+        connection, zones, prefs.zoneId, showManual, endpoint, showZoneList, prefs.zoneOutputIds, settings, showSettings, pending,
     ) { v ->
         @Suppress("UNCHECKED_CAST")
-        compute(v[0] as ConnectionState, v[1] as Map<String, Zone>, v[2] as String?, v[3] as Boolean, v[4] as Endpoint?, v[5] as Boolean, v[6] as Set<String>)
+        compute(
+            v[0] as ConnectionState, v[1] as Map<String, Zone>, v[2] as String?, v[3] as Boolean, v[4] as Endpoint?, v[5] as Boolean,
+            v[6] as Set<String>, v[7] as AppSettings, v[8] as Boolean, v[9] as Pending?,
+        )
     }
         .stateIn(viewModelScope, SharingStarted.Eagerly, Screen.Connecting(Status.Discovering))
+
+    /** Whether the window should keep the screen on: always, or only while the selected zone plays. */
+    val keepScreenOn: StateFlow<Boolean> = combine(settings, screen) { st, sc ->
+        st.screenOn == ScreenOn.ALWAYS || (sc is Screen.NowPlaying && sc.zone.state == "playing")
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     init {
         StateRegistry.current = this
         viewModelScope.launch { savedEndpoint.value = prefs.lastEndpoint() }
     }
 
-    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?, listOpen: Boolean, savedOutputs: Set<String>): Screen {
+    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?, listOpen: Boolean, savedOutputs: Set<String>, st: AppSettings, settingsOpen: Boolean, pend: Pending?): Screen {
         if (manual) return Screen.Manual
         if (conn == ConnectionState.AwaitingAuthorization) return Screen.Authorization
         if (conn != ConnectionState.Connected) {
@@ -91,10 +130,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val outs = resolved.zone.outputs.map { it.outputId }.toSet()
                 if (outs.isNotEmpty() && outs != savedOutputs) viewModelScope.launch { prefs.setOutputIds(outs) }
             }
-            val zone = resolved.zone
-            if (listOpen) return Screen.ZoneList(sortedZones(zoneMap), zone.zoneId, canGoBack = true)
-            val cover = zone.nowPlaying?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key) } }
-            return Screen.NowPlaying(zone, cover)
+            val raw = resolved.zone
+            currentZone = raw
+            if (listOpen) return Screen.ZoneList(sortedZones(zoneMap), raw.zoneId, canGoBack = true)
+            if (settingsOpen) return Screen.SettingsPage(ep?.let { "${it.host}:${it.port}" })
+            val np = raw.nowPlaying
+            // Cover for the small picture; the backdrop is shrunk to 32 px anyway, so a small download is enough.
+            val cover = np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, 600, 600) } }
+            val backdrop = when {
+                st.background == BackgroundSource.ARTIST && np?.artistImageKeys?.isNotEmpty() == true ->
+                    ep?.let { ImageService.httpUrl(it.host, it.port, np.artistImageKeys.first(), 640, 360, scale = "fill") }
+                else -> np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, 320, 320) } }
+            }
+            val shown = applyPending(raw, pend)
+            return Screen.NowPlaying(shown, cover, backdrop)
         }
         return Screen.ZoneList(sortedZones(zoneMap))
     }
@@ -111,6 +160,42 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Called from the activity for every remote key event. */
     fun onRemoteInput() { _lastInput.value = System.currentTimeMillis() }
+
+    /**
+     * Media key from the remote. Returns true if the key was handled (consumed). Only acts on Now Playing;
+     * the command is sent only if the zone's `is_*_allowed` flag permits it, otherwise it is ignored and logged.
+     */
+    fun onMediaKey(keyCode: Int, isDown: Boolean): Boolean {
+        val mapped = mapMediaKey(keyCode) ?: return false
+        if (screen.value !is Screen.NowPlaying) return false
+        if (isDown) control(mapped)
+        return true
+    }
+
+    /** Sends a transport command to the selected zone (control bar and media keys). */
+    fun control(control: TransportControl) {
+        val zone = currentZone ?: return
+        if (!zone.allows(control)) {
+            log.info("control ignored=not_allowed control=${control.wire} zone=\"${zone.displayName}\" state=${zone.state}")
+            return
+        }
+        val c = client ?: return
+        val optimistic = optimisticFor(zone, control)
+        log.info("control send=${control.wire} zone=\"${zone.displayName}\" state=${zone.state}${optimistic?.let { " optimistic=${it.to}" } ?: ""}")
+        if (optimistic != null) {
+            pending.value = optimistic
+            viewModelScope.launch { delay(PENDING_MS); if (pending.value == optimistic) pending.value = null }
+        }
+        viewModelScope.launch {
+            try {
+                c.control(zone.zoneId, control)
+                log.info("control ok=${control.wire}")
+            } catch (e: Exception) {
+                log.warn("control failed=${control.wire} error=${e.javaClass.simpleName}: ${e.message}")
+                if (pending.value == optimistic) pending.value = null
+            }
+        }
+    }
 
     /** Called from onStart. Idempotent: never opens two connections. */
     fun connect() {
@@ -187,6 +272,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Blocking; runs on Dispatchers.IO inside the client on every connect attempt. Cached endpoint first. */
     private fun discoverOrLastKnown(): Endpoint? {
+        if (skipCachedEndpoint) {
+            skipCachedEndpoint = false
+            log.info("endpoint=cache_skipped (search again)")
+            return discoverWithMulticast()
+        }
         val cached = kotlinx.coroutines.runBlocking { prefs.lastEndpoint() }
         return resolveEndpoint(cached, log) { discoverWithMulticast() }
     }
@@ -232,6 +322,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun openZoneList() { showZoneList.value = true }
+    fun openSettings() { showSettings.value = true }
+    fun closeSettings() { showSettings.value = false }
+    /** Settings row "Switch zone": leave the settings page and open the zone list. */
+    fun switchZoneFromSettings() { showSettings.value = false; showZoneList.value = true }
+
+    fun updateSettings(new: AppSettings) {
+        viewModelScope.launch { prefs.saveSettings(new); log.info("settings $new") }
+    }
+
+    /** Settings row "Search for Core again": drops the manual override and runs SOOD discovery on the next connect. */
+    fun rediscover() {
+        viewModelScope.launch {
+            prefs.setManual(false)
+            skipCachedEndpoint = true
+            showSettings.value = false
+            disconnect(); connect()
+        }
+    }
     fun closeZoneList() { showZoneList.value = false }
     fun openManual() { showManual.value = true }
     fun closeManual() { showManual.value = false; _testResult.value = TestResult.Idle }
@@ -278,7 +386,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             put("title", s.zone.nowPlaying?.threeLine?.line1 ?: "")
             put("artist", s.zone.nowPlaying?.threeLine?.line2 ?: "")
             put("album", s.zone.nowPlaying?.threeLine?.line3 ?: "")
+            put("backdrop", s.backdropUrl ?: "")
         }
+        put("settings", settings.value.toString())
     }.toString()
 
     /** Debug hook: one JSON line per zone as the app currently holds it. */

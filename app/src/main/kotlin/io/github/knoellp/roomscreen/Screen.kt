@@ -10,7 +10,10 @@ sealed interface Screen {
     /** [currentZoneId] is set when the user opened the list from Now Playing. */
     data class ZoneList(val zones: List<Zone>, val currentZoneId: String? = null, val canGoBack: Boolean = false) : Screen
     data object MissingZone : Screen
-    data class NowPlaying(val zone: Zone, val coverUrl: String?) : Screen
+    /** [zone] already includes an optimistic state change; [backdropUrl] is the cover or the artist image, per setting. */
+    data class NowPlaying(val zone: Zone, val coverUrl: String?, val backdropUrl: String?) : Screen
+    /** [coreAddress] is "host:port" of the connected Core. */
+    data class SettingsPage(val coreAddress: String?) : Screen
 }
 
 sealed interface Status {
