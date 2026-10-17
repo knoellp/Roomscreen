@@ -50,6 +50,31 @@ class BackdropTest {
         assertTrue(ms < 250, "took $ms ms")
     }
 
+    @Test fun centerCropSquareKeepsWidth() {
+        val out = centerCrop16x9(source(720, 720))
+        assertEquals(720, out.width); assertEquals(405, out.height)
+    }
+
+    @Test fun centerCropWideKeepsHeight() {
+        val out = centerCrop16x9(source(920, 400))
+        assertEquals(400, out.height); assertEquals(711, out.width)
+    }
+
+    @Test fun centerCropOfSixteenByNineIsUnchanged() {
+        val src = source(1280, 720)
+        assertTrue(centerCrop16x9(src) === src)
+    }
+
+    @Test fun sharpPathKeepsFullSize(): Unit = kotlinx.coroutines.runBlocking {
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val file = java.io.File.createTempFile("sharp", ".png")
+        java.io.FileOutputStream(file).use { source(1280, 720).compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val out = BackdropCache().backdrop(ctx, file.toURI().toString(), sharp = true)
+        assertNotNull(out)
+        assertEquals(1280, out.width); assertEquals(720, out.height)
+        file.delete()
+    }
+
     @Test fun cacheKeepsOnlyTheLastThree() {
         val cache = BackdropCache()
         val img = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888).asImageBitmap()

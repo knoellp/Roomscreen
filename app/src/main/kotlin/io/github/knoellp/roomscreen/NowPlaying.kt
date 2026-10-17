@@ -101,7 +101,8 @@ fun NowPlayingScreen(
     var cover by remember { mutableStateOf<ImageBitmap?>(null) }
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(coverUrl) { cover = if (coverUrl == null) null else backdropCache.cover(context, coverUrl, COVER_PX) }
-    LaunchedEffect(backdropUrl) { backdrop = if (backdropUrl == null) null else backdropCache.backdrop(context, backdropUrl) }
+    val sharp = settings.sharpness == BackgroundSharpness.SHARP
+    LaunchedEffect(backdropUrl, sharp) { backdrop = if (backdropUrl == null) null else backdropCache.backdrop(context, backdropUrl, sharp) }
 
     val interpolator = remember { ProgressInterpolator(android.os.SystemClock::elapsedRealtime) }
     var position by remember { mutableLongStateOf(0L) }
@@ -154,10 +155,10 @@ fun NowPlayingContent(
     val lines = zone.nowPlaying?.threeLine
     Box(Modifier.fillMaxSize().background(settings.backgroundColor.color)) {
         Crossfade(backdrop, animationSpec = tween(CROSSFADE_MS), label = "backdrop") { image ->
-            if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.75f)
+            if (image != null && settings.background != BackgroundSource.COLOR) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = if (settings.sharpness == BackgroundSharpness.SHARP) 1f else 0.75f)
         }
         // Darkening towards the bottom keeps the text readable on any image.
-        Box(
+        if (settings.background != BackgroundSource.COLOR) Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(0f to Color(0x40000000), 0.4f to Color(0x59000000), 1f to Color(0xF0000000)),
             ),

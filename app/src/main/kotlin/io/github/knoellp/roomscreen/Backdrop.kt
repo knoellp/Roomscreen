@@ -11,6 +11,15 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import kotlin.math.max
 
+/** Centre crop to 16:9: a square keeps its width, a wider image keeps its height. */
+fun centerCrop16x9(source: Bitmap): Bitmap {
+    val w = source.width; val h = source.height
+    val cropH = minOf(h, (w * 9f / 16f).toInt().coerceAtLeast(1))
+    val cropW = minOf(w, (h * 16f / 9f).toInt().coerceAtLeast(1))
+    if (cropW == w && cropH == h) return source
+    return Bitmap.createBitmap(source, (w - cropW) / 2, (h - cropH) / 2, cropW, cropH)
+}
+
 /**
  * Blurred full-screen background, computed once per track. RenderEffect blur needs API 31 and the target
  * (Fire TV Stick HD, API 28) is too weak for a live blur, so: crop to 16:9, shrink to about 32 px, then
@@ -22,12 +31,7 @@ object BackdropBlur {
     const val OUTPUT_WIDTH = 256
 
     fun compute(source: Bitmap): Bitmap {
-        val w = source.width; val h = source.height
-        // Centre crop to 16:9.
-        val cropH = minOf(h, (w * 9f / 16f).toInt().coerceAtLeast(1))
-        val cropW = minOf(w, (h * 16f / 9f).toInt().coerceAtLeast(1))
-        val x = (w - cropW) / 2; val y = (h - cropH) / 2
-        val cropped = Bitmap.createBitmap(source, x, y, cropW, cropH)
+        val cropped = centerCrop16x9(source)
         val tinyH = max(1, TINY_WIDTH * 9 / 16)
         var current = Bitmap.createScaledBitmap(cropped, TINY_WIDTH, tinyH, true)
         // Doubling steps with a filter give a smooth result; one big step shows bilinear diamonds.
@@ -85,8 +89,14 @@ class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
     val size: Int @Synchronized get() = map.size
 
     /** Backdrop for [url]: cached or computed off the main thread. Null if the image cannot be loaded. */
-    suspend fun backdrop(context: Context, url: String): ImageBitmap? {
+    suspend fun backdrop(context: Context, url: String, sharp: Boolean = false): ImageBitmap? {
         get(url)?.let { return it }
+        if (sharp) {
+            // Sharp: decode at screen-source size, crop to 16:9, no blur. Software bitmap so the crop can read pixels.
+            val src = loadBitmap(context, url, SHARP_W, SHARP_H) ?: return null
+            val cropped = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { centerCrop16x9(src) }
+            return cropped.asImageBitmap().also { put(url, it) }
+        }
         val src = loadBitmap(context, url, SOURCE_PX) ?: return null
         val blurred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { BackdropBlur.compute(src) }
         return blurred.asImageBitmap().also { put(url, it) }
@@ -94,9 +104,11 @@ class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
 
     suspend fun cover(context: Context, url: String, size: Int): ImageBitmap? = loadBitmap(context, url, size)?.asImageBitmap()
 
-    private suspend fun loadBitmap(context: Context, url: String, size: Int): Bitmap? {
+    private suspend fun loadBitmap(context: Context, url: String, size: Int): Bitmap? = loadBitmap(context, url, size, size)
+
+    private suspend fun loadBitmap(context: Context, url: String, w: Int, h: Int): Bitmap? {
         val loader = SingletonImageLoader.get(context)
-        val request = ImageRequest.Builder(context).data(url).size(size, size).allowHardware(false).build()
+        val request = ImageRequest.Builder(context).data(url).size(w, h).allowHardware(false).build()
         val result = loader.execute(request) as? SuccessResult ?: return null
         return result.image.toBitmap()
     }
@@ -105,5 +117,8 @@ class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
         const val MAX_ENTRIES = 3
         /** Decode size of the backdrop source; it is shrunk to 32 px anyway. */
         const val SOURCE_PX = 160
+        /** Sharp mode: artist image 1280 x 720; a cover is requested square at 720 x 720 and cropped. */
+        const val SHARP_W = 1280
+        const val SHARP_H = 720
     }
 }

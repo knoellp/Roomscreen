@@ -59,6 +59,9 @@ fun SettingsScreen(
 ) {
     val rows = listOf(
         SettingItem("bg", R.string.setting_background, stringResource(settings.background.label)) { onChange(settings.copy(background = settings.background.next())) },
+        *(if (settings.background == BackgroundSource.COLOR) emptyArray() else arrayOf(
+            SettingItem("sharpness", R.string.setting_sharpness, stringResource(settings.sharpness.label)) { onChange(settings.copy(sharpness = settings.sharpness.next())) },
+        )),
         SettingItem("color", R.string.setting_background_color, stringResource(settings.backgroundColor.label), settings.backgroundColor.color) {
             onChange(settings.copy(backgroundColor = settings.backgroundColor.next()))
         },

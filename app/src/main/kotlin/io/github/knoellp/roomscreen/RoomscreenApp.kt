@@ -17,6 +17,6 @@ class RoomscreenApp : Application(), SingletonImageLoader.Factory {
             .build()
 
     companion object {
-        const val IMAGE_CACHE_BYTES = 8L * 1024 * 1024
+        const val IMAGE_CACHE_BYTES = 16L * 1024 * 1024
     }
 }

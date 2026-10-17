@@ -31,6 +31,7 @@ class Prefs(context: Context) : TokenStore {
     private val outputsKey = stringSetPreferencesKey("zone_output_ids")
     private val zoneKey = stringPreferencesKey("zone_id")
     private val bgKey = stringPreferencesKey("setting_background")
+    private val sharpKey = stringPreferencesKey("setting_sharpness")
     private val colorKey = stringPreferencesKey("setting_background_color")
     private val controlsKey = stringPreferencesKey("setting_controls")
     private val screenKey = stringPreferencesKey("setting_screen_on")
@@ -48,6 +49,7 @@ class Prefs(context: Context) : TokenStore {
         val d = AppSettings()
         AppSettings(
             background = p[bgKey].asEnum() ?: d.background,
+            sharpness = p[sharpKey].asEnum() ?: d.sharpness,
             backgroundColor = p[colorKey].asEnum() ?: d.backgroundColor,
             controls = p[controlsKey].asEnum() ?: d.controls,
             screenOn = p[screenKey].asEnum() ?: d.screenOn,
@@ -58,7 +60,7 @@ class Prefs(context: Context) : TokenStore {
 
     suspend fun saveSettings(s: AppSettings) {
         store.edit {
-            it[bgKey] = s.background.name; it[colorKey] = s.backgroundColor.name; it[controlsKey] = s.controls.name
+            it[bgKey] = s.background.name; it[sharpKey] = s.sharpness.name; it[colorKey] = s.backgroundColor.name; it[controlsKey] = s.controls.name
             it[screenKey] = s.screenOn.name; it[viaKey] = s.viaRoon; it[lrclibKey] = s.lrclib
         }
     }

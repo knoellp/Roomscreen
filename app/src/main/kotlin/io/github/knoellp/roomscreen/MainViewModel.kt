@@ -190,10 +190,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val np = raw.nowPlaying
             // Cover for the small picture; the backdrop is shrunk to 32 px anyway, so a small download is enough.
             val cover = np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, COVER_PX, COVER_PX) } }
+            val sharp = st.sharpness == BackgroundSharpness.SHARP
             val backdrop = when {
+                st.background == BackgroundSource.COLOR -> null
                 st.background == BackgroundSource.ARTIST && np?.artistImageKeys?.isNotEmpty() == true ->
-                    ep?.let { ImageService.httpUrl(it.host, it.port, np.artistImageKeys.first(), 320, 180, scale = "fill") }
-                else -> np?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key, BackdropCache.SOURCE_PX, BackdropCache.SOURCE_PX) } }
+                    ep?.let {
+                        if (sharp) ImageService.httpUrl(it.host, it.port, np.artistImageKeys.first(), BackdropCache.SHARP_W, BackdropCache.SHARP_H, scale = "fill")
+                        else ImageService.httpUrl(it.host, it.port, np.artistImageKeys.first(), 320, 180, scale = "fill")
+                    }
+                else -> np?.imageKey?.let { key ->
+                    ep?.let {
+                        if (sharp) ImageService.httpUrl(it.host, it.port, key, BackdropCache.SHARP_H, BackdropCache.SHARP_H)
+                        else ImageService.httpUrl(it.host, it.port, key, BackdropCache.SOURCE_PX, BackdropCache.SOURCE_PX)
+                    }
+                }
             }
             val shown = applyPending(raw, pend)
             return Screen.NowPlaying(shown, cover, backdrop, lyrics, lyricsAvailable = st.lrclib, lyricsOn = st.lrclib && lyricsOn)

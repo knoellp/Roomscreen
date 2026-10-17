@@ -130,6 +130,15 @@ class ScreenshotTest {
 
     @Test fun nowPlayingWithoutViaRoon() = nowPlaying("6f-now-playing-no-via-roon", settings = AppSettings(viaRoon = false))
 
+    @Test fun nowPlayingSharp() = nowPlaying(
+        "6i-now-playing-sharp", settings = AppSettings(sharpness = BackgroundSharpness.SHARP),
+        backdrop = centerCrop16x9(coverBitmap).asImageBitmap(),
+    )
+
+    @Test fun nowPlayingColor() = nowPlaying(
+        "6j-now-playing-color", settings = AppSettings(background = BackgroundSource.COLOR, backgroundColor = BackgroundColor.MIDNIGHT), backdrop = null,
+    )
+
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
     fun nowPlayingControlsGerman() = nowPlaying("6g-now-playing-controls-de", bar = true, zone = playing.copy(state = "paused"))
 
@@ -156,9 +165,13 @@ class ScreenshotTest {
 
     @Test fun settings() = shot("7-settings") { SettingsScreen(AppSettings(), "192.168.1.194:9330", {}, {}, {}) }
 
+    @Test fun settingsColor() = shot("7c-settings-color") {
+        SettingsScreen(AppSettings(background = BackgroundSource.COLOR), "192.168.1.194:9330", {}, {}, {})
+    }
+
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
     fun settingsGerman() = shot("7b-settings-de") {
-        SettingsScreen(AppSettings(BackgroundSource.ARTIST, BackgroundColor.WINE, ControlsMode.ALWAYS, ScreenOn.PLAYING, viaRoon = false), "192.168.1.194:9330", {}, {}, {})
+        SettingsScreen(AppSettings(BackgroundSource.ARTIST, BackgroundSharpness.SHARP, BackgroundColor.WINE, ControlsMode.ALWAYS, ScreenOn.PLAYING, viaRoon = false), "192.168.1.194:9330", {}, {}, {})
     }
 
     /** All six background tones, each a scaled-down Now Playing (3 x 2 grid). */

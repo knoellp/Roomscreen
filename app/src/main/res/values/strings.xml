@@ -52,6 +52,10 @@
     <string name="setting_background">Background</string>
     <string name="setting_bg_cover">Album cover</string>
     <string name="setting_bg_artist">Artist image</string>
+    <string name="setting_bg_color">Colour</string>
+    <string name="setting_sharpness">Background sharpness</string>
+    <string name="setting_sharp_soft">Soft</string>
+    <string name="setting_sharp_sharp">Sharp</string>
     <string name="setting_background_color">Background colour</string>
     <string name="color_black">Black</string>
     <string name="color_anthracite">Anthracite</string>

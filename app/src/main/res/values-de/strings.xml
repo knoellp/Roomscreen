@@ -52,6 +52,10 @@
     <string name="setting_background">Hintergrund</string>
     <string name="setting_bg_cover">Albumcover</string>
     <string name="setting_bg_artist">Künstlerbild</string>
+    <string name="setting_bg_color">Farbe</string>
+    <string name="setting_sharpness">Hintergrund-Schärfe</string>
+    <string name="setting_sharp_soft">Weich</string>
+    <string name="setting_sharp_sharp">Scharf</string>
     <string name="setting_background_color">Hintergrundfarbe</string>
     <string name="color_black">Schwarz</string>
     <string name="color_anthracite">Anthrazit</string>

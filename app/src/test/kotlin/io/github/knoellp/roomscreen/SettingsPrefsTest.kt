@@ -15,7 +15,7 @@ class SettingsPrefsTest {
     @Test fun defaultsThenRoundTrip() = runBlocking {
         val prefs = Prefs(ApplicationProvider.getApplicationContext())
         assertEquals(AppSettings(), prefs.settings.first())
-        val changed = AppSettings(BackgroundSource.ARTIST, BackgroundColor.WINE, ControlsMode.ALWAYS, ScreenOn.PLAYING, viaRoon = false, lrclib = false)
+        val changed = AppSettings(BackgroundSource.ARTIST, BackgroundSharpness.SHARP, BackgroundColor.WINE, ControlsMode.ALWAYS, ScreenOn.PLAYING, viaRoon = false, lrclib = false)
         prefs.saveSettings(changed)
         // A second Prefs instance reads the same DataStore file: the values survive a "restart" of the view model.
         assertEquals(changed, Prefs(ApplicationProvider.getApplicationContext()).settings.first())
@@ -33,6 +33,8 @@ class SettingsPrefsTest {
         assertEquals(BackgroundColor.ANTHRACITE, BackgroundColor.BLACK.next())
         assertEquals(BackgroundColor.BLACK, BackgroundColor.WARM_GRAY.next())
         assertEquals(6, BackgroundColor.entries.size)
-        assertEquals(BackgroundSource.COVER, BackgroundSource.ARTIST.next())
+        assertEquals(BackgroundSource.ARTIST, BackgroundSource.COVER.next())
+        assertEquals(BackgroundSource.COLOR, BackgroundSource.ARTIST.next())
+        assertEquals(BackgroundSource.COVER, BackgroundSource.COLOR.next())
     }
 }

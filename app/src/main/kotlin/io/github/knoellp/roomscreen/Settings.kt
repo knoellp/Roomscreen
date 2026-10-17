@@ -7,6 +7,14 @@ import androidx.compose.ui.graphics.Color
 enum class BackgroundSource(@StringRes val label: Int) {
     COVER(R.string.setting_bg_cover),
     ARTIST(R.string.setting_bg_artist),
+    /** No image and no gradient: the whole area is the chosen background colour. */
+    COLOR(R.string.setting_bg_color),
+}
+
+/** Soft (blurred, default) or sharp (full-resolution) background image. */
+enum class BackgroundSharpness(@StringRes val label: Int) {
+    SOFT(R.string.setting_sharp_soft),
+    SHARP(R.string.setting_sharp_sharp),
 }
 
 /** Curated background tones (also the base colour under the image and the colour when there is no cover). */
@@ -32,6 +40,7 @@ enum class ScreenOn(@StringRes val label: Int) {
 /** All user settings with their defaults (same behaviour as before Phase 2: cover, always on). */
 data class AppSettings(
     val background: BackgroundSource = BackgroundSource.COVER,
+    val sharpness: BackgroundSharpness = BackgroundSharpness.SOFT,
     val backgroundColor: BackgroundColor = BackgroundColor.ANTHRACITE,
     val controls: ControlsMode = ControlsMode.ON_INPUT,
     val screenOn: ScreenOn = ScreenOn.ALWAYS,
