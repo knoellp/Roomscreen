@@ -375,7 +375,12 @@ Sharp path (setting "Background sharpness" = Sharp): no blur. The artist image i
 720 x 720; Coil decodes at that size (`allowHardware(false)`), `centerCrop16x9` (the crop shared with `BackdropBlur.compute`) cuts
 16:9 and the bitmap is cached under its URL (`MAX_ENTRIES` stays 3; the URL differs between modes, so no mixing). A 1280 x 720 ARGB
 bitmap is about 3.7 MB, three entries about 11 MB; the GPU scales it to 1080p. The image is drawn at alpha 1.0 (soft: 0.75) under the
-unchanged dark gradient. The Coil memory cache was raised from 8 MB to 16 MB for this. Not measured on the device yet (screen was off).
+unchanged dark gradient. The Coil memory cache was raised from 8 MB to 16 MB for this. Verified on the Fire TV (2026-10-18, zone Büro, `sharpness=SHARP`, `background=ARTIST`, lyrics off): screenshots
+`build/device-artifacts/p4-01-sharp-artist.png` (sharp artist photo under the dark gradient) and `p4-02-sharp-lyrics.png` (lyrics readable on the
+sharp background). Memory (`dumpsys meminfo`, TOTAL PSS): 128 MB before, 166 MB after 10 track changes (one per 12 s), 154 MB 30 s later;
+GL mtrack 58.6 MB, 77.1 MB, 75.1 MB. This is higher than the soft-mode figures in 8.5 (lyrics off 115 to 127 MB before, 136 to 138 MB after
+10 changes); the growth is mostly GPU memory and it falls again after the track changes stop. No out-of-memory or jank was observed; frame
+timing was not measured.
 
 Colour background (`BackgroundSource.COLOR`): `backdropUrl` is null (no image loads), no gradient is drawn, the area is the chosen
 `backgroundColor`; info strip, small cover and lyrics column are unchanged. The sharpness row is hidden in the settings then.
