@@ -1,0 +1,44 @@
+# Phase 3: switch lyrics on with the "Liedtexte" bar button (German UI, lyrics were off, LRCLIB setting on).
+# Start state: app selected zone Büro, Büro PAUSED (the Maestro hierarchy is too slow while the UI animates during playback,
+# so the bar is navigated while paused). Playback is then started with the media key of the app. Screenshots: build/device-artifacts/p3-*.png.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Büro · Pausiert"
+    timeout: 30000
+# The bar hides 5 s after the last key; if a slow hierarchy read misses it, press again.
+- retry:
+    maxRetries: 3
+    commands:
+      - pressKey: Remote Dpad Up
+      - extendedWaitUntil:
+          visible: "Liedtexte"
+          timeout: 5000
+# Focus starts on play/pause; one left is previous, two left is "Liedtexte". The bar hides 5 s after the last key,
+# so no slow step (screenshot) sits between the keys.
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+# The bar stays visible for 5 s after the last key: this screenshot shows the highlighted Lyrics button and the lyrics view.
+- takeScreenshot: build/device-artifacts/p3-01-lyrics-button-pressed
+# The lyrics view replaces the info strip (whose first line is "Büro · <state>"). Optional: with a track that has no
+# lyrics the info strip stays; the script checks the log line "lyrics button=on" and DUMP_STATE instead.
+- extendedWaitUntil:
+    notVisible: "Büro · .*"
+    timeout: 15000
+    optional: true
+- takeScreenshot: build/device-artifacts/p3-02-lyrics-on-paused
+# Start playback with the app's media key; the active line then follows the position.
+- pressKey: Remote Media Play Pause
+- extendedWaitUntil:
+    visible: "this text never appears"
+    timeout: 6000
+    optional: true
+- takeScreenshot: build/device-artifacts/p3-03-lyrics-playing
+# Ten seconds without input, then a second screenshot with another active line.
+- extendedWaitUntil:
+    visible: "this text never appears"
+    timeout: 10000
+    optional: true
+- takeScreenshot: build/device-artifacts/p3-03b-lyrics-10s-later

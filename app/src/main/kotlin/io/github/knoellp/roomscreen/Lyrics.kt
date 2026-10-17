@@ -40,13 +40,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -85,8 +81,9 @@ fun LyricsView(
     plainScroll: ScrollState = rememberScrollState(),
 ) {
     val lines = zone.nowPlaying?.threeLine
+    Box(modifier.fillMaxSize()) {
     Row(
-        modifier.fillMaxSize().padding(start = 48.dp, end = 48.dp, top = 88.dp, bottom = 52.dp),
+        Modifier.fillMaxSize().padding(start = 48.dp, end = 48.dp, top = 88.dp, bottom = 52.dp),
         horizontalArrangement = Arrangement.spacedBy(40.dp),
     ) {
         Column(Modifier.width(LYRICS_COVER + 20.dp).fillMaxHeight(), verticalArrangement = Arrangement.Bottom) {
@@ -108,6 +105,8 @@ fun LyricsView(
             }
         }
     }
+    TopScrim()
+    }
 }
 
 @Composable
@@ -120,16 +119,11 @@ private fun MiniProgress(positionMs: () -> Long, lengthMs: Long?) {
     )
 }
 
-/** Fades the top and bottom edge of its content (one offscreen layer, no per-line alpha animation). */
-private fun Modifier.fadeEdges(): Modifier = this
-    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-    .drawWithContent {
-        drawContent()
-        drawRect(
-            Brush.verticalGradient(0f to Color.Transparent, 0.18f to Color.Black, 0.82f to Color.Black, 1f to Color.Transparent),
-            blendMode = BlendMode.DstIn,
-        )
-    }
+/** Soft top edge of the text column without an offscreen layer: a dark scrim over the upper part of the screen. */
+@Composable
+private fun TopScrim() {
+    Box(Modifier.fillMaxWidth().height(200.dp).background(Brush.verticalGradient(0f to Color(0x99000000), 0.45f to Color(0x66000000), 1f to Color.Transparent)))
+}
 
 /**
  * The active line stays in the vertical middle. The active index is derived from the position, so the list recomposes
@@ -155,7 +149,7 @@ private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long) {
     }
 
     LazyColumn(
-        Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.fadeEdges(),
+        Modifier.fillMaxSize().onSizeChanged { heightPx = it.height },
         state = listState,
         contentPadding = PaddingValues(top = halfHeight, bottom = halfHeight),
         userScrollEnabled = false,
@@ -166,7 +160,7 @@ private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long) {
             else if (distance == 0 && active >= 0) {
                 Text(line.text, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Bold, color = ACTIVE_COLOR, modifier = Modifier.padding(vertical = 6.dp))
             } else {
-                val alpha = when (distance) { 1 -> 0.62f; 2 -> 0.45f; else -> 0.32f }
+                val alpha = when (distance) { 1 -> 0.62f; 2 -> 0.42f; 3 -> 0.28f; else -> 0.16f }
                 Text(line.text, fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = alpha), modifier = Modifier.padding(vertical = 6.dp))
             }
         }
@@ -181,7 +175,7 @@ private fun PlainLyrics(text: String, scroll: ScrollState) {
     LaunchedEffect(text) { runCatching { focus.requestFocus() } }
     val step = with(LocalDensity.current) { 160.dp.toPx() }
     Column(
-        Modifier.fillMaxSize().fadeEdges()
+        Modifier.fillMaxSize()
             .onPreviewKeyEvent { e ->
                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {

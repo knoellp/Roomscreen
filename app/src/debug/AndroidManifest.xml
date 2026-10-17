@@ -10,6 +10,8 @@
                 <action android:name="io.github.knoellp.roomscreen.DUMP_ZONES" />
                 <action android:name="io.github.knoellp.roomscreen.SET_VIA_ROON" />
                 <action android:name="io.github.knoellp.roomscreen.SELECT_ZONE" />
+                <action android:name="io.github.knoellp.roomscreen.SET_LYRICS" />
+                <action android:name="io.github.knoellp.roomscreen.SET_LRCLIB" />
             </intent-filter>
         </receiver>
     </application>

@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
  * DUMP_STATE logs the UI state as JSON; SET_HOST takes extras host and port;
  * SET_VIA_ROON (extra value=on|off) writes the "via roon" setting, also while the app is not running.
  * SET_LYRICS (extra value=on|off) presses the Lyrics button; DUMP_STATE then shows `lyrics` and `lyrics_on`.
+ * SET_LRCLIB (extra value=on|off) writes the "Lyrics (LRCLIB)" setting, the same as the settings row.
  * SELECT_ZONE (extra name) selects a zone by display name without sending any command.
  * RESET clears all stored preferences (token, endpoint, zone) and must only be used after asking.
  */
@@ -46,6 +47,7 @@ class DebugReceiver : BroadcastReceiver() {
             }
             "io.github.knoellp.roomscreen.SELECT_ZONE" -> vm.debugSelectZone(intent.getStringExtra("name") ?: return)
             "io.github.knoellp.roomscreen.SET_LYRICS" -> vm.setLyrics(intent.getStringExtra("value") == "on")
+            "io.github.knoellp.roomscreen.SET_LRCLIB" -> vm.debugSetLrclib(intent.getStringExtra("value") == "on")
             "io.github.knoellp.roomscreen.RESET" -> vm.debugReset()
         }
     }

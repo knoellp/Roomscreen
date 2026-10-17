@@ -1,0 +1,37 @@
+# Phase 3: switch the "Liedtexte (LRCLIB)" setting off (German UI). Then the "Liedtexte" bar button must be gone.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 30000
+# The bar hides 5 s after the last key; if a slow hierarchy read misses it, press again.
+- retry:
+    maxRetries: 3
+    commands:
+      - pressKey: Remote Dpad Up
+      - extendedWaitUntil:
+          visible: "Einstellungen"
+          timeout: 5000
+# play/pause -> previous -> Liedtexte -> Einstellungen
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Liedtexte \\(LRCLIB\\)"
+    timeout: 5000
+# Rows: Hintergrund (focused), Farbe, Bedienelemente, Bildschirm, via roon, Liedtexte (LRCLIB)
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- takeScreenshot: build/device-artifacts/p3-05-settings-lrclib-off
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- assertNotVisible: "Liedtexte"
+- takeScreenshot: build/device-artifacts/p3-06-no-lyrics-button

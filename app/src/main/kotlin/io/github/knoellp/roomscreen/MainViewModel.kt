@@ -474,6 +474,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         selectZone(zone)
     }
 
+    /** Debug hook: the "Lyrics (LRCLIB)" setting, the same as its row on the settings page. */
+    fun debugSetLrclib(on: Boolean) { updateSettings(settings.value.copy(lrclib = on)) }
+
     fun debugReset() {
         viewModelScope.launch { prefs.clearAll(); disconnect(); connect() }
     }

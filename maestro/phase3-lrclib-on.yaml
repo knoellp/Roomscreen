@@ -1,0 +1,33 @@
+# Phase 3: switch the "Liedtexte (LRCLIB)" setting on again. The "Liedtexte" bar button must be back.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 30000
+# The bar hides 5 s after the last key; if a slow hierarchy read misses it, press again.
+- retry:
+    maxRetries: 3
+    commands:
+      - pressKey: Remote Dpad Up
+      - extendedWaitUntil:
+          visible: "Einstellungen"
+          timeout: 5000
+# Without the Lyrics button: play/pause -> previous -> Einstellungen
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Liedtexte \\(LRCLIB\\)"
+    timeout: 5000
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Liedtexte"
+    timeout: 5000
+- takeScreenshot: build/device-artifacts/p3-07-lyrics-button-back
