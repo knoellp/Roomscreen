@@ -115,6 +115,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 launch { c.zones.collect { onZones(it) } }
+                if (debuggable) launch { c.zoneEvents.collect { logZonesMessage(it.name, it.body) } }
             }
             c.start(viewModelScope)
         }
@@ -128,6 +129,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         connection.value = ConnectionState.Idle
     }
 
+    private val debuggable: Boolean =
+        (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
+    /** Debug builds only: compact line per Changed message (pure seek messages are skipped). */
+    private fun logZonesMessage(name: String, body: kotlinx.serialization.json.JsonObject) {
+        if (name != "Changed") return
+        fun ids(key: String) = (body[key] as? kotlinx.serialization.json.JsonArray).orEmpty()
+            .mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+        fun zones(key: String) = (body[key] as? kotlinx.serialization.json.JsonArray).orEmpty().mapNotNull { e ->
+            val o = e as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+            fun f(k: String) = (o[k] as? kotlinx.serialization.json.JsonPrimitive)?.content
+            "${f("zone_id")}:${f("display_name")}:${f("state")}"
+        }
+        val removed = ids("zones_removed"); val added = zones("zones_added"); val changed = zones("zones_changed")
+        if (removed.isEmpty() && added.isEmpty() && changed.isEmpty()) return
+        log.info("zones_msg removed=$removed added=$added changed=$changed")
+    }
+
     private var lastLoggedTrack = HashMap<String, String?>()
 
     private fun onZones(map: Map<String, Zone>) {
@@ -135,8 +154,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         client?.lastEndpoint?.let { endpoint.value = it }
         for (z in map.values) {
             val title = z.nowPlaying?.threeLine?.line1
-            if (lastLoggedTrack[z.zoneId] != title || !lastLoggedTrack.containsKey(z.zoneId)) {
-                lastLoggedTrack[z.zoneId] = title
+            val key = "${z.state}|$title"
+            if (lastLoggedTrack[z.zoneId] != key) {
+                lastLoggedTrack[z.zoneId] = key
                 log.info("track zone=\"${z.displayName}\" state=${z.state} title=\"$title\" artist=\"${z.nowPlaying?.threeLine?.line2}\"")
             }
         }
@@ -233,6 +253,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             put("album", s.zone.nowPlaying?.threeLine?.line3 ?: "")
         }
     }.toString()
+
+    /** Debug hook: one JSON line per zone as the app currently holds it. */
+    fun dumpZones() {
+        for (z in zones.value.values) {
+            log.info("zone_dump " + buildJsonObject {
+                put("id", z.zoneId); put("display_name", z.displayName); put("state", z.state)
+                put("title", z.nowPlaying?.threeLine?.line1 ?: ""); put("seek", z.nowPlaying?.seekPosition ?: -1)
+            })
+        }
+        log.info("zone_dump count=${zones.value.size}")
+    }
 
     fun debugSetHost(host: String, port: Int) {
         viewModelScope.launch {

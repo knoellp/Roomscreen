@@ -34,6 +34,11 @@ class ScreenshotTest {
         playing,
         Zone("z2", "Kamin", state = "paused"),
         Zone("z3", "Schlafzimmer", state = "stopped"),
+        Zone("z4", "Bad", state = "paused"),
+        Zone("z5", "Fernseher", state = "playing", nowPlaying = NowPlaying(threeLine = Lines("Concierto de Aranjuez for Guitar and Orchestra: 1. Allegro con spirito", "Joaquín Rodrigo / Pepe Romero / Neville Marriner", "The Best Ever Guitar Collection"))),
+        Zone("z6", "MacBook Pro", state = "paused"),
+        Zone("z7", "Küche", state = "stopped"),
+        Zone("z8", "Terrasse", state = "loading"),
     )
 
     private fun shot(name: String, content: @Composable () -> Unit) {

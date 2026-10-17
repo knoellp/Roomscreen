@@ -37,6 +37,8 @@ touch layout), release signing. The app never sends playback commands in this ph
 - Zone: pick it once; it is remembered. Press any remote key on Now Playing to show the **Zones**
   button, select it to switch zones. Back from the zone list returns to Now Playing unchanged.
 
+- Screen: the display is kept on (no screensaver) for as long as Roomscreen is in the foreground, in every zone state.
+
 ## Roon setup
 
 On first connection the app registers as an extension named "Roomscreen (<device name>)". In Roon

@@ -16,6 +16,7 @@ class DebugReceiver : BroadcastReceiver() {
         if (vm == null) { Log.w(AndroidLogger.TAG, "debug action=${intent.action} result=no_viewmodel"); return }
         when (intent.action) {
             "io.github.knoellp.roomscreen.DUMP_STATE" -> Log.i(AndroidLogger.TAG, "state ${vm.dumpState()}")
+            "io.github.knoellp.roomscreen.DUMP_ZONES" -> vm.dumpZones()
             "io.github.knoellp.roomscreen.SET_HOST" -> {
                 val host = intent.getStringExtra("host") ?: return
                 vm.debugSetHost(host, intent.getIntExtra("port", 9330))

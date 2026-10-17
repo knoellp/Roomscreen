@@ -5,6 +5,13 @@ import io.github.knoellp.roomscreen.roon.moo.MooVerb
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import io.github.knoellp.roomscreen.roon.fake.Fixtures
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -220,5 +227,22 @@ class RoonClientFakeCoreTest {
     @Test
     fun `without a cached endpoint discovery runs`() {
         assertEquals(Endpoint(core.host, core.port), resolveEndpoint(null, Logger.None) { sood() })
+    }
+
+    @Test
+    fun `state only change with the same title reaches the zone state`() = runBlocking {
+        core.requireEnable = false
+        val c = connected()
+        val kamin = Fixtures.json("subscribed.json")["zones"]!!.jsonArray
+            .first { it.jsonObject["display_name"]!!.jsonPrimitive.content == "Kamin" }.jsonObject
+        val id = kamin["zone_id"]!!.jsonPrimitive.content
+        val title = c.zones.value.getValue(id).nowPlaying!!.threeLine!!.line1
+        assertEquals("paused", c.zones.value.getValue(id).state)
+
+        val playing = JsonObject(kamin + ("state" to JsonPrimitive("playing")))
+        core.pushChanged(JsonObject(mapOf("zones_changed" to JsonArray(listOf(playing)))).toString())
+        withTimeout(10_000) { c.zones.first { it[id]?.state == "playing" } }
+        assertEquals(title, c.zones.value.getValue(id).nowPlaying!!.threeLine!!.line1)
+        c.stop()
     }
 }

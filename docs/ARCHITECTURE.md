@@ -316,3 +316,4 @@ Fixtures: `roon-client/src/test/resources/fixtures/` (see its README for recorde
 - Maestro on the Fire TV can drive the app with `pressKey: Remote Dpad Down/Center` and `Back`; text assertions work against the Compose UI.
 - Debug-keystore: `~/.android/debug.keystore` is reused across container runs (mounted), so `adb install -r` keeps working.
 - Build note: current AndroidX/Coil/OkHttp AARs require compileSdk 37 (targetSdk 36).
+- Keep screen on: `FLAG_KEEP_SCREEN_ON` on the activity window. Verified on the Fire TV with `dumpsys power`: while the app is in front a `SCREEN_BRIGHT_WAKE_LOCK 'WindowManager'` is held for the app uid (WorkSource 10126), still held 6 minutes later with `Display Power: state=ON` (device `screen_off_timeout` = 300000 ms, `sleep_timeout` = 1200000 ms); after `HOME` the lock is gone. Setting for "only while playing" is planned for Phase 2.

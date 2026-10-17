@@ -16,6 +16,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Window-scoped: the screen stays on while this activity is in the foreground (no screensaver).
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent { MaterialTheme(colorScheme = darkColorScheme()) { Root(viewModel) } }
     }
 

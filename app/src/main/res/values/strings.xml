@@ -24,7 +24,7 @@
     <string name="auth_title">Authorize Roomscreen in Roon</string>
     <string name="auth_body">Open Roon on another device and go to %1$s. Find \"%2$s\" and press \"Enable\". This screen continues automatically.</string>
 
-    <string name="zones_title">Choose a zone</string>
+    <string name="zones_title">Select zone</string>
     <string name="zones_state_playing">Playing</string>
     <string name="zones_state_paused">Paused</string>
     <string name="zones_state_loading">Loading</string>
@@ -38,4 +38,5 @@
     <string name="now_playing_unknown">Unknown</string>
     <string name="zones_button">Zones</string>
     <string name="zones_current">current</string>
+    <string name="zones_hint">Back keeps the current zone</string>
 </resources>

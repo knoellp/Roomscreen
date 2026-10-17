@@ -2,7 +2,15 @@ package io.github.knoellp.roomscreen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -136,29 +144,74 @@ private fun stateLabel(state: String) = stringResource(
 )
 
 /** Screen 4: zone list. Selecting a zone only stores the choice. The current zone (if any) is marked and focused first. */
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (Zone) -> Unit) = Page {
+fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (Zone) -> Unit) {
     val currentFocus = remember { FocusRequester() }
     LaunchedEffect(currentZoneId) {
         if (currentZoneId != null) runCatching { currentFocus.requestFocus() }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        Title(stringResource(R.string.zones_title))
-        LazyColumn(Modifier.width(800.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // No bottom page padding: the list runs to the screen edge and scrolls instead of being cut at a margin.
+    Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(top = 32.dp, start = 64.dp, end = 64.dp)) {
+    Column(
+        Modifier.align(Alignment.TopCenter).widthIn(max = 600.dp).fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(stringResource(R.string.zones_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        Text(stringResource(R.string.zones_hint), fontSize = 16.sp, color = Color(0xFF9DA7B3))
+        Spacer(Modifier.height(6.dp))
+        LazyColumn(
+            Modifier.fillMaxWidth().weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
+        ) {
             items(zones, key = { it.zoneId }) { zone ->
-                val isCurrent = zone.zoneId == currentZoneId
-                Button(
-                    onClick = { onSelect(zone) },
-                    modifier = Modifier.fillMaxWidth().then(if (isCurrent) Modifier.focusRequester(currentFocus) else Modifier),
-                ) {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text((if (isCurrent) "● " else "") + zone.displayName, fontSize = 28.sp)
-                        Text(
-                            stateLabel(zone.state) + if (isCurrent) " · " + stringResource(R.string.zones_current) else "",
-                            fontSize = 22.sp,
-                        )
-                    }
+                ZoneRow(zone, zone.zoneId == currentZoneId, if (zone.zoneId == currentZoneId) currentFocus else null) { onSelect(zone) }
+            }
+        }
+    }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun ZoneRow(zone: Zone, isCurrent: Boolean, focus: FocusRequester?, onClick: () -> Unit) {
+    val playing = zone.state == "playing"
+    val lines = zone.nowPlaying?.threeLine
+    val detail = if (playing && lines != null) listOfNotNull(lines.line2, lines.line1).filter { it.isNotBlank() }.joinToString(" · ") else ""
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color(0xFF1C2833),
+            focusedContainerColor = Color(0xFF2A3A48),
+            contentColor = Color(0xFFE6EDF3),
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color(0xFF8FA3B5)))),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    zone.displayName, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isCurrent) Color.White else Color(0xFFD0D7DE),
+                )
+                if (detail.isNotEmpty()) {
+                    Text(detail, fontSize = 15.sp, color = Color(0xFF9DA7B3), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(Modifier.size(10.dp).clip(CircleShape).background(if (playing) Color(0xFF3FB950) else Color(0xFF6E7681)))
+            Spacer(Modifier.width(8.dp))
+            Text(stateLabel(zone.state), fontSize = 16.sp, color = Color(0xFF9DA7B3))
+            Box(Modifier.width(32.dp), contentAlignment = Alignment.CenterEnd) {
+                if (isCurrent) Text("✓", fontSize = 22.sp, color = Color.White)
             }
         }
     }
