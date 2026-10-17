@@ -1,0 +1,19 @@
+# Gradle / Android
+.gradle/
+build/
+*.apk
+*.aab
+local.properties
+.idea/
+*.iml
+captures/
+.cxx/
+# Secrets
+*.jks
+*.keystore
+keystore.properties
+config/local.env
+# Recordings / test artefacts that may contain tokens
+recordings/
+*.token
+out/
