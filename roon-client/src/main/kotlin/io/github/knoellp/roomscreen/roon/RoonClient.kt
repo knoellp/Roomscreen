@@ -1,5 +1,6 @@
 package io.github.knoellp.roomscreen.roon
 
+import io.github.knoellp.roomscreen.roon.browse.BrowseService
 import io.github.knoellp.roomscreen.roon.image.ImageResult
 import io.github.knoellp.roomscreen.roon.image.ImageService
 import io.github.knoellp.roomscreen.roon.moo.FrameRecorder
@@ -81,6 +82,8 @@ class RoonClient(
         SoodDiscovery(logger).discover().firstOrNull()?.let { Endpoint(it.host, it.httpPort) }
     },
     private val authTimeoutMs: Long = 10 * 60_000L,
+    /** Services requested as optional at registration (for example browse in the CLI). */
+    private val optionalServices: List<String> = emptyList(),
 ) {
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
@@ -101,6 +104,7 @@ class RoonClient(
     private class Session(val connection: MooConnection) {
         val transport = TransportService(connection)
         val image = ImageService(connection)
+        val browse = BrowseService(connection)
     }
 
     fun start(scope: CoroutineScope) {
@@ -125,6 +129,9 @@ class RoonClient(
         val s = session ?: throw IllegalStateException("not connected")
         return s.image.getImage(imageKey, "fit", width, height)
     }
+
+    /** Browse service of the current session (null while disconnected). Only usable if requested as optional service. */
+    val browse: BrowseService? get() = session?.browse
 
     private suspend fun runLoop() {
         var attempt = 0
@@ -160,7 +167,7 @@ class RoonClient(
         val connection = MooConnection(okHttp, url, logger, recorder, clock)
         try {
             connection.connect()
-            val registry = Registry(connection, tokens, identity, logger)
+            val registry = Registry(connection, tokens, identity, logger, optionalServices)
             val info = registry.info()
             logger.info("conn=core core_id=${info.coreId} name=${info.displayName} version=${info.displayVersion}")
 

@@ -7,6 +7,8 @@ import io.github.knoellp.roomscreen.roon.Logger
 import io.github.knoellp.roomscreen.roon.Registry
 import io.github.knoellp.roomscreen.roon.RoonClient
 import io.github.knoellp.roomscreen.roon.TokenStore
+import io.github.knoellp.roomscreen.roon.browse.BrowseService
+import io.github.knoellp.roomscreen.roon.image.ImageService
 import io.github.knoellp.roomscreen.roon.moo.JsonlFrameRecorder
 import io.github.knoellp.roomscreen.roon.moo.MooConnection
 import io.github.knoellp.roomscreen.roon.sood.SoodDiscovery
@@ -55,6 +57,7 @@ commands:
   register                      register and wait up to 10 min for "Enable" in Roon; saves the token
   zones                         list zones
   now-playing --zone NAME       show what a zone plays
+  artist-image --zone NAME [--artists "A|B"] [--out DIR] [--browse true]   artist images via zone artist_image_keys and Browse search (read-only)
   image --key KEY [--size N] [--out FILE]   fetch a cover via MOO get_image (read-only)
   watch [--zone NAME] [--duration SECONDS]   print changes, measure zones_seek_changed rate
   test-sequence --zone NAME     playpause, next, pause, playpause, pause on the test zone (ends paused)
@@ -134,7 +137,7 @@ private suspend fun run(opts: Options): Int {
     when (val cmd = opts.command) {
         "discover" -> return discover()
         "info" -> return info(opts)
-        "register", "zones", "now-playing", "watch", "image" -> return withClient(opts) { client, scope -> clientCommand(cmd, opts, client, scope) }
+        "register", "zones", "now-playing", "watch", "image", "artist-image" -> return withClient(opts, optionalServices = if (cmd == "artist-image" && opts["browse"] == "true") listOf(BrowseService.SERVICE) else emptyList()) { client, scope -> clientCommand(cmd, opts, client, scope) }
         "test-sequence" -> return control(opts, null)
         in CONTROLS -> return control(opts, CONTROLS.getValue(cmd!!))
         else -> { System.err.print(USAGE); return 2 }
@@ -174,7 +177,7 @@ private suspend fun info(opts: Options): Int {
     return 0
 }
 
-private suspend fun withClient(opts: Options, block: suspend (RoonClient, CoroutineScope) -> Int): Int = kotlinx.coroutines.coroutineScope {
+private suspend fun withClient(opts: Options, optionalServices: List<String> = emptyList(), block: suspend (RoonClient, CoroutineScope) -> Int): Int = kotlinx.coroutines.coroutineScope {
     val recorder = opts["record"]?.let { JsonlFrameRecorder(File(it, "frames-${System.currentTimeMillis()}.jsonl")) }
     val client = RoonClient(
         identity = IDENTITY,
@@ -182,6 +185,7 @@ private suspend fun withClient(opts: Options, block: suspend (RoonClient, Corout
         fixed = opts.host?.let { Endpoint(it, opts.port) },
         logger = ConsoleLogger,
         recorder = recorder,
+        optionalServices = optionalServices,
     )
     val stateLog: Job = launch { client.state.collect { println("${stamp()} conn_state=$it") } }
     client.start(this)
@@ -224,6 +228,7 @@ private suspend fun clientCommand(cmd: String, opts: Options, client: RoonClient
             return 0
         }
         "watch" -> return watch(opts, client)
+        "artist-image" -> return artistImage(opts, client)
         "image" -> {
             awaitConnected(client)
             val key = opts["key"] ?: run { println("ERROR --key is required"); return 2 }
@@ -237,11 +242,80 @@ private suspend fun clientCommand(cmd: String, opts: Options, client: RoonClient
     return 2
 }
 
+/**
+ * Step 0 of Phase 2: can we get an artist image? Two routes, both read-only:
+ * (a) `now_playing.artist_image_keys` straight from the zone data, (b) Browse search (`search` hierarchy, "Artists" category).
+ * Each image is then fetched over HTTP; time and size are printed.
+ */
+private suspend fun artistImage(opts: Options, client: RoonClient): Int {
+    val zones = awaitZones(client)
+    val zone = findZone(zones, opts["zone"]) ?: return 1
+    val ep = client.lastEndpoint ?: error("no endpoint")
+    val outDir = opts["out"]?.let { File(it).also(File::mkdirs) }
+    val http = OkHttpClient()
+
+    suspend fun fetch(label: String, key: String): String = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        val t0 = System.nanoTime()
+        val url = ImageService.httpUrl(ep.host, ep.port, key, 1080, 1080)
+        http.newCall(okhttp3.Request.Builder().url(url).build()).execute().use { r ->
+            val bytes = r.body.bytes()
+            val ms = (System.nanoTime() - t0) / 1_000_000
+            outDir?.let { File(it, "$label.jpg").writeBytes(bytes) }
+            "http=${r.code} type=${r.header("Content-Type")} bytes=${bytes.size} ms=$ms"
+        }
+    }
+
+    // (a) direct keys from the zone data: every zone that currently plays something, read-only.
+    println("== route A: now_playing.artist_image_keys")
+    for (z in zones.values.filter { it.nowPlaying != null }) {
+        val names = z.nowPlaying?.threeLine?.line2.orEmpty().split(" / ")
+        val keys = z.nowPlaying?.artistImageKeys.orEmpty()
+        println("zone \"${z.displayName}\" artists=$names keys=${keys.size}")
+        keys.forEachIndexed { i, k -> println("  [${names.getOrNull(i)}] key=$k ${fetch("direct-${z.displayName}-$i", k)}") }
+    }
+
+    if (opts["browse"] != "true") { println("route B skipped (needs --browse true; the Core asks to re-enable the extension once because the service list changes)"); return 0 }
+    // (b) Browse search for the names of the chosen zone plus --artists.
+    println("== route B: Browse search")
+    val browse = client.browse ?: run { println("browse service not available (not granted by the Core)"); return 1 }
+    val names = (zone.nowPlaying?.threeLine?.line2.orEmpty().split(" / ") +
+        opts["artists"].orEmpty().split("|")).map(String::trim).filter(String::isNotEmpty).distinct()
+    var hits = 0
+    for ((n, name) in names.withIndex()) {
+        val t0 = System.nanoTime()
+        val session = "artist-$n"
+        val first = browse.browse("search", session, input = name, popAll = true)
+        val cats = browse.load("search", session)
+        val artistsCat = cats.firstOrNull { it.title.equals("Artists", true) || it.title.equals("Künstler", true) }
+        if (artistsCat?.itemKey == null) {
+            println("search \"$name\": no Artists category; action=${(first["action"] as? JsonPrimitive)?.contentOrNull} categories=${cats.map { it.title }}")
+            continue
+        }
+        browse.browse("search", session, itemKey = artistsCat.itemKey)
+        val artists = browse.load("search", session, count = 10)
+        val match = artists.firstOrNull { it.title.equals(name, true) } ?: artists.firstOrNull()
+        val searchMs = (System.nanoTime() - t0) / 1_000_000
+        val matchKey = match?.imageKey
+        if (match == null || matchKey == null) {
+            println("search \"$name\": no artist image; results=${artists.map { it.title }} ms=$searchMs")
+            continue
+        }
+        val exact = match.title.equals(name, true)
+        val img = fetch("browse-$n", matchKey)
+        val totalMs = (System.nanoTime() - t0) / 1_000_000
+        if (exact) hits++
+        println("search \"$name\": match=\"${match.title}\" exact=$exact image_key=$matchKey search_ms=$searchMs $img total_ms=$totalMs")
+    }
+    println("browse hits (exact title match with image): $hits/${names.size}")
+    return 0
+}
+
 private fun describe(z: Zone): String {
     val np = z.nowPlaying
     val l = np?.threeLine
     return "zone name=\"${z.displayName}\" id=${z.zoneId} state=${z.state}" +
         (if (np != null) " title=\"${l?.line1}\" artist=\"${l?.line2}\" album=\"${l?.line3}\" seek=${np.seekPosition}/${np.length} image_key=${np.imageKey}" else " now_playing=none") +
+        " artist_image_keys=${np?.artistImageKeys?.size ?: 0}" +
         " allowed=play:${z.isPlayAllowed},pause:${z.isPauseAllowed},next:${z.isNextAllowed},prev:${z.isPreviousAllowed}"
 }
 

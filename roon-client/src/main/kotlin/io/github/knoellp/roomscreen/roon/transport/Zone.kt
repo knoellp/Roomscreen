@@ -14,6 +14,8 @@ data class NowPlaying(
     @SerialName("one_line") val oneLine: Lines? = null,
     @SerialName("two_line") val twoLine: Lines? = null,
     @SerialName("three_line") val threeLine: Lines? = null,
+    /** One key per credited artist, in the order of the artist line. */
+    @SerialName("artist_image_keys") val artistImageKeys: List<String> = emptyList(),
 )
 
 @Serializable

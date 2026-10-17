@@ -317,3 +317,28 @@ Fixtures: `roon-client/src/test/resources/fixtures/` (see its README for recorde
 - Debug-keystore: `~/.android/debug.keystore` is reused across container runs (mounted), so `adb install -r` keeps working.
 - Build note: current AndroidX/Coil/OkHttp AARs require compileSdk 37 (targetSdk 36).
 - Keep screen on: `FLAG_KEEP_SCREEN_ON` on the activity window. Verified on the Fire TV with `dumpsys power`: while the app is in front a `SCREEN_BRIGHT_WAKE_LOCK 'WindowManager'` is held for the app uid (WorkSource 10126), still held 6 minutes later with `Display Power: state=ON` (device `screen_off_timeout` = 300000 ms, `sleep_timeout` = 1200000 ms); after `HOME` the lock is gone. Setting for "only while playing" is planned for Phase 2.
+
+## 8. Phase 2 findings
+
+### 8.1 Artist image (step 0, read-only check on the real Core, 2026-10-17)
+
+`now_playing.artist_image_keys` in the zone data already holds one image key per credited artist, in the
+order of the `three_line.line2` artist line ("A / B"). No Browse API call is needed. `roon-cli artist-image --zone NAME`
+fetches `http://<core>:9330/api/image/<key>?scale=fit&width=1080&height=1080` for every key of every zone that has a track
+(no auth, same as covers). Result of the run (13 keys, 6 zones, 5 different artist lines incl. three multi-artist lines):
+
+| Artist line | Keys | HTTP | Time | Bytes |
+|---|---|---|---|---|
+| Billy Joel | 1 | 200 image/jpeg | 503 ms | 92520 |
+| Roxy Music | 1 | 200 image/jpeg | 505 ms | 149988 |
+| Nightmares on Wax / Oscar Jerome | 2 | 200 | 488 / 744 ms | 121453 / 323156 |
+| Joaquin Rodrigo / Pepe Romero / Neville Marriner / Academy of St Martin in the Fields | 4 | 200 | 435-572 ms | 97715-286535 |
+| Melody Gardot / Ken Pendergast | 2 | 200 | 566 / 357 ms | 130141 / 116298 |
+
+Hit rate 5/5, every request below 1 s. Viewed: real artist photos (Billy Joel at the piano, Roxy Music band photo, an orchestra
+for the Academy, Melody Gardot, Oscar Jerome), landscape crop (about 2.3:1 at `fit` 1080 wide: 1080x472), not the album cover.
+Decision: the "Artist image" background option is offered (first key of the list; fall back to the cover if the list is empty).
+
+Browse API route (`com.roonlabs.browse:1`, `search` hierarchy): implemented in the CLI behind `--browse true` but **not run**.
+Requesting browse as an optional service makes the Core ask for authorization again ("Enable" in Settings -> Extensions);
+the CLI waited in `AwaitingAuthorization` and was stopped. Not needed given the direct keys.

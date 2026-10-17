@@ -39,6 +39,7 @@ class Registry(
     private val tokens: TokenStore,
     private val identity: ExtensionIdentity,
     private val logger: Logger = Logger.None,
+    private val optionalServices: List<String> = emptyList(),
 ) {
     /** Read-only handshake; does not register an extension. */
     suspend fun info(): CoreInfo {
@@ -67,7 +68,7 @@ class Registry(
             put("publisher", JsonPrimitive(identity.publisher))
             put("email", JsonPrimitive(identity.email))
             put("required_services", JsonArray(listOf(TRANSPORT, IMAGE).map(::JsonPrimitive)))
-            put("optional_services", JsonArray(emptyList()))
+            put("optional_services", JsonArray(optionalServices.map(::JsonPrimitive)))
             put("provided_services", JsonArray(listOf(JsonPrimitive("com.roonlabs.ping:1"))))
             if (stored != null) put("token", JsonPrimitive(stored))
         }
