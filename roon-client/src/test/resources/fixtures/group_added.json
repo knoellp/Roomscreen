@@ -1,0 +1,109 @@
+{
+ "zones_added": [
+  {
+   "zone_id": "1601116bbc2a053625489389783e24ad006b",
+   "display_name": "Kamin + 1",
+   "outputs": [
+    {
+     "output_id": "17013ab75efd324893701b89290cfd38c18d",
+     "zone_id": "1601116bbc2a053625489389783e24ad006b",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Kamin",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 47,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Kamin",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    },
+    {
+     "output_id": "17015a6c4b3e0e635edb7add08a5751366df",
+     "zone_id": "1601116bbc2a053625489389783e24ad006b",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Fernseher",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 12,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Fernseher",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "playing",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": true,
+   "is_play_allowed": false,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 10,
+   "queue_time_remaining": 2022,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 224,
+    "length": 270,
+    "one_line": {
+     "line1": "More Than This - Roxy Music"
+    },
+    "two_line": {
+     "line1": "More Than This",
+     "line2": "Roxy Music"
+    },
+    "three_line": {
+     "line1": "More Than This",
+     "line2": "Roxy Music",
+     "line3": "Avalon"
+    },
+    "image_key": "3472a21db56b103351175a0f6b75e98b",
+    "artist_image_keys": [
+     "59ed1925864ef1016134d637de49cdcb"
+    ]
+   }
+  }
+ ],
+ "zones_removed": [
+  "16013ab75efd324893701b89290cfd38c18d",
+  "16015a6c4b3e0e635edb7add08a5751366df"
+ ]
+}

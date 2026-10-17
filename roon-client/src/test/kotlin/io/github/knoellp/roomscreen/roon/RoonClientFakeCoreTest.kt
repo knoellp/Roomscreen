@@ -245,4 +245,32 @@ class RoonClientFakeCoreTest {
         assertEquals(title, c.zones.value.getValue(id).nowPlaying!!.threeLine!!.line1)
         c.stop()
     }
+
+    @Test
+    fun `recorded group and ungroup leaves the original zones with correct state`() = runBlocking {
+        core.requireEnable = false
+        core.subscribedFixture = "subscribed_six.json"
+        val c = connected()
+        assertEquals(6, c.zones.value.size)
+        val names = { c.zones.value.values.map { it.displayName } }
+
+        core.pushFixture("group_added.json")
+        withTimeout(10_000) { c.zones.first { z -> z.values.any { it.displayName == "Kamin + 1" } } }
+        assertEquals(5, c.zones.value.size)
+        assertTrue("Kamin" !in names() && "Fernseher" !in names())
+
+        core.pushFixture("group_removed.json")
+        withTimeout(10_000) { c.zones.first { z -> z.values.none { it.displayName == "Kamin + 1" } } }
+        assertEquals(6, c.zones.value.size)
+        val kamin = c.zones.value.values.first { it.displayName == "Kamin" }
+        val fernseher = c.zones.value.values.first { it.displayName == "Fernseher" }
+        assertEquals("playing", kamin.state)
+        assertEquals("paused", fernseher.state)
+
+        core.pushFixture("group_member_changed.json")
+        withTimeout(10_000) { c.zones.first { z -> z.values.first { it.displayName == "Kamin" }.nowPlaying?.threeLine?.line1 == "The Space Between" } }
+        assertEquals("playing", c.zones.value.values.first { it.displayName == "Kamin" }.state)
+        assertEquals(6, c.zones.value.size)
+        c.stop()
+    }
 }

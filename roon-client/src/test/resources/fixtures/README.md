@@ -13,3 +13,9 @@ Derived: `changed_nocover.json` is `changed_pause.json` with `image_key` removed
 
 Not recorded: the queue running out (zone reaching stopped after playing).
 All zone messages refer to the Buero zone id.
+
+Group/ungroup recording (real Core, user grouped Kamin + Fernseher, then ungrouped):
+- `subscribed_six.json`: Subscribed with all six zones
+- `group_added.json`: both member ids removed, new group zone "Kamin + 1" (new zone_id) added, in one message
+- `group_removed.json`: group id removed, both members added back with their original ids, in one message
+- `group_member_changed.json`: a later `zones_changed` for Kamin

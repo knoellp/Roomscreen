@@ -182,7 +182,12 @@ class RoonClient(
             logger.info("conn=connected host=${endpoint.host} port=${endpoint.port}")
             s.transport.subscribeZones { name, body ->
                 if (name == "Closed") return@subscribeZones
-                _zones.value = ZoneReducer.reduce(_zones.value, name, body)
+                try {
+                    _zones.value = ZoneReducer.reduce(_zones.value, name, body)
+                } catch (e: Exception) {
+                    // A malformed message must not take down the socket reader; the next message still applies.
+                    logger.warn("zones=reduce_failed name=$name error=${e.javaClass.simpleName}: ${e.message}")
+                }
                 _events.tryEmit(ZoneEvent(name, body, clock()))
             }
             connection.closed.await()

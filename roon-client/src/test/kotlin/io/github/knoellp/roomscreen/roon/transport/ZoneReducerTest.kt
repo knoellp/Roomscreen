@@ -90,4 +90,18 @@ class ZoneReducerTest {
     fun `empty zone list`() {
         assertEquals(emptyMap(), ZoneReducer.reduce(initial(), "Subscribed", obj("""{"zones":[]}""")))
     }
+
+    @Test
+    fun `one message with removed and added zones`() {
+        // Grouping: both member ids are removed and a new group zone is added in the same message.
+        val grouped = ZoneReducer.reduce(initial(), "Changed", obj("""{"zones_removed":["z1","z2"],
+            "zones_added":[{"zone_id":"g1","display_name":"Büro + 1","state":"playing"}]}"""))
+        assertEquals(setOf("g1"), grouped.keys)
+        // Ungrouping: the group is removed and the members come back with their old ids in one message.
+        val back = ZoneReducer.reduce(grouped, "Changed", obj("""{"zones_removed":["g1"],
+            "zones_added":[{"zone_id":"z1","display_name":"Büro","state":"playing"},{"zone_id":"z2","display_name":"Küche","state":"paused"}]}"""))
+        assertEquals(setOf("z1", "z2"), back.keys)
+        assertEquals("playing", back.getValue("z1").state)
+        assertEquals("paused", back.getValue("z2").state)
+    }
 }

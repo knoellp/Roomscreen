@@ -1,0 +1,423 @@
+{
+ "zones": [
+  {
+   "zone_id": "16011765cc8da8367e61b6b5dab3934af6e3",
+   "display_name": "Schlafzimmer",
+   "outputs": [
+    {
+     "output_id": "17011765cc8da8367e61b6b5dab3934af6e3",
+     "zone_id": "16011765cc8da8367e61b6b5dab3934af6e3",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Schlafzimmer",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 11,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Schlafzimmer",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "paused",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": false,
+   "is_play_allowed": true,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 14,
+   "queue_time_remaining": 5371,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 29,
+    "length": 84,
+    "one_line": {
+     "line1": "Echo45, We Are! - Nightmares on Wax / Oscar Jerome"
+    },
+    "two_line": {
+     "line1": "Echo45, We Are!",
+     "line2": "Nightmares on Wax / Oscar Jerome"
+    },
+    "three_line": {
+     "line1": "Echo45, We Are!",
+     "line2": "Nightmares on Wax / Oscar Jerome",
+     "line3": "Echo45 Sound System"
+    },
+    "image_key": "31d6bb4e3b3a0f3f8c7782ee1177511b",
+    "artist_image_keys": [
+     "10b5b1d82bea72abdec1d160b6893de6",
+     "0ff78ed3ce474637001fb2c1ab4ae0ff"
+    ]
+   }
+  },
+  {
+   "zone_id": "1601f6209616cb1d834da79777512205aa78",
+   "display_name": "Büro",
+   "outputs": [
+    {
+     "output_id": "1701f6209616cb1d834da79777512205aa78",
+     "zone_id": "1601f6209616cb1d834da79777512205aa78",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Büro",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 16,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Büro",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "playing",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": true,
+   "is_play_allowed": false,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 24,
+   "queue_time_remaining": 6108,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 368,
+    "length": 437,
+    "one_line": {
+     "line1": "Captain Jack (Album Version) - Billy Joel"
+    },
+    "two_line": {
+     "line1": "Captain Jack (Album Version)",
+     "line2": "Billy Joel"
+    },
+    "three_line": {
+     "line1": "Captain Jack (Album Version)",
+     "line2": "Billy Joel",
+     "line3": "Greatest Hits, Vols. 1-2 (1973-1985)"
+    },
+    "image_key": "3b2193204fe8b9d4645be9ff9fcaaff4",
+    "artist_image_keys": [
+     "5f711cbd445e8e8c19cb8c7894894e9e"
+    ]
+   }
+  },
+  {
+   "zone_id": "1601f65cdd28631b8ff80f20255a6e62c633",
+   "display_name": "Bad",
+   "outputs": [
+    {
+     "output_id": "1701f65cdd28631b8ff80f20255a6e62c633",
+     "zone_id": "1601f65cdd28631b8ff80f20255a6e62c633",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Bad",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 34,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Bad",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "paused",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": false,
+   "is_play_allowed": true,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 19,
+   "queue_time_remaining": 8857,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 0,
+    "length": 373,
+    "one_line": {
+     "line1": "Concierto de Aranjuez for Guitar and Orchestra: 1. Allegro con spirito - Joaquín Rodrigo / Pepe Romero / Neville Marriner / Academy of St Martin in the Fields"
+    },
+    "two_line": {
+     "line1": "Concierto de Aranjuez for Guitar and Orchestra: 1. Allegro con spirito",
+     "line2": "Joaquín Rodrigo / Pepe Romero / Neville Marriner / Academy of St Martin in the Fields"
+    },
+    "three_line": {
+     "line1": "Concierto de Aranjuez for Guitar and Orchestra: 1. Allegro con spirito",
+     "line2": "Joaquín Rodrigo / Pepe Romero / Neville Marriner / Academy of St Martin in the Fields",
+     "line3": "The Best Ever Guitar Collection"
+    },
+    "image_key": "ae600c6b1eb5f50ec3492fa10b580514",
+    "artist_image_keys": [
+     "91ae9a8a8d13c1cadc30b714f517f5d9",
+     "50429cf155e0c3d772f55950738e11c4",
+     "515651b85a0e18ecd3e028a3f002b861",
+     "e9f15d150784ae3b1f18f9b2a1f40dd6"
+    ]
+   }
+  },
+  {
+   "zone_id": "160102100a9a6cdf269d01fc4b650d1a6b38",
+   "display_name": "MacBook Pro",
+   "outputs": [
+    {
+     "output_id": "170102100a9a6cdf269d01fc4b650d1a6b38",
+     "zone_id": "160102100a9a6cdf269d01fc4b650d1a6b38",
+     "can_group_with_output_ids": [],
+     "display_name": "MacBook Pro",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 100,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "System Output",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "paused",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": false,
+   "is_play_allowed": true,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 11,
+   "queue_time_remaining": 2640,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 12,
+    "length": 168,
+    "one_line": {
+     "line1": "If the Stars Were Mine - Melody Gardot / Ken Pendergast"
+    },
+    "two_line": {
+     "line1": "If the Stars Were Mine",
+     "line2": "Melody Gardot / Ken Pendergast"
+    },
+    "three_line": {
+     "line1": "If the Stars Were Mine",
+     "line2": "Melody Gardot / Ken Pendergast",
+     "line3": "My One and Only Thrill"
+    },
+    "image_key": "28f59729ed6885bd5b60ada4558525da",
+    "artist_image_keys": [
+     "1b152313c0d2ee3694591b1e363e0b4c",
+     "cc8b802620e157b59169afe4a35bca7a"
+    ]
+   }
+  },
+  {
+   "zone_id": "16013ab75efd324893701b89290cfd38c18d",
+   "display_name": "Kamin",
+   "outputs": [
+    {
+     "output_id": "17013ab75efd324893701b89290cfd38c18d",
+     "zone_id": "16013ab75efd324893701b89290cfd38c18d",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Kamin",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 47,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Kamin",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "playing",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": true,
+   "is_play_allowed": false,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 10,
+   "queue_time_remaining": 2094,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 152,
+    "length": 270,
+    "one_line": {
+     "line1": "More Than This - Roxy Music"
+    },
+    "two_line": {
+     "line1": "More Than This",
+     "line2": "Roxy Music"
+    },
+    "three_line": {
+     "line1": "More Than This",
+     "line2": "Roxy Music",
+     "line3": "Avalon"
+    },
+    "image_key": "3472a21db56b103351175a0f6b75e98b",
+    "artist_image_keys": [
+     "59ed1925864ef1016134d637de49cdcb"
+    ]
+   }
+  },
+  {
+   "zone_id": "16015a6c4b3e0e635edb7add08a5751366df",
+   "display_name": "Fernseher",
+   "outputs": [
+    {
+     "output_id": "17015a6c4b3e0e635edb7add08a5751366df",
+     "zone_id": "16015a6c4b3e0e635edb7add08a5751366df",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Fernseher",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 12,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Fernseher",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "paused",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": false,
+   "is_play_allowed": true,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 10,
+   "queue_time_remaining": 2199,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 47,
+    "length": 270,
+    "one_line": {
+     "line1": "More Than This - Roxy Music"
+    },
+    "two_line": {
+     "line1": "More Than This",
+     "line2": "Roxy Music"
+    },
+    "three_line": {
+     "line1": "More Than This",
+     "line2": "Roxy Music",
+     "line3": "Avalon"
+    },
+    "image_key": "3472a21db56b103351175a0f6b75e98b",
+    "artist_image_keys": [
+     "59ed1925864ef1016134d637de49cdcb"
+    ]
+   }
+  }
+ ]
+}

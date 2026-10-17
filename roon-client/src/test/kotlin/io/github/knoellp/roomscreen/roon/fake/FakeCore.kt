@@ -47,6 +47,8 @@ class FakeCore(
     private val subscribers = CopyOnWriteArrayList<Pair<WebSocket, Long>>()
     @Volatile var connections = 0
     @Volatile var soodQueries = 0
+    /** Fixture sent as the `Subscribed` body. */
+    @Volatile var subscribedFixture = "subscribed.json"
 
     val port: Int get() = server.port
     val host: String get() = server.hostName
@@ -161,7 +163,7 @@ class FakeCore(
                 }
                 "com.roonlabs.transport:2/subscribe_zones" -> {
                     subscribers += webSocket to msg.requestId
-                    send(webSocket, MooVerb.CONTINUE, "Subscribed", msg.requestId, Fixtures.text("subscribed.json"))
+                    send(webSocket, MooVerb.CONTINUE, "Subscribed", msg.requestId, Fixtures.text(subscribedFixture))
                 }
                 "com.roonlabs.transport:2/control" -> send(webSocket, MooVerb.COMPLETE, "Success", msg.requestId, null)
                 else -> send(webSocket, MooVerb.COMPLETE, "InvalidRequest", msg.requestId, """{"error":"unknown"}""")
