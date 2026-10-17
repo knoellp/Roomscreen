@@ -1,7 +1,7 @@
 # Roomscreen Architecture
 
-Status: Phase 0 (research and environment check). Written 2026-10-17. Nothing in
-this document describes implemented code yet. Items are marked **[verified]**
+Status: Phase 1 in progress. Sections 1-6 were written in Phase 0; section 7 records
+what Phase 1 resolved against the real Core (2026-10-17). Items are marked **[verified]**
 (read in source and/or observed on the real Core in this repo's LAN),
 **[source-only]** (read in reference source, not yet observed on the wire) or
 **[unverified]**.
@@ -280,3 +280,28 @@ recorded from the real Core with `roon-cli --record` and must not contain tokens
 4. Test two instances with the same `extension_id`.
 5. Confirm Fire OS version and API level, then fix `minSdk`.
 6. Confirm Roon's current extension menu path.
+
+## 7. Phase 1 results (observed on the real Core, Roon 2.73 build 1700)
+
+| Open point | Result |
+|---|---|
+| Behaviour of `register` before "Enable" | **[verified live]** The Core sends no reply at all (no `Pending`, no error). The only traffic is `com.roonlabs.ping:1/ping` requests from the Core. The connection stays open for at least 10 minutes. The client therefore shows "awaiting authorization" when `register` is unanswered for 2 s. |
+| Verb of `Registered` | **[verified live]** `CONTINUE Registered` (about 20 s after the user pressed Enable). Body: `core_id`, `display_name`, `display_version`, `token`, `provided_services` (`transport:2`, `image:1`), `http_port`, `extension_host` (our own address as seen by the Core). `COMPLETE` is also accepted by the client. |
+| Core ping | **[verified live]** The Core sends `com.roonlabs.ping:1/ping` (`Logging: quiet`) every 2 s; we answer `COMPLETE Success` with the same Request-Id. |
+| Token reuse | **[verified live]** A second run with the stored token is answered with `Registered` immediately, with no new authorization and no new Roon prompt. The Core returns a token in every `Registered`. |
+| Roon menu path | **[verified]** Roon for Mac 2.73: "Settings -> Extensions". |
+| `three_line` mapping | **[verified live]** `line1` = title, `line2` = artist(s) (joined with " / "), `line3` = album. `two_line` = title / artist, `one_line.line1` = "title - artist". |
+| Message right after `Subscribed` | **[verified live]** The Core sends a `Changed` with `zones_added` for all zones immediately after `Subscribed`. The reducer handles it (replaces entries). |
+| Zone fields beyond the doc | `queue_items_remaining`, `settings`, `artist_image_keys`, `outputs[].volume`, `outputs[].source_controls` are present and ignored. A stopped zone without queue has no `now_playing` and `is_play_allowed=false`: it cannot be started from an extension (no browse API). |
+| Image over HTTP without auth | **[verified live]** `GET http://<core>:9330/api/image/<key>?scale=fit&width=300&height=300` returns 200 `image/jpeg` (61437 bytes) without any token. An unknown key returns 404. |
+| Image over MOO | **[verified live]** `image:1/get_image` returns `COMPLETE Success` with `image/jpeg`, same size as via HTTP. For an unknown key the Core sends **no reply** (client timeout). Decision: use the HTTP URL (Coil), with 404 as the clean "missing cover" signal. |
+| `zones_seek_changed` rate | **[unverified]** Not measured: no zone was playing during the session and the test zone cannot be started by an extension. Measure with `roon-cli watch --zone <test zone> --duration 30` once something plays there. |
+| Two instances with the same `extension_id` | **[unverified]** Still open. |
+| Multicast on Fire OS | **[unverified]** Needs the device. |
+| Fire OS / API level | User-provided: Fire TV Stick HD (1st gen.), Fire OS 7.7.1.7 (API 28 expected, to verify with `getprop`). minSdk 28. This device is a 1080p stick, not a 4K stick. |
+
+Fixtures: `roon-client/src/test/resources/fixtures/` (see its README for recorded vs derived files).
+
+### CLI notes
+- Config and token live in `$ROOMSCREEN_CLI_CONFIG`, else `$XDG_CONFIG_HOME/roomscreen-cli`, else `$HOME/.config/roomscreen-cli` (the JVM `user.home` is not usable in the container: uid without passwd entry gives `?`).
+- Control commands only act on `$ROON_TEST_ZONE` and only if the zone reports the control as allowed.
