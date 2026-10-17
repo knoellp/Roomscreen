@@ -7,6 +7,7 @@ kotlin { jvmToolchain(17) }
 
 dependencies {
     implementation(project(":roon-client"))
+    implementation(project(":lyrics"))
 }
 
 application {

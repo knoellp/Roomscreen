@@ -15,4 +15,4 @@ dependencyResolutionManagement {
     }
 }
 
-include(":roon-client", ":roon-cli", ":app")
+include(":roon-client", ":lyrics", ":roon-cli", ":app")
