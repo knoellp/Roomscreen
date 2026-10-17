@@ -25,6 +25,11 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.tv.material3.Text
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.tv.material3.MaterialTheme
@@ -127,6 +132,19 @@ class ScreenshotTest {
 
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
     fun nowPlayingControlsGerman() = nowPlaying("6g-now-playing-controls-de", bar = true, zone = playing.copy(state = "paused"))
+
+    @Test fun viaRoonVariants() = shot("via-roon-variants") {
+        Column(Modifier.fillMaxSize().background(Color(0xFF161B22)).padding(32.dp), verticalArrangement = Arrangement.spacedBy(28.dp)) {
+            listOf("1 Quicksand" to ViaRoonFont.QUICKSAND, "2 Nunito" to ViaRoonFont.NUNITO, "3 Comfortaa" to ViaRoonFont.COMFORTAA).forEach { (label, f) ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, color = Color.White, fontSize = 28.sp, modifier = Modifier.width(280.dp))
+                    Box(Modifier.size(width = 560.dp, height = 110.dp)) {
+                        ViaRoon(Modifier.graphicsLayer(scaleX = 4f, scaleY = 4f, transformOrigin = TransformOrigin(0f, 0f)).padding(8.dp), f)
+                    }
+                }
+            }
+        }
+    }
 
     @Test fun settings() = shot("7-settings") { SettingsScreen(AppSettings(), "192.168.1.194:9330", {}, {}, {}) }
 

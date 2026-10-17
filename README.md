@@ -110,3 +110,6 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 Privacy: the app stores only the Roon token, the Core address, the chosen zone and the display settings, locally.
 
 License: Apache-2.0.
+
+Bundled fonts (SIL Open Font License 1.1, texts in `docs/fonts/`): Quicksand, Nunito and Comfortaa from
+https://github.com/google/fonts, used for the "roon" word of the "via roon" hint (Quicksand is the default).
