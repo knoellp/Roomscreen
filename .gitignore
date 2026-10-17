@@ -20,3 +20,4 @@ out/
 # Safety net: JVM user.home can be "?" when the container uid has no passwd entry
 ?/
 config/debug-keystore-fingerprint.txt
+docs/*.png

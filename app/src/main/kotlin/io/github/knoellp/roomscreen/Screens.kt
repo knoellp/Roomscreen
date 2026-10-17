@@ -21,6 +21,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -133,17 +135,28 @@ private fun stateLabel(state: String) = stringResource(
     },
 )
 
-/** Screen 4: zone list. Selecting a zone only stores the choice. */
+/** Screen 4: zone list. Selecting a zone only stores the choice. The current zone (if any) is marked and focused first. */
 @Composable
-fun ZoneListScreen(zones: List<Zone>, onSelect: (Zone) -> Unit) = Page {
+fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (Zone) -> Unit) = Page {
+    val currentFocus = remember { FocusRequester() }
+    LaunchedEffect(currentZoneId) {
+        if (currentZoneId != null) runCatching { currentFocus.requestFocus() }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Title(stringResource(R.string.zones_title))
         LazyColumn(Modifier.width(800.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(zones, key = { it.zoneId }) { zone ->
-                Button(onClick = { onSelect(zone) }, modifier = Modifier.fillMaxWidth()) {
+                val isCurrent = zone.zoneId == currentZoneId
+                Button(
+                    onClick = { onSelect(zone) },
+                    modifier = Modifier.fillMaxWidth().then(if (isCurrent) Modifier.focusRequester(currentFocus) else Modifier),
+                ) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(zone.displayName, fontSize = 28.sp)
-                        Text(stateLabel(zone.state), fontSize = 22.sp)
+                        Text((if (isCurrent) "● " else "") + zone.displayName, fontSize = 28.sp)
+                        Text(
+                            stateLabel(zone.state) + if (isCurrent) " · " + stringResource(R.string.zones_current) else "",
+                            fontSize = 22.sp,
+                        )
                     }
                 }
             }
@@ -162,10 +175,28 @@ fun MissingZoneScreen(onContinue: () -> Unit, autoContinueMs: Long = 4000) = Pag
     }
 }
 
-/** Screen 6: minimal now playing (cover, title, artist, album). */
+/** How long the Zones button stays visible after the last remote key event. */
+private const val BUTTON_VISIBLE_MS = 5000L
+
+/** Screen 6: minimal now playing. The Zones button appears on any remote input and hides after a few seconds. */
 @Composable
-fun NowPlayingScreen(zone: Zone, coverUrl: String?) = Page {
+fun NowPlayingScreen(zone: Zone, coverUrl: String?, lastInputMs: Long, onZones: () -> Unit) {
+    var showButton by remember { mutableStateOf(false) }
+    LaunchedEffect(lastInputMs) {
+        if (lastInputMs > 0) {
+            showButton = true
+            delay(BUTTON_VISIBLE_MS)
+            showButton = false
+        }
+    }
+    NowPlayingContent(zone, coverUrl, showButton, onZones)
+}
+
+@Composable
+fun NowPlayingContent(zone: Zone, coverUrl: String?, showButton: Boolean, onZones: () -> Unit) = Page {
     val lines = zone.nowPlaying?.threeLine
+    val buttonFocus = remember { FocusRequester() }
+    LaunchedEffect(showButton) { if (showButton) runCatching { buttonFocus.requestFocus() } }
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(400.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1C2833))) {
             if (coverUrl != null) {
@@ -184,6 +215,11 @@ fun NowPlayingScreen(zone: Zone, coverUrl: String?) = Page {
                 Spacer(Modifier.height(24.dp))
                 Text("${zone.displayName} · ${stateLabel(zone.state)}", fontSize = 22.sp, color = Color(0xFF9DA7B3))
             }
+        }
+    }
+    if (showButton) {
+        Button(onClick = onZones, modifier = Modifier.align(Alignment.TopEnd).focusRequester(buttonFocus)) {
+            Text(stringResource(R.string.zones_button))
         }
     }
 }

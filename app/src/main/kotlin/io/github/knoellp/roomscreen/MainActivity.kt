@@ -19,6 +19,11 @@ class MainActivity : ComponentActivity() {
         setContent { MaterialTheme(colorScheme = darkColorScheme()) { Root(viewModel) } }
     }
 
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        viewModel.onRemoteInput()
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onStart() { super.onStart(); viewModel.connect() }
 
     override fun onStop() { viewModel.disconnect(); super.onStop() }
@@ -29,6 +34,7 @@ private fun Root(vm: MainViewModel) {
     val screen by vm.screen.collectAsState()
     val test by vm.testResult.collectAsState()
     val saved by vm.savedEndpoint.collectAsState()
+    val lastInput by vm.lastInput.collectAsState()
     when (val s = screen) {
         is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual)
         Screen.Manual -> {
@@ -36,11 +42,11 @@ private fun Root(vm: MainViewModel) {
             ManualEntryScreen(saved?.host ?: "", saved?.port ?: 9330, test, vm::testConnection, vm::closeManual)
         }
         Screen.Authorization -> AuthorizationScreen(vm.extensionName)
-        is Screen.ZoneList -> ZoneListScreen(s.zones) { vm.selectZone(it.zoneId) }
-        Screen.MissingZone -> MissingZoneScreen(onContinue = vm::clearZone)
-        is Screen.NowPlaying -> {
-            BackHandler { vm.clearZone() }
-            NowPlayingScreen(s.zone, s.coverUrl)
+        is Screen.ZoneList -> {
+            if (s.currentZoneId != null) BackHandler { vm.closeZoneList() }
+            ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it.zoneId) }
         }
+        Screen.MissingZone -> MissingZoneScreen(onContinue = vm::clearZone)
+        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, lastInput, vm::openZoneList)
     }
 }

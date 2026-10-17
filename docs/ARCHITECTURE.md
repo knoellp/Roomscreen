@@ -307,3 +307,12 @@ Fixtures: `roon-client/src/test/resources/fixtures/` (see its README for recorde
 ### CLI notes
 - Config and token live in `$ROOMSCREEN_CLI_CONFIG`, else `$XDG_CONFIG_HOME/roomscreen-cli`, else `$HOME/.config/roomscreen-cli` (the JVM `user.home` is not usable in the container: uid without passwd entry gives `?`).
 - Control commands only act on `$ROON_TEST_ZONE` and only if the zone reports the control as allowed.
+
+### App findings (Fire TV Stick HD)
+- SOOD multicast discovery works on Fire OS 7 with `WifiManager.MulticastLock` held during discovery (found the Core in about 4 s, including the full discovery window).
+- Cover art: Coil loads the HTTP image URL (`/api/image/<key>?scale=fit&width=..&height=..`) without a token; cleartext HTTP needs `usesCleartextTraffic`.
+- Connect order: last known endpoint first (plain TCP probe, 1.5 s), discovery only if it is unreachable, same order on every reconnect attempt. Measured on the device: `endpoint=cached` 20 ms after start versus about 4 s with discovery; no `discovery=` log line.
+- A restart with a stored token registers immediately (`token_present=true`) with no authorization step.
+- Maestro on the Fire TV can drive the app with `pressKey: Remote Dpad Down/Center` and `Back`; text assertions work against the Compose UI.
+- Debug-keystore: `~/.android/debug.keystore` is reused across container runs (mounted), so `adb install -r` keeps working.
+- Build note: current AndroidX/Coil/OkHttp AARs require compileSdk 37 (targetSdk 36).

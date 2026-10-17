@@ -13,6 +13,7 @@ import io.github.knoellp.roomscreen.roon.ExtensionIdentity
 import io.github.knoellp.roomscreen.roon.Registry
 import io.github.knoellp.roomscreen.roon.RoonClient
 import io.github.knoellp.roomscreen.roon.image.ImageService
+import io.github.knoellp.roomscreen.roon.resolveEndpoint
 import io.github.knoellp.roomscreen.roon.moo.MooConnection
 import io.github.knoellp.roomscreen.roon.sood.SoodDiscovery
 import io.github.knoellp.roomscreen.roon.transport.Zone
@@ -40,6 +41,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val connection = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     private val zones = MutableStateFlow<Map<String, Zone>>(emptyMap())
     private val showManual = MutableStateFlow(false)
+    private val showZoneList = MutableStateFlow(false)
+    private val _lastInput = MutableStateFlow(0L)
+    /** Time of the last remote key event (ms); Now Playing shows the Zones button for a few seconds after it. */
+    val lastInput: StateFlow<Long> = _lastInput
     private val endpoint = MutableStateFlow<Endpoint?>(null)
 
     private val _testResult = MutableStateFlow<TestResult>(TestResult.Idle)
@@ -48,8 +53,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val savedEndpoint = MutableStateFlow<Endpoint?>(null)
 
     val screen: StateFlow<Screen> = combine(
-        connection, zones, prefs.zoneId, showManual, endpoint,
-    ) { conn, zoneMap, savedZone, manual, ep -> compute(conn, zoneMap, savedZone, manual, ep) }
+        connection, zones, prefs.zoneId, showManual, endpoint, showZoneList,
+    ) { v -> compute(v[0] as ConnectionState, @Suppress("UNCHECKED_CAST") (v[1] as Map<String, Zone>), v[2] as String?, v[3] as Boolean, v[4] as Endpoint?, v[5] as Boolean) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, Screen.Connecting(Status.Discovering))
 
     init {
@@ -57,7 +62,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { savedEndpoint.value = prefs.lastEndpoint() }
     }
 
-    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?): Screen {
+    private fun compute(conn: ConnectionState, zoneMap: Map<String, Zone>, savedZone: String?, manual: Boolean, ep: Endpoint?, listOpen: Boolean): Screen {
         if (manual) return Screen.Manual
         if (conn == ConnectionState.AwaitingAuthorization) return Screen.Authorization
         if (conn != ConnectionState.Connected) {
@@ -72,11 +77,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (zoneMap.isEmpty()) return Screen.Connecting(Status.LoadingZones)
         if (savedZone != null) {
             val zone = zoneMap[savedZone] ?: return Screen.MissingZone
+            if (listOpen) return Screen.ZoneList(sortedZones(zoneMap), savedZone)
             val cover = zone.nowPlaying?.imageKey?.let { key -> ep?.let { ImageService.httpUrl(it.host, it.port, key) } }
             return Screen.NowPlaying(zone, cover)
         }
-        return Screen.ZoneList(zoneMap.values.sortedBy { it.displayName })
+        return Screen.ZoneList(sortedZones(zoneMap))
     }
+
+    private fun sortedZones(zoneMap: Map<String, Zone>) =
+        zoneMap.values.sortedWith(compareBy(java.text.Collator.getInstance()) { it.displayName })
+
+    /** Called from the activity for every remote key event. */
+    fun onRemoteInput() { _lastInput.value = System.currentTimeMillis() }
 
     /** Called from onStart. Idempotent: never opens two connections. */
     fun connect() {
@@ -95,7 +107,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             client = c
             mirror = launch {
-                launch { c.state.collect { connection.value = it; log.info("conn state=$it") } }
+                launch {
+                    c.state.collect {
+                        connection.value = it
+                        log.info("conn state=$it")
+                        if (it == ConnectionState.Connected) c.lastEndpoint?.let { ep -> prefs.saveEndpoint(ep); savedEndpoint.value = ep }
+                    }
+                }
                 launch { c.zones.collect { onZones(it) } }
             }
             c.start(viewModelScope)
@@ -125,23 +143,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         log.info("zone count=${map.size}")
     }
 
-    /** Blocking; runs on Dispatchers.IO inside the client. Multicast lock only while discovering. */
+    /** Blocking; runs on Dispatchers.IO inside the client on every connect attempt. Cached endpoint first. */
     private fun discoverOrLastKnown(): Endpoint? {
+        val cached = kotlinx.coroutines.runBlocking { prefs.lastEndpoint() }
+        return resolveEndpoint(cached, log) { discoverWithMulticast() }
+    }
+
+    /** The multicast lock is held only while discovering. */
+    private fun discoverWithMulticast(): Endpoint? {
         val ctx = getApplication<Application>()
         val wifi = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
         val lock = wifi?.createMulticastLock("roomscreen-sood")?.also { it.setReferenceCounted(false); it.acquire() }
         try {
             val core = SoodDiscovery(log).discover().firstOrNull()
-            if (core != null) {
-                log.info("discovery result=found host=${core.host} port=${core.httpPort}")
-                return Endpoint(core.host, core.httpPort)
-            }
+            log.info("discovery result=${if (core != null) "found host=${core.host} port=${core.httpPort}" else "none"}")
+            return core?.let { Endpoint(it.host, it.httpPort) }
         } finally {
             lock?.release()
         }
-        val last = kotlinx.coroutines.runBlocking { prefs.lastEndpoint() }
-        log.info("discovery result=none fallback=${last?.let { "${it.host}:${it.port}" }}")
-        return last
     }
 
     @Volatile private var cachedIdentity: ExtensionIdentity? = null
@@ -163,7 +182,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- UI actions ----
 
-    fun selectZone(id: String) { viewModelScope.launch { prefs.setZone(id); log.info("zone selected id=$id") } }
+    fun selectZone(id: String) { viewModelScope.launch { prefs.setZone(id); showZoneList.value = false; log.info("zone selected id=$id") } }
+    fun openZoneList() { showZoneList.value = true }
+    fun closeZoneList() { showZoneList.value = false }
     fun clearZone() { viewModelScope.launch { prefs.setZone(null) } }
     fun openManual() { showManual.value = true }
     fun closeManual() { showManual.value = false; _testResult.value = TestResult.Idle }

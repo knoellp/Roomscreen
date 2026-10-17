@@ -1,0 +1,19 @@
+# Zones button: any key shows it, Select opens the zone list, Back returns to the same zone.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Büro ·.*"
+    timeout: 60000
+- pressKey: Remote Dpad Down
+- extendedWaitUntil:
+    visible: "(Zones|Zonen)"
+    timeout: 5000
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "(Choose a zone|Zone wählen)"
+    timeout: 10000
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Büro ·.*"
+    timeout: 10000

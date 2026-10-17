@@ -42,7 +42,30 @@ sealed interface ConnectionState {
 data class ZoneEvent(val name: String, val body: JsonObject, val atMs: Long)
 
 /** Where to connect. If [fixed] is null the Core is discovered via SOOD. */
-data class Endpoint(val host: String, val port: Int)
+data class Endpoint(val host: String, val port: Int) {
+    /** Plain TCP connect probe; blocking. */
+    fun isReachable(timeoutMs: Int = 1500): Boolean = try {
+        java.net.Socket().use { it.connect(java.net.InetSocketAddress(host, port), timeoutMs) }
+        true
+    } catch (_: java.io.IOException) {
+        false
+    }
+}
+
+/**
+ * Cached endpoint first: if [cached] accepts a TCP connection it is used and [discover] is not
+ * called (no multicast needed). Otherwise [discover] runs. Blocking; called on every connect attempt.
+ */
+fun resolveEndpoint(cached: Endpoint?, logger: Logger, probeTimeoutMs: Int = 1500, discover: () -> Endpoint?): Endpoint? {
+    if (cached != null) {
+        if (cached.isReachable(probeTimeoutMs)) {
+            logger.info("endpoint=cached host=${cached.host} port=${cached.port}")
+            return cached
+        }
+        logger.info("endpoint=cached_unreachable host=${cached.host} port=${cached.port}")
+    }
+    return discover()
+}
 
 class RoonClient(
     private val identity: ExtensionIdentity,

@@ -195,4 +195,30 @@ class RoonClientFakeCoreTest {
         assertEquals("Success", core.pingReplies.first().name)
         c.stop()
     }
+
+    private fun sood() = SoodDiscovery(port = core.soodPort, multicastGroup = "127.0.0.1", useBroadcast = false)
+        .discover(timeoutMs = 1500, rounds = 1).firstOrNull()?.let { Endpoint(core.host, it.httpPort) }
+
+    @Test
+    fun `reachable cached endpoint is used without discovery`() {
+        val cached = Endpoint(core.host, core.port)
+        var discoveries = 0
+        val result = resolveEndpoint(cached, Logger.None) { discoveries++; sood() }
+        assertEquals(cached, result)
+        assertEquals(0, discoveries)
+        assertEquals(0, core.soodQueries)
+    }
+
+    @Test
+    fun `unreachable cached endpoint falls back to discovery`() {
+        val dead = java.net.ServerSocket(0).use { Endpoint("127.0.0.1", it.localPort) } // closed again
+        val result = resolveEndpoint(dead, Logger.None, probeTimeoutMs = 500) { sood() }
+        assertEquals(Endpoint(core.host, core.port), result)
+        assertTrue(core.soodQueries >= 1)
+    }
+
+    @Test
+    fun `without a cached endpoint discovery runs`() {
+        assertEquals(Endpoint(core.host, core.port), resolveEndpoint(null, Logger.None) { sood() })
+    }
 }

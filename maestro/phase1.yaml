@@ -1,0 +1,31 @@
+# Phase 1 device flow: make sure zone "Büro" is selected via the D-pad and now playing is shown.
+# Zones are sorted with German collation: Bad, Büro, Fernseher, Kamin, ...
+# Selecting a zone only stores the choice; nothing is sent to Roon.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "(Büro ·.*|Choose a zone|Zone wählen)"
+    timeout: 60000
+# First start (no saved zone): the list opens directly.
+- runFlow:
+    when:
+      visible: "(Choose a zone|Zone wählen)"
+    commands:
+      - pressKey: Remote Dpad Down
+      - pressKey: Remote Dpad Down
+      - pressKey: Remote Dpad Center
+# A zone is already saved: open the list through the Zones button; the current zone has focus.
+- runFlow:
+    when:
+      notVisible: "(Choose a zone|Zone wählen)"
+    commands:
+      - pressKey: Remote Dpad Down
+      - pressKey: Remote Dpad Center
+      - extendedWaitUntil:
+          visible: "(Choose a zone|Zone wählen)"
+          timeout: 10000
+      - pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Büro ·.*"
+    timeout: 15000

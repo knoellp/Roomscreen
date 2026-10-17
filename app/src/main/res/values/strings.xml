@@ -36,4 +36,6 @@
 
     <string name="now_playing_nothing">Nothing is playing in this zone.</string>
     <string name="now_playing_unknown">Unknown</string>
+    <string name="zones_button">Zones</string>
+    <string name="zones_current">current</string>
 </resources>

@@ -46,6 +46,7 @@ class FakeCore(
     private val waitingRegistrations = CopyOnWriteArrayList<Pair<WebSocket, Long>>()
     private val subscribers = CopyOnWriteArrayList<Pair<WebSocket, Long>>()
     @Volatile var connections = 0
+    @Volatile var soodQueries = 0
 
     val port: Int get() = server.port
     val host: String get() = server.hostName
@@ -63,6 +64,7 @@ class FakeCore(
                 try { udp.receive(p) } catch (_: java.io.IOException) { return@thread }
                 val q = SoodCodec.decode(p.data, p.length) ?: continue
                 if (q.type != 'Q') continue
+                soodQueries++
                 val reply = SoodCodec.encode('R', linkedMapOf(
                     "name" to "Fake Core", "display_version" to "0", "unique_id" to coreId,
                     "service_id" to SoodDiscovery.CORE_SERVICE_ID, "tcp_port" to "1",

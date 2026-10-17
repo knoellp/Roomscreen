@@ -53,9 +53,13 @@ class ScreenshotTest {
 
     @Test fun missingZone() = shot("5-missing-zone") { MissingZoneScreen(onContinue = {}, autoContinueMs = 600_000) }
 
-    @Test fun nowPlaying() = shot("6-now-playing") { NowPlayingScreen(playing, null) }
+    @Test fun nowPlaying() = shot("6-now-playing") { NowPlayingContent(playing, null, showButton = false) {} }
 
-    @Test fun nowPlayingEmptyZone() = shot("6b-now-playing-empty") { NowPlayingScreen(zones[2], null) }
+    @Test fun nowPlayingWithZonesButton() = shot("6c-now-playing-zones-button") { NowPlayingContent(playing, null, showButton = true) {} }
+
+    @Test fun zoneListCurrentMarked() = shot("4b-zone-list-current") { ZoneListScreen(zones, currentZoneId = "z1") {} }
+
+    @Test fun nowPlayingEmptyZone() = shot("6b-now-playing-empty") { NowPlayingContent(zones[2], null, showButton = false) {} }
 
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
     fun authorizationGerman() = shot("3-authorization-de") { AuthorizationScreen("Roomscreen (Fire TV)") }
