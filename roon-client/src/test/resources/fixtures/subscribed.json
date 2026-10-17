@@ -1,0 +1,196 @@
+{
+ "zones": [
+  {
+   "zone_id": "16011765cc8da8367e61b6b5dab3934af6e3",
+   "display_name": "Schlafzimmer",
+   "outputs": [
+    {
+     "output_id": "17011765cc8da8367e61b6b5dab3934af6e3",
+     "zone_id": "16011765cc8da8367e61b6b5dab3934af6e3",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Schlafzimmer",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 11,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Schlafzimmer",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "paused",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": false,
+   "is_play_allowed": true,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 14,
+   "queue_time_remaining": 5371,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 29,
+    "length": 84,
+    "one_line": {
+     "line1": "Echo45, We Are! - Nightmares on Wax / Oscar Jerome"
+    },
+    "two_line": {
+     "line1": "Echo45, We Are!",
+     "line2": "Nightmares on Wax / Oscar Jerome"
+    },
+    "three_line": {
+     "line1": "Echo45, We Are!",
+     "line2": "Nightmares on Wax / Oscar Jerome",
+     "line3": "Echo45 Sound System"
+    },
+    "image_key": "31d6bb4e3b3a0f3f8c7782ee1177511b",
+    "artist_image_keys": [
+     "10b5b1d82bea72abdec1d160b6893de6",
+     "0ff78ed3ce474637001fb2c1ab4ae0ff"
+    ]
+   }
+  },
+  {
+   "zone_id": "16013ab75efd324893701b89290cfd38c18d",
+   "display_name": "Kamin",
+   "outputs": [
+    {
+     "output_id": "17013ab75efd324893701b89290cfd38c18d",
+     "zone_id": "16013ab75efd324893701b89290cfd38c18d",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Kamin",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 47,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Kamin",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "paused",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": false,
+   "is_play_allowed": true,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 1,
+   "queue_time_remaining": 63,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 194,
+    "length": 257,
+    "one_line": {
+     "line1": "Always The Same (feat. St. Vincent) - Cate Le Bon / St. Vincent"
+    },
+    "two_line": {
+     "line1": "Always The Same (feat. St. Vincent)",
+     "line2": "Cate Le Bon / St. Vincent"
+    },
+    "three_line": {
+     "line1": "Always The Same (feat. St. Vincent)",
+     "line2": "Cate Le Bon / St. Vincent",
+     "line3": "Always The Same (feat. St. Vincent)"
+    },
+    "image_key": "3ce6017ddf482868dc45e5d01b06311d",
+    "artist_image_keys": [
+     "b9a11a9293597cbe02a853b5559968e2",
+     "3afce47e522a115506170b00d31d649f"
+    ]
+   }
+  },
+  {
+   "zone_id": "1601f6209616cb1d834da79777512205aa78",
+   "display_name": "Büro",
+   "outputs": [
+    {
+     "output_id": "1701f6209616cb1d834da79777512205aa78",
+     "zone_id": "1601f6209616cb1d834da79777512205aa78",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Büro",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 16,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Büro",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "stopped",
+   "is_next_allowed": false,
+   "is_previous_allowed": false,
+   "is_pause_allowed": false,
+   "is_play_allowed": false,
+   "is_seek_allowed": false,
+   "queue_items_remaining": 0,
+   "queue_time_remaining": 0,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   }
+  }
+ ]
+}

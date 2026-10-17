@@ -2,7 +2,11 @@ package io.github.knoellp.roomscreen.roon.fake
 
 import io.github.knoellp.roomscreen.roon.moo.MooMessage
 import io.github.knoellp.roomscreen.roon.moo.MooVerb
+import io.github.knoellp.roomscreen.roon.sood.SoodCodec
+import io.github.knoellp.roomscreen.roon.sood.SoodDiscovery
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.concurrent.thread
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -17,24 +21,23 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 
 /**
- * A scripted Roon Core: a MockWebServer WebSocket on /api that speaks hand-written MOO replies.
- * The messages are based on the protocol sources, not on recordings; replace them with recorded
- * fixtures once available. Not covered yet: the SOOD UDP responder (SoodDiscovery uses fixed port 9003).
+ * A scripted Roon Core: a MockWebServer WebSocket on /api that replays message bodies from
+ * `resources/fixtures` (see the README there for which are recorded and which derived), plus a
+ * SOOD UDP responder on a local port.
+ * Behaviour recorded from the real Core: before "Enable" the Core does not answer `register` at all
+ * (it only pings every 2 s); afterwards `Registered` arrives as CONTINUE.
  */
 class FakeCore(
-    val coreId: String = "fake-core-id",
-    /** Zones sent in `Subscribed`, as a JSON array text. */
-    var zonesJson: String = """[{"zone_id":"z1","display_name":"Büro","state":"playing","is_pause_allowed":true,
-        "now_playing":{"seek_position":1,"length":200,"image_key":"img1","three_line":{"line1":"Song","line2":"Artist","line3":"Album"}}}]""",
+    val coreId: String = Fixtures.json("info.json")["core_id"]!!.jsonPrimitive.content,
 ) {
-    private val server = MockWebServer()
+    private var server = MockWebServer()
     private val sockets = CopyOnWriteArrayList<WebSocket>()
 
     /** The token this Core hands out and accepts. */
-    val token = "fake-token-1"
+    val token = "FIXTURE-TOKEN"
     /** If true, `register` without a valid token stays unanswered (except `Pending`) until [enable]. */
     @Volatile var requireEnable = true
-    @Volatile var pendingMessage = true
+    @Volatile var pendingMessage = false
     @Volatile var registeredVerb = MooVerb.CONTINUE
 
     val registerTokens = CopyOnWriteArrayList<String?>()
@@ -47,17 +50,55 @@ class FakeCore(
     val port: Int get() = server.port
     val host: String get() = server.hostName
 
+    /** UDP port of the SOOD responder (valid after [start]). */
+    val soodPort: Int get() = udp.localPort
+    private val udp = java.net.DatagramSocket(0, java.net.InetAddress.getByName("127.0.0.1"))
+
     fun start() {
-        server.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest): MockResponse {
-                connections++
-                return MockResponse.Builder().webSocketUpgrade(Listener()).build()
+        startServer(0)
+        thread(isDaemon = true, name = "fake-sood") {
+            val buf = ByteArray(2048)
+            while (!udp.isClosed) {
+                val p = java.net.DatagramPacket(buf, buf.size)
+                try { udp.receive(p) } catch (_: java.io.IOException) { return@thread }
+                val q = SoodCodec.decode(p.data, p.length) ?: continue
+                if (q.type != 'Q') continue
+                val reply = SoodCodec.encode('R', linkedMapOf(
+                    "name" to "Fake Core", "display_version" to "0", "unique_id" to coreId,
+                    "service_id" to SoodDiscovery.CORE_SERVICE_ID, "tcp_port" to "1",
+                    "http_port" to server.port.toString(), "https_port" to "2", "_tid" to q.props["_tid"]))
+                udp.send(java.net.DatagramPacket(reply, reply.size, p.socketAddress))
             }
         }
-        server.start()
     }
 
-    fun stop() { server.close() }
+    /** Full Core restart: all connections die and the server comes back on a new port (found again via discovery). */
+    fun restart() {
+        // Shut the server first so a client cannot reconnect to the dying instance.
+        server.close()
+        sockets.clear(); subscribers.clear(); waitingRegistrations.clear()
+        startServer(0)
+    }
+
+    private fun startServer(port: Int) {
+        var attempts = 0
+        while (true) {
+            // A MockWebServer is unusable after a failed bind, so each attempt gets a fresh instance.
+            server = MockWebServer()
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    connections++
+                    return MockResponse.Builder().webSocketUpgrade(Listener()).build()
+                }
+            }
+            try { server.start(port); break } catch (e: java.net.BindException) {
+                if (++attempts > 50) throw e
+                Thread.sleep(100)
+            }
+        }
+    }
+
+    fun stop() { server.close(); udp.close() }
 
     /** Simulates the user pressing "Enable" in Roon. */
     fun enable() {
@@ -70,6 +111,9 @@ class FakeCore(
         sockets.forEach { it.close(1001, "core restarting") }
         sockets.clear(); subscribers.clear(); waitingRegistrations.clear()
     }
+
+    /** Pushes the body of a fixture file as a `Changed` message. */
+    fun pushFixture(name: String) = pushChanged(Fixtures.text(name))
 
     /** Pushes a `Changed` message to every zone subscriber. */
     fun pushChanged(bodyJson: String) {
@@ -88,7 +132,7 @@ class FakeCore(
 
     private fun sendRegistered(ws: WebSocket, id: Long) {
         send(ws, registeredVerb, "Registered", id,
-            """{"core_id":"$coreId","display_name":"Fake Core","display_version":"0","token":"$token","http_port":$port}""")
+            Fixtures.text("registered.json"))
     }
 
     private inner class Listener : WebSocketListener() {
@@ -103,7 +147,7 @@ class FakeCore(
             val body: JsonObject? = msg.json()
             when (msg.name) {
                 "com.roonlabs.registry:1/info" -> send(webSocket, MooVerb.COMPLETE, "Success", msg.requestId,
-                    """{"core_id":"$coreId","display_name":"Fake Core","display_version":"0"}""")
+                    Fixtures.text("info.json"))
                 "com.roonlabs.registry:1/register" -> {
                     val presented = (body?.get("token") as? JsonPrimitive)?.content
                     registerTokens += presented
@@ -115,11 +159,18 @@ class FakeCore(
                 }
                 "com.roonlabs.transport:2/subscribe_zones" -> {
                     subscribers += webSocket to msg.requestId
-                    send(webSocket, MooVerb.CONTINUE, "Subscribed", msg.requestId, """{"zones":$zonesJson}""")
+                    send(webSocket, MooVerb.CONTINUE, "Subscribed", msg.requestId, Fixtures.text("subscribed.json"))
                 }
                 "com.roonlabs.transport:2/control" -> send(webSocket, MooVerb.COMPLETE, "Success", msg.requestId, null)
                 else -> send(webSocket, MooVerb.COMPLETE, "InvalidRequest", msg.requestId, """{"error":"unknown"}""")
             }
         }
     }
+}
+
+object Fixtures {
+    fun text(name: String): String =
+        FakeCore::class.java.getResourceAsStream("/fixtures/$name")!!.readBytes().decodeToString()
+
+    fun json(name: String): JsonObject = Json.parseToJsonElement(text(name)) as JsonObject
 }

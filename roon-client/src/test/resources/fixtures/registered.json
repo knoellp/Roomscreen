@@ -1,0 +1,12 @@
+{
+ "core_id": "b4fe5d4d-cdc1-45b6-8818-01a39eda3309",
+ "display_name": "Roon Optimized Core Kit",
+ "display_version": "2.73 (build 1700) production",
+ "token": "FIXTURE-TOKEN",
+ "provided_services": [
+  "com.roonlabs.transport:2",
+  "com.roonlabs.image:1"
+ ],
+ "http_port": 9330,
+ "extension_host": "192.0.2.1"
+}

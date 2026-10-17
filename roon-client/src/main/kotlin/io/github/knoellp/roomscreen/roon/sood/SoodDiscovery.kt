@@ -28,7 +28,13 @@ data class DiscoveredCore(
  * broadcast address, and collects replies. Replies are de-duplicated by `unique_id`.
  * Blocking; call from a background thread.
  */
-class SoodDiscovery(private val logger: Logger = Logger.None) {
+class SoodDiscovery(
+    private val logger: Logger = Logger.None,
+    /** Overridable so tests can talk to a local responder instead of the real SOOD port and group. */
+    private val port: Int = PORT,
+    private val multicastGroup: String = MULTICAST_GROUP,
+    private val useBroadcast: Boolean = true,
+) {
 
     fun discover(timeoutMs: Long = 4000, rounds: Int = 3): List<DiscoveredCore> {
         val found = ConcurrentHashMap<String, DiscoveredCore>()
@@ -66,8 +72,8 @@ class SoodDiscovery(private val logger: Logger = Logger.None) {
             socket.networkInterface = nif
             socket.soTimeout = 200
             val targets = buildList {
-                add(InetAddress.getByName(MULTICAST_GROUP))
-                nif.interfaceAddresses.mapNotNullTo(this) { it.broadcast }
+                add(InetAddress.getByName(multicastGroup))
+                if (useBroadcast) nif.interfaceAddresses.mapNotNullTo(this) { it.broadcast }
             }
             val buf = ByteArray(65535)
             val roundNanos = 1_000_000_000L
@@ -76,7 +82,7 @@ class SoodDiscovery(private val logger: Logger = Logger.None) {
             while (System.nanoTime() < deadline) {
                 if (sent < rounds && System.nanoTime() >= nextSend) {
                     for (target in targets) {
-                        runCatching { socket.send(DatagramPacket(query, query.size, target, PORT)) }
+                        runCatching { socket.send(DatagramPacket(query, query.size, target, port)) }
                             .onFailure { logger.debug("discovery=send_failed iface=${nif.name} target=${target.hostAddress}") }
                     }
                     sent++

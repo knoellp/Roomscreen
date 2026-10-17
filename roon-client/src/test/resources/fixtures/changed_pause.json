@@ -1,0 +1,75 @@
+{
+ "zones_changed": [
+  {
+   "zone_id": "16011765cc8da8367e61b6b5dab3934af6e3",
+   "display_name": "Schlafzimmer",
+   "outputs": [
+    {
+     "output_id": "17011765cc8da8367e61b6b5dab3934af6e3",
+     "zone_id": "16011765cc8da8367e61b6b5dab3934af6e3",
+     "can_group_with_output_ids": [
+      "1701f6209616cb1d834da79777512205aa78",
+      "1701f65cdd28631b8ff80f20255a6e62c633",
+      "17015a6c4b3e0e635edb7add08a5751366df",
+      "17011765cc8da8367e61b6b5dab3934af6e3",
+      "17013ab75efd324893701b89290cfd38c18d"
+     ],
+     "display_name": "Schlafzimmer",
+     "volume": {
+      "type": "number",
+      "min": 0,
+      "max": 100,
+      "value": 11,
+      "step": 1,
+      "is_muted": false,
+      "hard_limit_min": 0,
+      "hard_limit_max": 100,
+      "soft_limit": 100
+     },
+     "source_controls": [
+      {
+       "control_key": "1",
+       "display_name": "Schlafzimmer",
+       "supports_standby": false,
+       "status": "indeterminate"
+      }
+     ]
+    }
+   ],
+   "state": "paused",
+   "is_next_allowed": true,
+   "is_previous_allowed": true,
+   "is_pause_allowed": false,
+   "is_play_allowed": true,
+   "is_seek_allowed": true,
+   "queue_items_remaining": 14,
+   "queue_time_remaining": 5371,
+   "settings": {
+    "loop": "disabled",
+    "shuffle": false,
+    "auto_radio": true
+   },
+   "now_playing": {
+    "seek_position": 0,
+    "length": 215,
+    "one_line": {
+     "line1": "Next Song - Next Artist"
+    },
+    "two_line": {
+     "line1": "Next Song",
+     "line2": "Next Artist"
+    },
+    "three_line": {
+     "line1": "Next Song",
+     "line2": "Next Artist",
+     "line3": "Next Album"
+    },
+    "image_key": "aaaabbbbccccddddeeeeffff00001111",
+    "artist_image_keys": [
+     "10b5b1d82bea72abdec1d160b6893de6",
+     "0ff78ed3ce474637001fb2c1ab4ae0ff"
+    ]
+   }
+  }
+ ]
+}
