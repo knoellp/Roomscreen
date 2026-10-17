@@ -26,6 +26,10 @@ RUN curl -fsSL -o /tmp/maestro.zip https://github.com/mobile-dev-inc/maestro/rel
 
 WORKDIR /work
 
+# Current AndroidX/Coil/OkHttp AARs require compileSdk 37 (targetSdk stays 36).
+RUN sdkmanager "platforms;android-37.0" \
+    && chmod -R a+rX /opt/android-sdk
+
 # Container runs as the host user (see scripts/dock). Provide writable homes
 # for arbitrary uids so no root-owned files appear in the project or caches.
 ENV HOME=/home/dev

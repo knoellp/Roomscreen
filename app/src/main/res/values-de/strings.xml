@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Roomscreen</string>
+
+    <!-- Menu labels stay English: Roon's UI language may vary. -->
+    <string name="roon_menu_path">Settings → Extensions</string>
+
+    <string name="status_discovering">Roon Core wird gesucht…</string>
+    <string name="status_connecting">Verbinde…</string>
+    <string name="status_reconnecting">Verbindung verloren. Neuer Versuch (%1$d)…</string>
+    <string name="status_loading_zones">Zonen werden geladen…</string>
+    <string name="enter_manually">Adresse manuell eingeben</string>
+
+    <string name="manual_title">Manuell verbinden</string>
+    <string name="manual_host">Host oder IP-Adresse</string>
+    <string name="manual_port">Port</string>
+    <string name="manual_test">Verbindung testen</string>
+    <string name="manual_back">Zurück</string>
+    <string name="manual_testing">Teste…</string>
+    <string name="manual_ok">Verbunden mit %1$s (%2$s)</string>
+    <string name="manual_failed">Verbindung fehlgeschlagen: %1$s</string>
+    <string name="manual_invalid">Bitte Host und einen Port zwischen 1 und 65535 eingeben.</string>
+
+    <string name="auth_title">Roomscreen in Roon freigeben</string>
+    <string name="auth_body">Öffne Roon auf einem anderen Gerät und gehe zu %1$s. Suche \"%2$s\" und drücke \"Enable\". Dieser Bildschirm geht danach automatisch weiter.</string>
+
+    <string name="zones_title">Zone wählen</string>
+    <string name="zones_state_playing">Spielt</string>
+    <string name="zones_state_paused">Pausiert</string>
+    <string name="zones_state_loading">Lädt</string>
+    <string name="zones_state_stopped">Gestoppt</string>
+
+    <string name="missing_zone_title">Gespeicherte Zone nicht gefunden</string>
+    <string name="missing_zone_body">Die zuletzt genutzte Zone ist nicht verfügbar. Bitte wähle eine andere Zone.</string>
+    <string name="missing_zone_continue">Zone wählen</string>
+
+    <string name="now_playing_nothing">In dieser Zone läuft gerade nichts.</string>
+    <string name="now_playing_unknown">Unbekannt</string>
+</resources>

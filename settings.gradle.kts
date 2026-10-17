@@ -15,5 +15,4 @@ dependencyResolutionManagement {
     }
 }
 
-// The Android `app` module is added in a later step.
-include(":roon-client", ":roon-cli")
+include(":roon-client", ":roon-cli", ":app")
