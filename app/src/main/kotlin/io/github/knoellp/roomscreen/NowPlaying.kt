@@ -226,20 +226,16 @@ fun formatTime(totalSeconds: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }
 
-/** Candidate typefaces (variable fonts, instanced at weight 500) for the "roon" word. */
+/** Rounded geometric sans (Comfortaa, variable font pinned to weight 500) for the "roon" word. */
 @OptIn(ExperimentalTextApi::class)
-enum class ViaRoonFont(val family: FontFamily) {
-    QUICKSAND(FontFamily(Font(R.font.quicksand_medium, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))))),
-    NUNITO(FontFamily(Font(R.font.nunito_medium, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))))),
-    COMFORTAA(FontFamily(Font(R.font.comfortaa_medium, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))))),
-}
+private val ViaRoonFamily = FontFamily(Font(R.font.comfortaa_medium, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))))
 
 /** "via roon": text only, no logo. "via" small and grey, "roon" lower case in a rounded geometric sans, baseline aligned. */
 @Composable
-fun ViaRoon(modifier: Modifier = Modifier, font: ViaRoonFont = ViaRoonFont.QUICKSAND) {
+fun ViaRoon(modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         Text("via", fontSize = 14.sp, fontFamily = FontFamily.SansSerif, color = Color(0x99FFFFFF), modifier = Modifier.alignByBaseline())
-        Text("roon", fontSize = 19.sp, fontFamily = font.family, fontWeight = FontWeight.Medium, color = Color(0xCCFFFFFF), modifier = Modifier.alignByBaseline())
+        Text("roon", fontSize = 19.sp, fontFamily = ViaRoonFamily, fontWeight = FontWeight.Medium, color = Color(0xCCFFFFFF), modifier = Modifier.alignByBaseline())
     }
 }
 

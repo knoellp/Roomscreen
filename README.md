@@ -111,5 +111,5 @@ Privacy: the app stores only the Roon token, the Core address, the chosen zone a
 
 License: Apache-2.0.
 
-Bundled fonts (SIL Open Font License 1.1, texts in `docs/fonts/`): Quicksand, Nunito and Comfortaa from
-https://github.com/google/fonts, used for the "roon" word of the "via roon" hint (Quicksand is the default).
+Bundled font (SIL Open Font License 1.1, text in `docs/fonts/comfortaa-OFL.txt`): Comfortaa from
+https://github.com/google/fonts, used for the "roon" word of the "via roon" hint.
