@@ -10,7 +10,7 @@ service, no bridge and no WebView.
 
 Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHITECTURE.md`.
 
-## Status (Phase 3)
+## Status (Phase 4)
 
 | Area | Automated tests | Verified on device (Fire TV Stick HD, Fire OS 7.7.1.7, API 28) | Open |
 |---|---|---|---|
@@ -20,14 +20,19 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Zones, track change, pause, seek | recorded fixtures | now playing updates after a track change | - |
 | Cover art | - | shown (HTTP image URL, no auth needed) | missing-cover case only in tests |
 | Zone list, Zones button, saved zone | screenshots (Roborazzi) | Maestro flows `maestro/phase1*.yaml` | - |
-| Reconnect after Core restart | fake Core | not tried on the real Core | needs a Roon Server restart |
+| Reconnect after Core restart (acceptance criterion 10) | fake Core: socket close, server down for 3 attempts then up, full restart, silence watchdog, token rejected | **met on the real Core, 2026-10-18**: software restart of the ROCK (`/1/restartsoftware`) with Büro playing and with Büro paused; the app reconnected without any input, the zone was back 41 s after the connection dropped (Roon needs about 35 s to publish zones after it restarted); `scripts/phase4-resilience.sh`, `docs/ARCHITECTURE.md` section 10 | - |
+| Wi-Fi cut on the stick (20 s) | - | connection loss noticed at once, reconnect with backoff, Connected 29 s after the cut started (about 9 s after Wi-Fi was back), Now Playing correct | - |
+| Core address wrong or unreachable | fake Core (blackhole endpoint, discovery fallback) | manual address 192.0.2.1: after 5 failed attempts discovery found the Core again (84 s), hint "Core not reachable" after 20 s | - |
+| Lifecycle (Home key, Activity restart) | fake Core: start/stop/start never has two sockets open | Home, 3 s, start: one `websocket_open` and one `register_sent`; Home with immediate start: connection kept (`lifecycle=disconnect_cancelled`) | - |
+| Lyrics timing setting (-3.0 to +3.0 s) | `LyricsSyncTest`, `SettingsPrefsTest`, screenshot `7d-settings-offset` | +3 s moved the active line by one at once (`lyrics active=41 offset_ms=0` then `lyrics active=42 offset_ms=3000`), screenshots `p4-41-*` | - |
+| Soak, 2 hours, Büro playing, lyrics on, sharp artist image | - | **running, results pending** (`scripts/phase4-soak.sh`, log `build/device-artifacts/soak.log`) | see `docs/ARCHITECTURE.md` section 10 |
 | Manual host/port entry | screenshot only | not exercised | open |
 | Several devices with the same Roon | - | - | two installs not tested together |
 | Now Playing layout (blurred backdrop, info strip, cover, progress) | Roborazzi: playing, paused, stopped, no cover, long texts, German | screenshots on the device, 0.5 % janky frames over 60 s of playback | - |
 | Progress between the 1 Hz seek events | `ProgressInterpolatorTest` (10 cases) | bar and time follow playback (screenshots) | - |
 | Remote media keys (play/pause, rewind, fast forward, next, previous) | key mapping tests | Maestro `pressKey` (codes 85, 89, 90, 87, 88) and `adb input keyevent`; commands arrive at the Core | the physical Fire TV remote was not pressed |
 | Control bar (Zones, Settings, previous, play/pause, next) | screenshot | `maestro/phase2.yaml`: appears on input, hides after 5 s, D-pad navigation, focus ring | - |
-| Settings screen and persistence | `SettingsPrefsTest`, screenshots (EN, DE) | `maestro/phase2-settings.yaml`, value survives a force-stop and restart | "Screen on: only while playing" not exercised on the device |
+| Settings screen and persistence | `SettingsPrefsTest`, screenshots (EN, DE) | `maestro/phase2-settings.yaml`, value survives a force-stop and restart; "Screen on: only while playing" checked with `dumpsys power`: no `SCREEN_BRIGHT_WAKE_LOCK` for the app while Büro was paused, the lock came back when it played (setting restored to "Always") | - |
 | Artist image background | - | switched on in the settings, screenshot | - |
 | Sharp background and colour background | unit tests (crop, sharp decode size), Roborazzi screenshots `6i`, `6j`, `7c` | `p4-01-sharp-artist.png`, `p4-02-sharp-lyrics.png` (sharp artist image, lyrics readable), `p4-03-color-background.png` (flat anthracite, no gradient), `DUMP_STATE` shows `sharpness=SHARP` and `background=COLOR` / `ARTIST` | sharp mode: TOTAL PSS 128 MB before, 166 MB after 10 track changes, 154 MB 30 s later (soft mode: 136 to 138 MB after 10 changes); frame timing not measured |
 | "via roon" hint | screenshots | - (see below) | the user has to approve the look first |
@@ -35,15 +40,33 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Lyrics screens (synchronized, plain, none) | Roborazzi: `9-lyrics-synced`, `9b-lyrics-plain`, `9c-lyrics-none`, `6h-now-playing-controls-lyrics`, `9d-lyrics-none-de`, `7-settings`; `LyricsViewTest` (D-pad scroll of plain text) | synchronized view on the device (screenshots) | plain text and "No lyrics found" only in screenshots/tests (depends on the track Büro happens to play) |
 | Reconnect with "Search for Core again" | - | `maestro/phase2-connection.yaml`, log shows `endpoint=cache_skipped`, discovery, connected | - |
 
+Phase 4 (stability and polish): silence watchdog (30 s without a frame from the Core closes the connection), backoff capped at 30 s,
+rediscovery after 5 failed attempts, delayed disconnect (2 s) when the activity stops, evicted backdrop bitmaps are recycled, lyrics
+view without per-line text re-layout, dark scrim under the lyrics on sharp backgrounds, "Lyrics timing" setting, fading control bar,
+connection hint after 20 s. Measurements: `docs/ARCHITECTURE.md` section 10.
+
 Not implemented yet: Echo Show 15 (Live App Testing, touch layout), release signing.
+
+Not verified (Phase 4): the 2 hour soak result (running when this was written); the Maestro zone-list flow `maestro/phase1-zones.yaml` passes up to
+the zone name assertion with `-e ROON_TEST_ZONE=...` but its last step (title of the zone list) failed on the stick once and was not investigated;
+the Core was restarted only through the web UI's software restart, not a reboot of the machine; Wi-Fi cut tested once with playback running.
 
 Not verified (Phase 3): the plain-text lyrics view and the "No lyrics found" line were only checked in screenshots and tests, not on the
 device (they depend on which track Büro plays); the D-pad scrolling of plain text is covered by a Compose test only; the physical remote was not
-pressed; jank of the lyrics view was not measured; the German lyrics strings were seen on the device only for the button and the settings row.
+pressed; the German lyrics strings were seen on the device only for the button and the settings row.
 LRCLIB often answers 503 (overloaded): the app then shows the normal view and asks again at the next track, so on some tracks no text appears.
 Memory: with lyrics on, the total PSS after 10 track changes was 123 to 193 MB (lyrics off: 121 to 138 MB), mostly purgeable GPU cache; the plan's
 +-10 MB tolerance against Phase 2 is **not** met (details in `docs/ARCHITECTURE.md` section 9.5). Memory: after the image cache was capped to 8 MB, 20 track changes moved the total PSS by
 +3 to +13 MB after settling (two runs); the earlier uncapped cache grew by about 55 MB.
+
+## Acceptance criteria (version 1, `docs/PLAN.md` section 12)
+
+Criteria 1 to 9 were met in Phases 1 to 3 (see the table above). **Criterion 10 (reconnect after a restart of the Roon Server) is met since 2026-10-18**:
+the Roon software on the ROCK was restarted through its web UI (`POST /1/restartsoftware`, no reboot) twice, once while Büro played and once
+while it was paused. In both runs the app noticed the loss at once (`conn=websocket_failure error=EOFException`), reconnected without any
+input, re-registered with the stored token, and showed Now Playing for Büro again. Recovery time from the dropped connection to the zone
+shown again: 41 s (playing) and 41 s (paused); about 35 s of this is the Core itself, which accepts connections 5 s after the restart but
+publishes zones only after Roon has started up. Roon pauses playback when it restarts, so both runs ended with Büro paused.
 
 ## Remote control
 
@@ -65,7 +88,7 @@ The control bar has a **Lyrics** button (German: **Liedtexte**) right of Setting
 the last choice is remembered. The text comes from [LRCLIB](https://lrclib.net) and is looked up per track (title, artist,
 album, duration):
 
-- Synchronized text (`syncedLyrics`): the active line is white and bold in the vertical middle, neighbouring lines are dimmed,
+- Synchronized text (`syncedLyrics`): the active line is white and enlarged in the vertical middle, neighbouring lines are dimmed,
   the list moves when the line changes. The line appears 250 ms before its time stamp.
 - Plain text only: static text; D-pad up/down scrolls it.
 - Nothing found: the normal Now Playing view with a small dim line "No lyrics found" under the album.
@@ -90,6 +113,7 @@ Open **Settings** from the control bar; select changes a value, Back returns. Va
 | Screen on | always, only while playing |
 | Show "via roon" | on, off |
 | Lyrics (LRCLIB) | on, off (off: no requests to lrclib.net at all, no Lyrics button) |
+| Lyrics timing | 0 s (default), then -3.0 s to +3.0 s in 0.5 s steps (select cycles; shown only while LRCLIB is on). The offset is added to the playback position: **plus shows the lines earlier, minus later**. |
 | Core | shows the address; "Search for Core again" drops the manual address and runs discovery; "Switch zone" |
 
 The language follows the system (English, German). The "via roon" text is a plain text hint, not a Roon logo.
@@ -126,6 +150,7 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 `scripts/deploy-test.sh [--flow maestro/phase1.yaml]` does build, install, start, flow, screenshot and logcat in one go
 (set `FIRE_TV_IP` and `ROON_TEST_ZONE` in `config/local.env`, see `config/local.env.example`).
 `scripts/phase2-device.sh` and `scripts/phase2-perf.sh` run the Phase 2 flows and the jank/memory measurements (zone Büro only).
+`scripts/phase4-resilience.sh restart-playing|restart-paused|wifi|dead-host` (Core software restart, Wi-Fi cut, dead address), `scripts/phase4-perf.sh`, `scripts/phase4-jank.sh` (memory and jank) and `scripts/phase4-soak.sh` (2 h soak) are the Phase 4 device runs; they share `scripts/phase4-lib.sh`. The Core address always comes from the app's `DUMP_STATE`, never from a script constant.
 `scripts/phase3-device.sh` runs the Phase 3 lyrics flows (`maestro/phase3-*.yaml`), `scripts/phase3-mem.sh` and `scripts/phase3-gl.sh` the memory probes (zone Büro only; Büro ends paused).
 
 ## Development
@@ -137,7 +162,7 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 - `lyrics`: pure JVM module (LRC parser, line sync, query variants, LRCLIB client, cache), used by the app and the CLI.
 - `app`: the Android TV app. Debug builds accept broadcasts that must name the package (an implicit broadcast is
   silently dropped): `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_STATE`
-  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `SET_LYRICS` with `--es value on|off` (presses the Lyrics button; `DUMP_STATE` then shows `lyrics_on` and `lyrics`), `SET_LRCLIB` with `--es value on|off` (the "Lyrics (LRCLIB)" setting), `SET_SHARPNESS` with `--es value soft|sharp`, `SET_BACKGROUND` with `--es value cover|artist|color`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
+  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `SET_LYRICS` with `--es value on|off` (presses the Lyrics button; `DUMP_STATE` then shows `lyrics_on` and `lyrics`), `SET_LRCLIB` with `--es value on|off` (the "Lyrics (LRCLIB)" setting), `SET_LYRICS_OFFSET` with `--es value MS` (-3000 to 3000), `SET_SCREEN_ON` with `--es value always|playing`, `SET_SHARPNESS` with `--es value soft|sharp`, `SET_BACKGROUND` with `--es value cover|artist|color`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
 
 Privacy: the app stores only the Roon token, the Core address, the chosen zone and the display settings, locally.
 

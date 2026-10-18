@@ -1,6 +1,6 @@
 # Roomscreen Architecture
 
-Status: Phase 3 (sections 8 and 9). Sections 1-6 were written in Phase 0; section 7 records
+Status: Phase 4 (sections 8 to 10). Sections 1-6 were written in Phase 0; section 7 records
 what Phase 1 resolved against the real Core (2026-10-17). Items are marked **[verified]**
 (read in source and/or observed on the real Core in this repo's LAN),
 **[source-only]** (read in reference source, not yet observed on the wire) or
@@ -490,3 +490,103 @@ memory, 10 minutes. A corrupt file is deleted and treated as a miss. Verified on
 - Maestro on the stick reads the UI hierarchy slowly while the screen animates and the control bar hides 5 s after the last key, so the flows navigate the bar while Büro is paused, keep slow steps out of key sequences, and `scripts/phase3-device.sh` repeats a flow until DUMP_STATE shows its effect (`lyrics_on:true`, `lrclib=false/true`). Key sequences from the focused play button: Left x2 = Lyrics, Left x3 = Settings (with the Lyrics button), Left x2 = Settings (without it).
 - Debug broadcasts added: `SET_LYRICS` and `SET_LRCLIB` (value on|off); a manifest receiver needs the action in `app/src/debug/AndroidManifest.xml`, otherwise the broadcast is silently dropped.
 - The lyrics module only depends on `roon-client` (Logger, OkHttp, coroutines, serialization); the app passes its `versionName` for the User-Agent, the CLI passes `cli`.
+
+## 10. Phase 4: stability and polish
+
+### 10.1 Connection handling (roon-client)
+
+- **Silence watchdog** (`RoonClient.watchSilence`): `MooConnection` records the arrival time of every frame (also empty ones). The Core pings every
+  2 s, so 30 s without any frame means the link is dead (a half-open TCP connection that OkHttp's own 10 s WebSocket ping may not notice behind
+  some Wi-Fi/NAT states). The socket is then cancelled (`conn watchdog=silence seconds=30`), which runs the normal reconnect path. The limit is
+  a constructor parameter (`silenceTimeoutMs`); the FakeCore test uses 800 ms.
+- **Reconnect**: backoff 1 s, 2 s, 4 s, ... capped at 30 s with up to 20 % jitter; every reconnect registers again with the stored token and
+  sends `subscribe_zones` again; the zone map is cleared when a session ends and replaced by the new `Subscribed` list.
+- **Rediscovery**: with a cached endpoint (the app's default) `resolveEndpoint` probes it with a TCP connect and falls back to SOOD discovery on
+  every attempt (`endpoint=rediscover reason=unreachable`). With a fixed (manual) endpoint the same discovery runs after `rediscoverAfter` = 5 failed
+  attempts in a row (`endpoint=rediscover reason=unreachable attempts=5`), and the discovered address is saved by the app once connected.
+- **Timeouts are failed attempts**: `withTimeout` throws `TimeoutCancellationException`, a `CancellationException`. The reconnect loop used to
+  rethrow every `CancellationException`, so a connect timeout (an address that accepts nothing, found on the device with `SET_HOST 192.0.2.1`)
+  ended the loop silently and the app stayed on "Connecting" forever. The loop now treats a timeout as a failed attempt; `Registry.register`
+  throws a `RegistryException` instead of timing out. FakeCore test with a socket that accepts and never answers.
+- **Lost authorization**: a stale token gets no answer from the Core (verified in Phase 1: `register` stays unanswered before "Enable"), so the state
+  becomes `AwaitingAuthorization` after 2 s and stays there, without reconnecting; enabling the extension again completes the registration. FakeCore test.
+- **Lifecycle** (`MainViewModel.disconnectDelayed`): `onStop` closes the connection after 2 s, `onStart` within that time cancels it
+  (`lifecycle=disconnect_cancelled`). `connect()` stays idempotent. FakeCore test: stop/start/stop/start leaves exactly one open socket
+  (`FakeCore.openSockets`, `maxOpenSockets`).
+
+### 10.2 Device runs (Fire TV Stick HD, debug build, 2026-10-18, zone Büro; `scripts/phase4-resilience.sh`)
+
+Times are device clock; "recovery" is from the dropped connection to `zone resolved ... via=id`.
+
+| Scenario | Log (condensed) | Recovery |
+|---|---|---|
+| Core software restart, Büro playing | `09:19:52.865 conn=websocket_failure error=EOFException`, `conn state=Reconnecting(attempt=1)`, `09:19:53.842 endpoint=cached_unreachable`, `endpoint=rediscover reason=unreachable`, `09:19:55.919 discovery=found`, `09:19:58.086 conn=connected`, `zones_msg subscribed count=0` (Roon still starting), `09:20:32.149 zone resolved ... via=none`, `09:20:33.907 zone resolved ... via=id` | 41 s (45 s from the POST, polled) |
+| Core software restart, Büro paused | `09:21:46.421 conn=websocket_failure error=EOFException`, `Reconnecting(attempt=1)`, rediscover, `09:21:51.484 conn=connected`, `09:22:26.934 zone resolved ... via=none`, `09:22:27.483 zone resolved ... via=id` | 41 s (44 s polled) |
+| Wi-Fi off on the stick for 20 s (`svc wifi disable; sleep 20; svc wifi enable` on the device) | `09:25:26.646 conn=websocket_failure error=SocketException: Software caused connection abort`, `Reconnecting(attempt=1..5)` with `discovery=no_interface`, backoff 0.9, 1.8, 3.3, 7.6, 14.8 s, `09:25:55.380 endpoint=cached`, `09:25:55.620 conn=connected`, `09:25:55.829 zones_msg subscribed count=6` | 29 s after the cut started (about 9 s after Wi-Fi returned; the last backoff of 14.8 s dominates) |
+| Manual address 192.0.2.1 (nothing answers), app started | `conn=session_failed error=timeout` (10 s connect timeout) x5, `09:34:10.706 endpoint=rediscover reason=unreachable attempts=5`, `09:34:16.313 discovery result=found`, `09:34:16.561 conn=connected`, `09:34:16.728 zone resolved ... via=id` | 84 s from the start (5 x 10 s timeouts plus backoff) |
+| Home key, 3 s, `am start` | `lifecycle=disconnect_after_delay ms=2000`, `conn state=Idle`, then once `conn=websocket_open`, once `registry=register_sent`, `conn state=Connected` | about 0.3 s from start to Connected |
+| Home key and immediate `am start` | `lifecycle=disconnect_cancelled`; no `conn state=Idle`, no `websocket_open` | no reconnect |
+
+The restart ran the first time with a build that still had the connect-timeout bug; the restart and Wi-Fi runs above were not affected by it
+(the Core answered or refused quickly), the manual-address run is the one that exposed it and was repeated with the fix.
+Screenshots (all show Now Playing for Büro again): `build/device-artifacts/p4-1playing-restart-restart-playing.png`,
+`p4-1paused-restart-restart-paused.png`, `p4-12-after-wifi.png`, `p4-20-after-home-restart.png`, `p4-13-dead-host.png` (hint after 20 s, German UI). `docs/*.png` and `build/` are not committed.
+
+### 10.3 Memory and jank (sharp artist background, lyrics on)
+
+`scripts/phase4-perf.sh`: fresh process, 10 track changes 5 s apart (Büro only), `dumpsys meminfo`; total PSS and `GL mtrack` in MB.
+
+| Variant | start | after 10 changes | 30 s later | Notes |
+|---|---|---|---|---|
+| Software sharp bitmaps (before offscreen layer) | PSS 127.2, GL 57.4 | PSS 205.4, GL 116.6 | PSS 196.8, GL 109.6 | |
+| Software, second run | PSS 109.8, GL 47.1 | PSS 215.5, GL 115.9 | PSS 200.2, GL 114.9 | |
+| Software, final build (offscreen background layer) | PSS 112.0, GL 53.7 | PSS 212.8, GL 122.2 | PSS 197.2, GL 118.3 | offscreen layer costs roughly one 1080p texture |
+| Hardware bitmaps for the sharp path | PSS 102.0, GL 42.8 | PSS 212.2, GL 120.7 (+ EGL 14.4) | PSS 179.4, GL 91.9 (+ EGL 10.8) | 10 of 10 images took the hardware path |
+
+**Decision: hardware bitmaps are not kept.** The rule was to keep them only if `GL mtrack` after 10 track changes is lower than with software
+bitmaps: 120.7 MB against 116.6 and 115.9 MB, and a separate EGL share appears. The 30 s later figure was lower (91.9 against 109.6 to 114.9) but the
+spread between runs of the same variant is about 10 MB, and the one lyrics jank run with hardware bitmaps was 14.96 % janky. A hardware bitmap
+can also not be cropped, so it would only work for images that are exactly 16:9 (artist images). The experiment (debug switch, log line
+`backdrop sharp path=hardware`) was removed again; the software path logs `backdrop sharp path=software size=1280x720 owned=...`.
+`BackdropCache` recycles the bitmaps it created itself (blur result, crop copy) when they are evicted; bitmaps shared with Coil's memory cache
+(no crop needed) are only dropped. No `recycled bitmap` crash in about 130 track changes with the final code.
+
+Jank (`dumpsys gfxinfo` over 60 s, `scripts/phase4-jank.sh` and `phase4-perf.sh`; the number of rendered frames is about 1270 to 1400 per run):
+
+| Run | Janky frames | Notes |
+|---|---|---|
+| Lyrics on, sharp, per-line size change (before) | 1.89 % (24 of 1273), 8.02 %, 11.89 %, 15.17 % | the lower figure is the first measurement, later runs follow track changes and cold JIT |
+| Lyrics off, sharp, same code | 8.62 %, 2.12 % | the plain view is janky too, so the cost is not specific to the lyrics text |
+| Lyrics on / off, sharp, `graphicsLayer` lines | 11.04 % / 10.09 %, 9.57 % / 5.91 % | measured right after an install (JIT cold) |
+| After the offscreen background layer, sharp, no track change in the window | lyrics on 0.81 %, 0.00 %; lyrics off 0.40 %, 0.16 % | 99th percentile 9 to 15 ms |
+| Same build, soft background | lyrics on 3.48 %, 3.83 %; lyrics off 3.16 %, 0.08 % | |
+
+Honest reading: the target (< 5 %) is met in the final build once the app is warm (all eight warm runs below 4 %), but runs right after an install
+or across a track change reach 8 to 15 % in every variant, including the plain view, so the effect of the two changes (lines drawn with
+a draw-phase `graphicsLayer` scale/alpha instead of a size change per line, which avoids text re-layout and recomposition of neighbouring lines;
+the static backdrop and gradient rendered once into an offscreen layer instead of three full-screen passes per 10 Hz progress redraw) is not
+cleanly separated from JIT warm-up. Both were kept because they remove work per frame and the final numbers meet the target.
+The active line is the 30 sp text scaled by 1.13 (about the former 34 sp bold); neighbours use alpha only.
+
+Lyrics on sharp backgrounds: a horizontal gradient (transparent over the cover column, 55 % black under the text column) is drawn when the sharpness
+is SHARP and the background is not a plain colour: Roborazzi `9e-lyrics-sharp.png` with a bright backdrop, and device screenshots
+`p4-30-lyrics-sharp-sw.png`, `p4-41-offset0-3.png`.
+
+### 10.4 Other Phase 4 items
+
+- **Lyrics timing** (`AppSettings.lyricsOffsetMs`, -3000 to 3000 in 500 ms steps): `LyricsSync.activeIndex(lines, position, offsetMs)`; positive shows the
+  line earlier. On the device with offset +3000 the active line moved at once: `lyrics active=41 offset_ms=0` then `lyrics active=42 offset_ms=3000`
+  (68 ms after the broadcast), back to 0 moved it down again. Screenshots `p4-41-offset0-N.png` / `p4-41-offset3-N.png` (the sample lyric repeats a line, so the
+  difference is visible in the neighbouring lines and the scroll position).
+- **Screen on, only while playing**: `dumpsys power` on the stick: playing with "Always": `SCREEN_BRIGHT_WAKE_LOCK 'WindowManager' ... ws=WorkSource{10126}`;
+  setting "Only while playing" and Büro paused: no such lock; Büro playing: lock present; paused again: gone; setting back to "Always": lock present.
+- **Control bar**: `AnimatedVisibility` with a 200 ms fade (Roborazzi end states unchanged apart from the offscreen background rendering).
+- **Connecting screen**: after 20 s a hint "Core not reachable, still searching..." and the last known address (screenshot `1b-connecting-slow.png`, device `p4-13-dead-host.png`).
+
+### 10.5 Soak (2 hours)
+
+**Running, results pending.** `scripts/phase4-soak.sh` (started 2026-10-18 09:39 local time): Büro playing, lyrics on, artist image, sharp; after 10 warm-up
+track changes a sample every 10 minutes (TOTAL PSS, GL mtrack, Java heap, `DUMP_STATE` summary, screenshot `soak-NN.png`), a `KEYCODE_MEDIA_NEXT` every
+20 minutes on Büro, the app log harvested into `build/device-artifacts/soak-logcat.txt`, a final scan for Reconnecting / watchdog / failed / Exception /
+crash / ANR, then Büro is paused. Success criteria: no unplanned reconnect, last PSS at most first + 15 MB with a plateauing GPU share, no ANR or crash.
+First sample after the warm-up: PSS 194.2 MB, GL mtrack 99.2 MB, Java heap 8.0 MB.
