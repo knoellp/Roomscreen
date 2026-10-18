@@ -15,12 +15,21 @@ appId: io.github.knoellp.roomscreen
       - pressKey: Remote Dpad Down
       - pressKey: Remote Dpad Down
       - pressKey: Remote Dpad Center
-# A zone is already saved: open the list through the Zones button; the current zone has focus.
+# A zone is already saved: open the list through the Zones button. The first key shows the bar with the focus on play/pause (a Center
+# there would pause or start Büro), so go left to Zones: previous, Lyrics, Settings, Zones (the Lyrics button exists with LRCLIB on,
+# which scripts/maestro-regression.sh sets first).
 - runFlow:
     when:
       notVisible: "(Select zone|Zone wählen)"
     commands:
-      - pressKey: Remote Dpad Down
+      - pressKey: Remote Dpad Up
+      - extendedWaitUntil:
+          visible: "(Zones|Zonen)"
+          timeout: 5000
+      - repeat:
+          times: 4
+          commands:
+            - pressKey: Remote Dpad Left
       - pressKey: Remote Dpad Center
       - extendedWaitUntil:
           visible: "(Select zone|Zone wählen)"

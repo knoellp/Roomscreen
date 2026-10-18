@@ -1,4 +1,5 @@
-# Zones button: any key shows it, Select opens the zone list, Back returns to the same zone.
+# Zones button: any key shows the bar (focus on play/pause), four Left presses reach Zones (previous, Lyrics, Settings, Zones; the Lyrics
+# button exists with LRCLIB on, scripts/maestro-regression.sh sets that first), Select opens the zone list, Back returns to the same zone.
 # Run with the zone name from the environment: maestro test -e ROON_TEST_ZONE="$ROON_TEST_ZONE" maestro/phase1-zones.yaml
 appId: io.github.knoellp.roomscreen
 ---
@@ -6,10 +7,14 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "${ROON_TEST_ZONE} ·.*"
     timeout: 60000
-- pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Up
 - extendedWaitUntil:
     visible: "(Zones|Zonen)"
     timeout: 5000
+- repeat:
+    times: 4
+    commands:
+      - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center
 - extendedWaitUntil:
     visible: "(Select zone|Zone wählen)"

@@ -616,9 +616,9 @@ GL mtrack between 38 and 99 MB with no trend: the GPU share follows the current 
 
 ## 11. Phase F3: release signing, remaining proofs, hand-over
 
-State of this phase: the code and document part is done; everything that needs the Fire TV is **pending (device run)**.
+State of this phase: the code and document part and the device runs are done (2026-10-18/19). Open: nothing for the Fire TV; the one-time key change was done before these runs (release key installed, token reused: `token_present=true`).
 
-### 11.1 Release signing (done; installing on the stick pending)
+### 11.1 Release signing (done; installed on the stick)
 
 - One RSA 4096 key (`config/release.jks`, alias `roomscreen`, valid 100 years, PKCS12, gitignored together with `config/signing.env`) signs the debug **and** the
   release build (`buildTypes.debug.signingConfig = release` when `RELEASE_KEYSTORE` is set). Reason: the debug hooks used for device tests and the release APK used for the
@@ -632,33 +632,104 @@ State of this phase: the code and document part is done; everything that needs t
 - `scripts/device-steps.sh` (and so `scripts/deploy-test.sh`) checks the signature before every install: the built APK and the installed package (pulled with `adb pull`, read with
   `apksigner`) must carry the digest from `config/release-fingerprint.txt`; otherwise it aborts. `--allow-key-change` turns the abort into a warning; the script never uninstalls.
   `dumpsys package` on Fire OS 7 prints only a hash of the signature, not the SHA-256 digest, so the installed APK is compared instead.
-- **One-time key change on the stick: pending (device run).** Needs the user's approval, then `adb uninstall`, install of the release APK, a new "Enable" in Roon
-  (Settings, Extensions) and the zone chosen again. `docs/RELEASING.md` has the key handling and the (not yet executed) commands for the GitHub secrets of phase F3b.
+- **One-time key change on the stick: done before the runs of this section** (the app on the stick carries the release key, `signature check ok` in `device-steps.sh`). It needed the user's approval, then `adb uninstall`, install of the release APK, a new "Enable" in Roon
+  (Settings, Extensions) and the zone chosen again. `docs/RELEASING.md` has the key handling and the commands for the GitHub secrets (set on 2026-10-18).
 
-### 11.2 Loading state (code done; device photo pending)
+### 11.2 Loading state (done; device photo taken)
 
 `ConnectingContent` shows a 48 dp `CircularProgressIndicator` under the status line from the first frame (the 20 s hint stays). Roborazzi `1-connecting` and
-`1b-connecting-slow` were re-recorded and looked at; no other screenshot changed. Device photo `p5-01-connecting.png`: pending (device run).
+`1b-connecting-slow` were re-recorded and looked at; no other screenshot changed. 
+Device photo (2026-10-18, 22:45 device time, German UI): `p5-01-connecting.png` (taken while the app was held in the connecting state with `SET_HOST 192.0.2.1`, because the real connect
+is faster than a screenshot) shows the title "Roomscreen", the line "Verbinde...", a circular progress indicator under it and the button "Adresse manuell eingeben". A first
+photo right after `am start` was black: the activity had not drawn yet.
 
-### 11.3 Manual host/port entry (written, not run)
+### 11.3 Manual host/port entry (done on the device, 2026-10-18)
 
 Debug hook `CLEAR_ENDPOINT` removes only host, port and the manual flag (`Prefs.clearEndpoint`, covered by `SettingsPrefsTest`); token and zone stay.
 `scripts/f3-manual-entry.sh` and `maestro/f3-manual-entry.yaml`: read the Core host from `DUMP_STATE`, `SET_HOST 192.0.2.1`, Connecting screen, press
 "Enter address manually", type the host, "Test connection", expect `endpoint=<Core>:9330` and Connected; then `CLEAR_ENDPOINT`, restart, expect
 `discovery result=found` and the endpoint saved again. A successful test closes the manual screen at once, so the flow waits for Now Playing of the test zone instead of the
-result line. Run: pending (device run).
+result line.
 
-### 11.4 Two instances, physical remote (pending)
+First run findings (both fixed in the flow, no app change): (1) the buttons do not react to touch (`adb input tap` and Maestro `tapOn` on a button do nothing), the app is driven
+by the remote, so the flow presses `Remote Dpad Center` (the first press only focuses the button, the second opens the screen; the second is skipped when the entry screen is already open);
+(2) typing into the host field opens the Fire OS system keyboard over the form and the following Down/Center presses went into the keyboard (host became `192.168.1.194n`), so the
+flow closes it with `hideKeyboard` and then moves Down, Down to "Test connection" and presses Center. Also a stale APK (built before the step) lacked the spinner and the hook; it was replaced with
+`scripts/device-steps.sh` (`install -r`, signature check ok, token kept: `registry=register_sent ... token_present=true`).
 
-30 minutes with the app and `roon-cli watch --zone "$ROON_TEST_ZONE" --duration 1800` (own `extension_id`), and the three physical remote keys with the `key code=` log lines:
-pending (device run); results will be added here.
+Green run (`scripts/f3-manual-entry.sh`, final): preflight Connected with `endpoint=192.168.1.194:9330` (from `DUMP_STATE`); after `SET_HOST 192.0.2.1` the screen is `Connecting`; the flow
+typed the host and tested; then `"screen":"NowPlaying","connection":"Connected","zones":5,"endpoint":"192.168.1.194:9330"` and `RESULT endpoint=192.168.1.194:9330 saved: ok`,
+`RESULT Connected: ok`. After `CLEAR_ENDPOINT` and a restart:
 
-### 11.5 Memory criterion (measurement pending)
+```
+22:48:11.460 debug endpoint=cleared
+22:48:22.855 conn state=Discovering
+22:48:26.952 discovery result=found host=192.168.1.194 port=9330
+22:48:27.552 conn state=Connected
+```
+
+`RESULT discovery result=found: ok`, `RESULT endpoint saved again: ok`, `RESULT token and zone kept: ok (zone Büro, no new Enable)`. Screenshots: `p5-02-manual-entry.png` (form "Manuell verbinden"
+with host 192.168.1.194 and port 9330, buttons "Verbindung testen" and "Zurück"), `p5-03-manual-connected.png` (Now Playing for Büro with lyrics, cover and "via roon"), `p5-04-after-clear-endpoint.png`.
+
+### 11.4 Two instances (done, 2026-10-18); physical remote (done, 2026-10-18/19)
+
+Two Roon clients at once: the app on the stick (zone Büro, app pid 25207, unchanged to the end) and `roon-cli watch --zone "$ROON_TEST_ZONE" --duration 1800` (own `extension_id`).
+`logcat -c` right before the start; the CLI ran from 22:53:58 to 23:23:58 device time (30 min, exit code 0, no abort, no error line; `build/device-artifacts/f3-watch.log`).
+
+```
+20:53:58.313 conn=connected host=192.168.1.194 port=9330          (CLI, UTC)
+20:53:58.356 watch zone=Büro (Ctrl-C to stop)
+seek_rate: 0 event(s) in 1800.0s                                  (CLI summary, Büro paused during the run)
+```
+
+| Check | Result |
+|---|---|
+| App log (`logcat -d -s Roomscreen:V`, saved as `f3-two-instances-logcat.txt`) lines matching `websocket_failure`, `Reconnecting`, `conn state=` in the 30 min | 0 |
+| App log content in the window | 2 x `zone count=6` (23:13:25, 23:18:24) and one `zones_msg removed=[] added=[...:MacBook Pr...]` (another Roon client appeared; Büro untouched) |
+| `DUMP_STATE` at the end (23:24:08) | `"screen":"NowPlaying","connection":"Connected","zones":6,"endpoint":"192.168.1.194:9330","zone":"Büro"` |
+| CLI exit | 0, no abort |
+
+Physical remote (the user at the TV, 2026-10-18 23:59 to 2026-10-19 00:04 device time, zone Büro). The Fire TV remote sends `KEYCODE_MEDIA_FAST_FORWARD` (90) and
+`KEYCODE_MEDIA_REWIND` (89), not `MEDIA_NEXT`/`MEDIA_PREVIOUS`; `KeyMapping` maps both pairs to next/previous (`KeyMapping.kt` lines 15 and 16). Reported by the user's session: D-pad Up, play/pause (85),
+fast forward (90), rewind (89), each acted on Büro. The app log lines of those presses that I could still read (control lines, verbatim):
+
+```
+10-18 23:59:36.544 22038 22038 I Roomscreen: control send=next zone="Büro" state=playing
+10-18 23:59:36.916 22038 22038 I Roomscreen: control ok=next
+10-18 23:59:44.855 22038 22038 I Roomscreen: control send=previous zone="Büro" state=playing
+10-18 23:59:45.209 22038 22038 I Roomscreen: control ok=previous
+10-18 23:59:51.105 22038 22038 I Roomscreen: control send=playpause zone="Büro" state=playing optimistic=paused
+10-18 23:59:51.585 22038 22038 I Roomscreen: control ok=playpause
+```
+
+Limit of this evidence: the `key code=` lines of these first presses had already been overwritten in the small logcat ring buffer when I read it (the buffer holds only a few minutes); the control lines above are
+what was captured, and the key codes 90, 89 and 85 are the user's report, not my log. Later presses of the same session (D-pad Left/Right/Up/Center/Back, 00:01 to 00:03) are in `build/device-artifacts/p5-remote-user-logcat.txt`
+(for example `key code=19 name=KEYCODE_DPAD_UP action=0` and `control send=next zone="Büro" state=paused` at 00:02:13). The injected key codes 85, 87, 88 are covered by the acceptance run (11.6).
+The same user presses disturbed one acceptance-time Maestro run (phase2) because they changed Büro's state under the flow; that flow was re-run after the session.
+
+### 11.5 Memory criterion (measured 2026-10-18)
 
 Version 1: TOTAL PSS after 30 track changes with lyrics and a sharp artist image under 200 MB, no trend over the soak (decision 14.1 a, a fixed ceiling instead of a tolerance
-against Phase 2). `scripts/phase3-mem.sh on 30 10` once plus the 13 soak samples of 10.5: measurement pending (device run).
+against Phase 2). `scripts/phase3-mem.sh on 30 10` once plus the 13 soak samples of 10.5. Run 2026-10-18 20:49 to 20:53 UTC, debug build 1.0.0 (release key), lyrics on, sharp artist image, Büro; fresh
+process (pid 25207, unchanged to the end), 10 warm-up changes, then 30 measured `KEYCODE_MEDIA_NEXT`. The "TOTAL:" line of `dumpsys meminfo` is the total PSS (same column as the 194.2 MB start sample of 10.5). KB values, MB = KB / 1000.
 
-### 11.6 Acceptance flow and Maestro flows (written, not run)
+| Point | TOTAL PSS (KB) | Graphics (KB) | Java heap (KB) | Native heap (KB) |
+|---|---|---|---|---|
+| start (after 10 warm-up changes) | 194007 | 107374 | 8100 | 27368 |
+| after 10 changes | 206449 | 113519 | 8568 | 31516 |
+| after 20 changes | 213641 | 122918 | 8964 | 29820 |
+| after 30 changes | **196260** | 106639 | 9428 | 30080 |
+| 30 s later | 189262 | 104043 | 9848 | 25192 |
+| maximum during the run (after change 8) | 217995 | 126758 | 9440 | 29356 |
+| minimum during the run (30 s later) | 189262 | 104043 | 9848 | 25192 |
+
+Result: the criterion as written (after 30 changes under 200 MB, no trend) is met: 196.3 MB (191.7 MiB), 189.3 MB after 30 s. Trend: the 30 values fluctuate between 194 and 218 MB with the graphics
+share (101 to 127 MB, GPU cache released in steps: 125 MB after change 6, 112 MB after change 9, 102 MB after change 22); Java heap stays at 8 to 10 MB, native heap at 27 to 32 MB, code 29 to 32 MB;
+the last 9 values (changes 22 to 30) are 194 to 196 MB, lower than the middle of the run. No upward trend. **Caveat:** between changes 1 and 21 the total was above 200 MB in every sample (201 to 218 MB, max 218.0 MB
+after change 8), so the criterion holds at the defined measuring points (after 30 changes) but not at every moment of the run; the margin at the defined point is 3.7 MB. The soak of 10.5 (13 samples, 104 to 194 MB, 157 MB at the end) is the trend evidence over two hours.
+No code change was made.
+
+### 11.6 Acceptance flow and Maestro flows (run 2026-10-18/19)
 
 - `scripts/acceptance-firetv.sh` (criteria 1 to 12 of `docs/PLAN.md` section 13, one result line and screenshot `p5-acc-NN.png` each, ends with Büro paused). Criterion 1 installs the
   **release** APK and starts it; since only the debug build has `DUMP_STATE`, the state checks run on the debug build with the same key (installed with `install -r`).
@@ -667,7 +738,49 @@ against Phase 2). `scripts/phase3-mem.sh on 30 10` once plus the 13 soak samples
   Settings (Zones, Settings, Lyrics, previous, play/pause, next), and the settings rows are Background, Sharpness, Colour, Controls, Screen on, via roon, Lyrics (LRCLIB),
   Lyrics timing, Search for Core again, Switch zone. `phase1.yaml` and `phase1-zones.yaml` looked for "Choose a zone" but the title is "Select zone" (English UI): fixed.
   The scripts that run the flows now set a defined state first (`SET_LRCLIB on`, `SET_BACKGROUND cover`, `SET_SCREEN_ON always`, `SET_LYRICS off`); `scripts/maestro-regression.sh` runs all
-  ten flows in order. No flow was run in this phase part: pending (device run).
+  ten flows in order.
+
+Acceptance run (`scripts/acceptance-firetv.sh`, 2026-10-18 23:26 to 23:29 device time, release APK built and installed with `install -r`, then the debug APK with the same key; `p5-acceptance.txt`),
+11 pass, 0 fail, 1 reference, Büro paused at the end, debug APK 1.0.0 left installed. Result lines verbatim (screenshots `p5-acc-01.png` to `p5-acc-12.png`):
+
+```
+ACC 01 PASS release APK versionName=1.0.0 installed with certificate 76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb, running
+ACC 02 PASS Connected, endpoint 192.168.1.194:9330, log: endpoint=cached
+ACC 03 PASS no authorization screen; registry log: 10-18 23:26:50.953 29598 29598 I Roomscreen: registry=register_sent core_id=b4fe5d4d-cdc1-45b6-8818-01a39eda3309 token_present=true|10-18 23:26:51.007 29598 29727 I Roomscreen: registry=token_saved core_id=b4fe5d4d-cdc1-45b6-8818-01a39eda3309 verb=CONTINUE|
+ACC 04 PASS Now Playing for zone Büro
+ACC 05 PASS state=playing
+ACC 06 PASS title="Have A Talk With God" artist="Stevie Wonder" cover url=http://192.168.1.194:9330/api/image/e823689cd53deace8ab194f37fea68ed?scale=fill&width=1280&height=720
+ACC 07 PASS position 45 s -> 52 s after 5 s
+ACC 08 PASS title "Have A Talk With God" -> "The Long Run (2013 Remaster)"
+ACC 09 PASS 85: playing->paused->playing; 87: "The Long Run (2013 Remaster)" -> "Tracks of My Tears"; 88: "Tracks of My Tears" -> "Tracks of My Tears" (seek 4 s). 23:27:51.931 ... key code=85 name=KEYCODE_MEDIA_PLAY_PAUSE ... key code=87 name=KEYCODE_MEDIA_NEXT ... key code=88 name=KEYCODE_MEDIA_PREVIOUS
+ACC 10 PASS lyrics=synced:14 for "Tracks of My Tears" (log: lyrics fetch=cache variant=exact result=synced lines=30)
+ACC 11 PASS same zone Büro, settings unchanged, connection Connected, no authorization screen
+ACC 12 REF met on the real Core on 2026-10-18 (docs/ARCHITECTURE.md section 10.2, scripts/phase4-resilience.sh); this script does not restart the Core
+```
+
+(ACC 09 key 88 on the second track restarted the same track: the title stays, the position is 4 s, which the script accepts as "previous".) `p5-acc-01.png` shows Now Playing with lyrics; `p5-acc-10.png`
+shows "Tracks of My Tears" with synchronized lyrics over the artist background.
+
+Maestro regression (`scripts/maestro-regression.sh`, all ten flows). The first runs failed (see below), the last full run was 10 of 10:
+
+| Flow | Result (final run) |
+|---|---|
+| phase1 | PASS |
+| phase1-zones | PASS |
+| phase2 | PASS |
+| phase2-settings | PASS |
+| phase2-settings-restore | PASS |
+| phase2-artist | PASS |
+| phase2-connection | PASS |
+| phase3-lyrics-on | PASS |
+| phase3-lrclib-off | PASS |
+| phase3-lrclib-on | PASS |
+
+Flow problems found and fixed (no app change): `phase1` and `phase1-zones` still pressed Down and Center, which shows the bar with the focus on play/pause and so toggled Büro; they now press Up, then Left four times
+(previous, Lyrics, Settings, Zones) and Center. `phase2-artist` expected two background values, the row cycles Albumcover, Künstlerbild, Farbe, so the way back needs two presses. `phase2` pressed Center at the end after the
+5 s bar window had closed (Maestro needs several seconds per assertion): it now waits until the bar is hidden and shows it again with a retry. `maestro-regression.sh` now parks Büro paused before each flow
+(`park`: pause when playing, play and pause when stopped; Büro reached the end of its queue once, state `stopped`, and every flow reading "Büro · Pausiert" failed). Runs 1 and 2 failed 10 of 10 (run 1: the
+remote was in use by the user and the flows were stale; run 2: same cause, the user was still pressing keys), run 3 aborted after phase2-artist, run 4 had 4 failures from Büro state, run 5 had 1 failure (phase2, flaky wait), run 6 passed 10 of 10.
 
 ### 11.7 Hand-over structure (done)
 

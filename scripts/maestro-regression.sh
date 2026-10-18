@@ -12,34 +12,44 @@ run() { # $1 flow file; extra maestro args after
   find /home/dev/.maestro/tests -name 'p[0-9]*.png' -exec cp {} "$OUT/" \; 2>/dev/null
   if [ $rc -eq 0 ]; then RES+=("PASS $f"); else RES+=("FAIL $f"); echo "$out" | grep -E "FAILED|Assertion|Error" | head -5 | sed 's/^/    /'; fi
 }
+park() { # Büro must be paused (flows read "Büro · Pausiert"); a stopped zone is started and paused again
+  local st; st=$(state | grep -o '"state":"[a-z]*"' | head -1 | cut -d'"' -f4)
+  case "$st" in
+    playing) roon pause --zone "$ROON_TEST_ZONE"; sleep 3 ;;
+    stopped) roon play --zone "$ROON_TEST_ZONE"; sleep 6; roon pause --zone "$ROON_TEST_ZONE"; sleep 3 ;;
+  esac
+}
 prep() { # defined start state
+  need_zone || exit 1; park
   bcast SET_LRCLIB --es value on; bcast SET_BACKGROUND --es value cover; bcast SET_SCREEN_ON --es value always
   bcast SET_LYRICS --es value off; sleep 2
 }
 
 sh am start -n $PKG/.MainActivity >/dev/null; sleep 8
 bcast SELECT_ZONE --es name "$ROON_TEST_ZONE"; sleep 2
-need_zone || exit 1
+need_zone || exit 1; park
 prep
 roon play --zone "$ROON_TEST_ZONE"; sleep 4; roon pause --zone "$ROON_TEST_ZONE"; sleep 3
 
 run maestro/phase1.yaml
+prep
 run maestro/phase1-zones.yaml -e ROON_TEST_ZONE="$ROON_TEST_ZONE"
-need_zone || exit 1; prep
+prep
 run maestro/phase2.yaml
-need_zone || exit 1; prep
+prep
 run maestro/phase2-settings.yaml
 sh am force-stop $PKG; sleep 2; sh am start -n $PKG/.MainActivity >/dev/null; sleep 12
 run maestro/phase2-settings-restore.yaml
-need_zone || exit 1; prep
+prep
 run maestro/phase2-artist.yaml
-need_zone || exit 1; prep
+prep
 run maestro/phase2-connection.yaml
-need_zone || exit 1; prep
+prep
 run maestro/phase3-lyrics-on.yaml
 bcast SET_LYRICS --es value off; sleep 2
-need_zone || exit 1
+need_zone || exit 1; park
 run maestro/phase3-lrclib-off.yaml
+park
 run maestro/phase3-lrclib-on.yaml
 bcast SET_LRCLIB --es value on; bcast SET_LYRICS --es value off; sleep 2
 roon pause --zone "$ROON_TEST_ZONE"

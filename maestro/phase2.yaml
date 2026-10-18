@@ -50,7 +50,19 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "Büro · Spielt"
     timeout: 4000
-# Second select within the 5 s window of the bar: pauses again.
+# Second select pauses again. Maestro needs several seconds per assertion, so the 5 s window of the bar has usually closed by now
+# (a select with the bar hidden only shows it): wait until it is hidden and show it again (a key while it is visible does not re-show it); the focus returns to play/pause.
+- extendedWaitUntil:
+    notVisible: "Einstellungen"
+    timeout: 12000
+# While Büro plays, the hierarchy read is slow and can miss the 5 s bar: press again (as in phase3-lyrics-on.yaml).
+- retry:
+    maxRetries: 3
+    commands:
+      - pressKey: Remote Dpad Up
+      - extendedWaitUntil:
+          visible: "Einstellungen"
+          timeout: 5000
 - pressKey: Remote Dpad Center
 - extendedWaitUntil:
     visible: "Büro · Pausiert"

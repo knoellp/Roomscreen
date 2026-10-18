@@ -29,11 +29,13 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Lifecycle (Home key, Activity restart) | fake Core: start/stop/start never has two sockets open | Home, 3 s, start: one `websocket_open` and one `register_sent`; Home with immediate start: connection kept (`lifecycle=disconnect_cancelled`) | - |
 | Lyrics timing setting (-3.0 to +3.0 s) | `LyricsSyncTest`, `SettingsPrefsTest`, screenshot `7d-settings-offset` | +3 s moved the active line by one at once (`lyrics active=41 offset_ms=0` then `lyrics active=42 offset_ms=3000`), screenshots `p4-41-*` | - |
 | Soak, 2 hours, Büro playing, lyrics on, sharp artist image | - | **done 2026-10-18**: 13 samples over 121 min, connection stayed Connected without any reconnect, no crash or ANR, PSS 194 MB at the start (after warm-up) and 157 MB at the end, GL mtrack 38 to 99 MB without trend (`scripts/phase4-soak.sh`) | see `docs/ARCHITECTURE.md` section 10.5 |
-| Manual host/port entry | screenshot only | script and flow written (`scripts/f3-manual-entry.sh`, `maestro/f3-manual-entry.yaml`), **not run yet** | open: device run pending |
-| Several devices with the same Roon | - | - | two instances for 30 min not run yet (`roon-cli watch`), device run pending |
+| Manual host/port entry | screenshot only | **done 2026-10-18**: `scripts/f3-manual-entry.sh` green: host typed with the remote, `endpoint=192.168.1.194:9330` saved, Connected; after `CLEAR_ENDPOINT` and restart `discovery result=found` (`docs/ARCHITECTURE.md` section 11.3) | - |
+| Several devices with the same Roon | - | **done 2026-10-18**: app and `roon-cli watch` for 30 min: 0 `websocket_failure` / `Reconnecting` / `conn state=` lines in the app log, Connected at the end, CLI exit 0 (section 11.4) | - |
+| Acceptance, Fire TV version 1 (criteria 1 to 12) | - | **done 2026-10-18**: `scripts/acceptance-firetv.sh` 11 pass, 0 fail, 1 reference (12 = section 10.2); Maestro regression 10 of 10 flows pass (section 11.6) | - |
+| Loading indicator on the connecting screen | Roborazzi `1-connecting*` | **done 2026-10-18**: device photo `p5-01-connecting.png` shows the spinner | - |
 | Now Playing layout (blurred backdrop, info strip, cover, progress) | Roborazzi: playing, paused, stopped, no cover, long texts, German | screenshots on the device, 0.5 % janky frames over 60 s of playback | - |
 | Progress between the 1 Hz seek events | `ProgressInterpolatorTest` (10 cases) | bar and time follow playback (screenshots) | - |
-| Remote media keys (play/pause, rewind, fast forward, next, previous) | key mapping tests | Maestro `pressKey` (codes 85, 89, 90, 87, 88) and `adb input keyevent`; commands arrive at the Core | the physical Fire TV remote was not pressed |
+| Remote media keys (play/pause, rewind, fast forward, next, previous) | key mapping tests | Maestro `pressKey` (codes 85, 89, 90, 87, 88) and `adb input keyevent`; commands arrive at the Core | - (the physical remote was pressed by the user on 2026-10-18/19: Up, play/pause, fast forward, rewind acted on Büro; `docs/ARCHITECTURE.md` section 11.4) |
 | Control bar (Zones, Settings, previous, play/pause, next) | screenshot | `maestro/phase2.yaml`: appears on input, hides after 5 s, D-pad navigation, focus ring | - |
 | Settings screen and persistence | `SettingsPrefsTest`, screenshots (EN, DE) | `maestro/phase2-settings.yaml`, value survives a force-stop and restart; "Screen on: only while playing" checked with `dumpsys power`: no `SCREEN_BRIGHT_WAKE_LOCK` for the app while Büro was paused, the lock came back when it played (setting restored to "Always") | - |
 | Artist image background | - | switched on in the settings, screenshot | - |
@@ -50,19 +52,18 @@ connection hint after 20 s. Measurements: `docs/ARCHITECTURE.md` section 10.
 
 Phase F3 (code and documents, done): release signing with one key for debug and release (`docs/RELEASING.md`), loading indicator on the connecting screen
 (Roborazzi `1-connecting`, `1b-connecting-slow`), debug hook `CLEAR_ENDPOINT`, `scripts/acceptance-firetv.sh` and the repaired Maestro flows (`scripts/maestro-regression.sh`),
-`docs/SPEC.md`, shared test data (`shared/fixtures`, `shared/testvectors`, `shared/design/tokens.json`, `shared/strings`) with tests on the Kotlin side. **Written but not run on the
-device yet (device run pending):** the one-time key change on the stick, the acceptance script, the ten Maestro flows after the repair, the manual-entry run, the 30 minute two-instance run,
-the physical remote, the memory criterion below.
+`docs/SPEC.md`, shared test data (`shared/fixtures`, `shared/testvectors`, `shared/design/tokens.json`, `shared/strings`) with tests on the Kotlin side. **Device proofs done
+(2026-10-18/19):** the one-time key change on the stick (release key installed, extension enabled again), the acceptance script (11 pass, 1 reference), the ten Maestro flows (10 of 10 after the repair), the manual-entry run, the
+30 minute two-instance run, the physical remote (user at the TV), the memory criterion below. Details: `docs/ARCHITECTURE.md` section 11.
 
-Not implemented yet: Echo Show 15 (Live App Testing, touch layout), the release pipeline (GitHub secrets, phase F3b). Release signing exists (`docs/RELEASING.md`); the stick still runs a build with the old debug key until the one-time key change.
+Not implemented yet: Echo Show 15 (Live App Testing, touch layout), the release pipeline (GitHub secrets, phase F3b). Release signing exists (`docs/RELEASING.md`) and the stick runs a build with that key.
 
 Not verified (Phase 4): the Maestro zone-list flow `maestro/phase1-zones.yaml` passes up to
 the zone name assertion with `-e ROON_TEST_ZONE=...` but its last step (title of the zone list) failed on the stick once and was not investigated;
 the Core was restarted only through the web UI's software restart, not a reboot of the machine; Wi-Fi cut tested once with playback running.
 
 Not verified (Phase 3): the plain-text lyrics view and the "No lyrics found" line were only checked in screenshots and tests, not on the
-device (they depend on which track Büro plays); the D-pad scrolling of plain text is covered by a Compose test only; the physical remote was not
-pressed; the German lyrics strings were seen on the device only for the button and the settings row.
+device (they depend on which track Büro plays); the D-pad scrolling of plain text is covered by a Compose test only; the physical remote was pressed later (section 11.4); the German lyrics strings were seen on the device only for the button and the settings row.
 LRCLIB often answers 503 (overloaded): the app then shows the normal view and asks again at the next track, so on some tracks no text appears.
 Memory: with lyrics on, the total PSS after 10 track changes was 123 to 193 MB (lyrics off: 121 to 138 MB), mostly purgeable GPU cache; the plan's
 +-10 MB tolerance against Phase 2 is **not** met (details in `docs/ARCHITECTURE.md` section 9.5). Memory: after the image cache was capped to 8 MB, 20 track changes moved the total PSS by
@@ -77,9 +78,18 @@ input, re-registered with the stored token, and showed Now Playing for Büro aga
 shown again: 41 s (playing) and 41 s (paused); about 35 s of this is the Core itself, which accepts connections 5 s after the restart but
 publishes zones only after Roon has started up. Roon pauses playback when it restarts, so both runs ended with Büro paused.
 
-**Memory criterion (version 1, measurement pending):** total PSS after 30 track changes with lyrics and a sharp artist image stays under 200 MB,
-with no trend over the soak run (`docs/ARCHITECTURE.md` section 9.5). Not measured against this criterion yet; the earlier numbers (194 MB after warm-up,
-157 MB at the end of the 2 h soak) are from Phase 4.
+**Memory criterion (version 1, measured 2026-10-18, met):** total PSS after 30 track changes with lyrics and a sharp artist image stays under 200 MB,
+with no trend over the soak run (`docs/ARCHITECTURE.md` sections 9.5 and 11.5).
+
+| Point (`scripts/phase3-mem.sh on 30 10`) | Total PSS |
+|---|---|
+| start (after 10 warm-up changes) | 194.0 MB |
+| after 30 changes | **196.3 MB** (criterion: under 200 MB) |
+| 30 s later | 189.3 MB |
+| maximum during the run (after change 8) | 218.0 MB |
+
+The criterion holds at the defined point; between changes 1 and 21 the total was above 200 MB in every sample (transient GPU cache, 201 to 218 MB), the margin at the measuring point is 3.7 MB.
+No upward trend (the last nine values are 194 to 196 MB; the 2 h soak ended at 157 MB).
 
 ## Shared specification and test data
 
@@ -171,13 +181,13 @@ without it the debug build uses the Android debug key). Certificate SHA-256 dige
 `76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb`. Check an APK with
 `scripts/dock /opt/android-sdk/build-tools/36.0.0/apksigner verify --print-certs <apk>`. Release build: `scripts/dock ./gradlew :app:assembleRelease`
 (`app/build/outputs/apk/release/app-release.apk`, version 1.0.0, no R8). The key move from the old debug key to this key needs a one-time
-uninstall on the stick and a new "Enable" in Roon (pending, see `docs/ARCHITECTURE.md` section 11).
+uninstall on the stick and a new "Enable" in Roon (done once on 2026-10-18, see `docs/ARCHITECTURE.md` section 11).
 Always sign with the same key and use `install -r` so updates keep the stored token.
 `scripts/deploy-test.sh [--flow maestro/phase1.yaml]` does build, install, start, flow, screenshot and logcat in one go
 (set `FIRE_TV_IP` and `ROON_TEST_ZONE` in `config/local.env`, see `config/local.env.example`).
 `scripts/phase2-device.sh` and `scripts/phase2-perf.sh` run the Phase 2 flows and the jank/memory measurements (zone Büro only).
 `scripts/phase4-resilience.sh restart-playing|restart-paused|wifi|dead-host` (Core software restart, Wi-Fi cut, dead address), `scripts/phase4-perf.sh`, `scripts/phase4-jank.sh` (memory and jank) and `scripts/phase4-soak.sh` (2 h soak) are the Phase 4 device runs; they share `scripts/phase4-lib.sh`. The Core address always comes from the app's `DUMP_STATE`, never from a script constant.
-`scripts/acceptance-firetv.sh` (Fire TV version 1 acceptance, criteria 1 to 12), `scripts/f3-manual-entry.sh` (manual entry and `CLEAR_ENDPOINT`) and `scripts/maestro-regression.sh` (all ten Maestro flows with a defined start state) are written for phase F3 and **not run yet**. `scripts/device-steps.sh` refuses to install when the built or the installed app is signed with another key than `config/release-fingerprint.txt` (`--allow-key-change` only turns the abort into a warning; nothing is ever uninstalled).
+`scripts/acceptance-firetv.sh` (Fire TV version 1 acceptance, criteria 1 to 12), `scripts/f3-manual-entry.sh` (manual entry and `CLEAR_ENDPOINT`) and `scripts/maestro-regression.sh` (all ten Maestro flows with a defined start state) were run on the stick on 2026-10-18/19 (`docs/ARCHITECTURE.md` section 11). `scripts/device-steps.sh` refuses to install when the built or the installed app is signed with another key than `config/release-fingerprint.txt` (`--allow-key-change` only turns the abort into a warning; nothing is ever uninstalled).
 `scripts/phase3-device.sh` runs the Phase 3 lyrics flows (`maestro/phase3-*.yaml`), `scripts/phase3-mem.sh` and `scripts/phase3-gl.sh` the memory probes (zone Büro only; Büro ends paused).
 
 ## Development

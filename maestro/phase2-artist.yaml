@@ -28,7 +28,7 @@ appId: io.github.knoellp.roomscreen
     notVisible: "Einstellungen"
     timeout: 12000
 - takeScreenshot: p2-30-artist-background
-# back to "Albumcover"
+# back to "Albumcover": the row cycles Albumcover, Künstlerbild, Farbe, so two more presses
 - pressKey: Remote Dpad Up
 - extendedWaitUntil:
     visible: "Einstellungen"
@@ -40,6 +40,8 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "Hintergrund"
     timeout: 5000
+- pressKey: Remote Dpad Center
+- assertVisible: "Farbe"
 - pressKey: Remote Dpad Center
 - assertVisible: "Albumcover"
 - pressKey: Back
