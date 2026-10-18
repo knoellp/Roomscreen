@@ -45,6 +45,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
@@ -157,15 +159,19 @@ fun NowPlayingContent(
 ) {
     val lines = zone.nowPlaying?.threeLine
     Box(Modifier.fillMaxSize().background(settings.backgroundColor.color)) {
-        Crossfade(backdrop, animationSpec = tween(CROSSFADE_MS), label = "backdrop") { image ->
-            if (image != null && settings.background != BackgroundSource.COLOR) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = if (settings.sharpness == BackgroundSharpness.SHARP) 1f else 0.75f)
+        // The static background (image + darkening) is rendered into one texture and only redrawn when it changes
+        // (track change, crossfade); the 10 Hz progress redraw then costs one textured quad instead of three full-screen passes.
+        Box(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
+            Crossfade(backdrop, animationSpec = tween(CROSSFADE_MS), label = "backdrop") { image ->
+                if (image != null && settings.background != BackgroundSource.COLOR) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = if (settings.sharpness == BackgroundSharpness.SHARP) 1f else 0.75f)
+            }
+            // Darkening towards the bottom keeps the text readable on any image.
+            if (settings.background != BackgroundSource.COLOR) Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(0f to Color(0x40000000), 0.4f to Color(0x59000000), 1f to Color(0xF0000000)),
+                ),
+            )
         }
-        // Darkening towards the bottom keeps the text readable on any image.
-        if (settings.background != BackgroundSource.COLOR) Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(0f to Color(0x40000000), 0.4f to Color(0x59000000), 1f to Color(0xF0000000)),
-            ),
-        )
         if (lines == null) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(zone.displayName, fontSize = 44.sp, fontWeight = FontWeight.SemiBold, color = Color.White)

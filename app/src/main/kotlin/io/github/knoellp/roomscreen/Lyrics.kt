@@ -42,7 +42,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -64,8 +67,10 @@ import kotlinx.coroutines.launch
 private val LYRICS_COVER = 160.dp
 private val ACTIVE_COLOR = Color.White
 private val SHARP_TEXT_SCRIM = Color(0x8C000000)
-/** Height of the active line (42 sp text plus 2 x 6 dp padding), used to put its middle on the middle of the view. */
-private val LINE_HEIGHT_DP = 54.dp
+/** Height of the active line (38 sp line plus 2 x 6 dp padding), used to put its middle on the middle of the view. */
+private val LINE_HEIGHT_DP = 50.dp
+/** The active line is the 30 sp text drawn 13 % larger (about the former 34 sp). */
+private const val ACTIVE_SCALE = 1.13f
 
 /**
  * Lyrics layout: small cover, title and artist with a thin progress bar on the left, the text on the right.
@@ -159,14 +164,24 @@ private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long, offs
         contentPadding = PaddingValues(top = halfHeight, bottom = halfHeight),
         userScrollEnabled = false,
     ) {
-        itemsIndexed(lines) { i, line ->
-            val distance = abs(i - active)
+        itemsIndexed(lines, key = { i, _ -> i }) { i, line ->
             if (line.text.isEmpty()) Spacer(Modifier.height(20.dp))
-            else if (distance == 0 && active >= 0) {
-                Text(line.text, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Bold, color = ACTIVE_COLOR, modifier = Modifier.padding(vertical = 6.dp))
-            } else {
-                val alpha = when (distance) { 1 -> 0.62f; 2 -> 0.42f; 3 -> 0.28f; else -> 0.16f }
-                Text(line.text, fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = alpha), modifier = Modifier.padding(vertical = 6.dp))
+            else {
+                // Every line has the same layout; the active line is enlarged and the others dimmed in the draw phase
+                // only (graphicsLayer reads the index), so a line change causes no recomposition and no text re-layout.
+                Text(
+                    line.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold, color = ACTIVE_COLOR,
+                    modifier = Modifier.padding(vertical = 6.dp).graphicsLayer {
+                        val distance = abs(i - active)
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        if (distance == 0 && active >= 0) {
+                            scaleX = ACTIVE_SCALE; scaleY = ACTIVE_SCALE
+                        } else {
+                            alpha = when (distance) { 1 -> 0.62f; 2 -> 0.42f; 3 -> 0.28f; else -> 0.16f }
+                        }
+                    },
+                )
             }
         }
     }

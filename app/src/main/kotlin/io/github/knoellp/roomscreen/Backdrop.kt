@@ -102,15 +102,11 @@ class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
     suspend fun backdrop(context: Context, url: String, sharp: Boolean = false): ImageBitmap? {
         get(url)?.let { return it }
         if (sharp) {
-            // Sharp: decode at screen-source size, crop to 16:9, no blur.
-            if (sharpHardware) {
-                // Optional hardware bitmap (pixels live in GPU memory); only usable when no crop is needed.
-                val hw = loadBitmap(context, url, SHARP_W, SHARP_H, hardware = true)
-                if (hw != null && isSixteenNine(hw)) return hw.asImageBitmap().also { put(url, it) }
-            }
-            // Software bitmap so the crop can read pixels.
+            // Sharp: decode at screen-source size, crop to 16:9, no blur. Software bitmap so the crop can read pixels
+            // (a hardware bitmap was measured on the device and did not lower GL memory, see ARCHITECTURE section 10).
             val src = loadBitmap(context, url, SHARP_W, SHARP_H) ?: return null
             val cropped = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { centerCrop16x9(src) }
+            AndroidLogger.info("backdrop sharp path=software size=${cropped.width}x${cropped.height} owned=${cropped !== src}")
             return cropped.asImageBitmap().also { put(url, it, owned = cropped.takeIf { c -> c !== src }) }
         }
         val src = loadBitmap(context, url, SOURCE_PX) ?: return null
@@ -118,23 +114,18 @@ class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
         return blurred.asImageBitmap().also { put(url, it, owned = blurred.takeIf { b -> b !== src }) }
     }
 
-    private fun isSixteenNine(b: Bitmap) = b.width * 9 == b.height * 16
-
     suspend fun cover(context: Context, url: String, size: Int): ImageBitmap? = loadBitmap(context, url, size)?.asImageBitmap()
 
     private suspend fun loadBitmap(context: Context, url: String, size: Int): Bitmap? = loadBitmap(context, url, size, size)
 
-    private suspend fun loadBitmap(context: Context, url: String, w: Int, h: Int, hardware: Boolean = false): Bitmap? {
+    private suspend fun loadBitmap(context: Context, url: String, w: Int, h: Int): Bitmap? {
         val loader = SingletonImageLoader.get(context)
-        val request = ImageRequest.Builder(context).data(url).size(w, h).allowHardware(hardware).build()
+        val request = ImageRequest.Builder(context).data(url).size(w, h).allowHardware(false).build()
         val result = loader.execute(request) as? SuccessResult ?: return null
         return result.image.toBitmap()
     }
 
     companion object {
-        /** Debug switch for measuring hardware bitmaps in the sharp path (see DebugReceiver SET_SHARP_HW). */
-        @Volatile var sharpHardware = false
-
         const val MAX_ENTRIES = 3
         /** Decode size of the backdrop source; it is shrunk to 32 px anyway. */
         const val SOURCE_PX = 160
