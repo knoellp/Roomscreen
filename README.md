@@ -8,6 +8,9 @@ service, no bridge and no WebView.
 
 > Roomscreen is not affiliated with or endorsed by Roon Labs. Roon is a trademark of Roon Labs LLC.
 
+**Platform note.** This APK runs only on devices with Fire OS (Android based), for example the Fire TV Stick HD (2020) and Android TV
+devices. It does **not** run on devices with Vega OS (Fire TV Stick 4K Select, Fire TV Stick HD 2026).
+
 Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHITECTURE.md`.
 
 ## Status (Phase 4)

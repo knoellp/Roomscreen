@@ -134,13 +134,14 @@ Quelle: Statustabelle der README und `docs/ARCHITECTURE.md` 7–9. Die Gerätena
 | Punkt | Stand |
 |---|---|
 | Physische Fire-TV-Fernbedienung | nie gedrückt; nur eingespeiste Codes |
-| Reconnect nach Neustart des echten Roon Cores | nur im Fake Core (inkl. neuer Watchdog- und Rediscovery-Tests) |
+| Reconnect nach Neustart des echten Roon Cores | erledigt 18.10.2026 am echten Core (Softwareneustart, Büro spielend und pausiert, Zone nach 41 s wieder da); `ARCHITECTURE.md` 10.2 |
 | Manuelle Host/Port-Eingabe | nur Screenshot |
-| „Bildschirm an: nur während Wiedergabe“ | nicht auf dem Gerät |
+| „Bildschirm an: nur während Wiedergabe“ | erledigt 18.10.2026 per `dumpsys power`; `ARCHITECTURE.md` 10.4 |
 | Liedtexte unsynchronisiert und „No lyrics found“ | nur Screenshot/Test |
-| Ruckeln der Liedtext-Ansicht und des scharfen Hintergrunds | nicht gemessen |
+| Ruckeln der Liedtext-Ansicht und des scharfen Hintergrunds | erledigt 18.10.2026, unter 1 % ruckelnde Frames warm; `ARCHITECTURE.md` 10.3 |
 | Speicher mit Liedtexten | nach 10 Titelwechseln 10–50 MB über dem Wert ohne Liedtexte, überwiegend GPU-Cache; die Toleranz ±10 MB wird **nicht** eingehalten (`ARCHITECTURE.md` 9.5) |
 | Speicher scharfer Hintergrund | 128 → 166 → 154 MB (weich: 136–138 MB) |
+| Speicher-Dauerlauf (2 h, Liedtexte an, scharfes Künstlerbild) | erledigt 18.10.2026: 13 Proben, PSS 194 MB nach Warm-up, 157 MB am Ende, kein Trend, kein Reconnect; `ARCHITECTURE.md` 10.5 |
 | Zwei Geräte gleichzeitig | nicht getestet |
 | Release-Signierung | nicht vorhanden; es wird der Debug-Schlüssel genutzt |
 | Echo Show 15 | nicht begonnen |
