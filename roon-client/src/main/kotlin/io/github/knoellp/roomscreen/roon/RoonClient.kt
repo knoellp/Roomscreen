@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -89,6 +90,7 @@ class RoonClient(
     private val silenceTimeoutMs: Long = 30_000L,
     /** With a fixed endpoint: after this many failed attempts in a row, discovery runs again. */
     private val rediscoverAfter: Int = 5,
+    private val connectTimeoutMs: Long = 10_000L,
 ) {
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
@@ -153,6 +155,9 @@ class RoonClient(
                 } ?: throw IllegalStateException("no Core found")
                 _state.value = if (attempt == 0) ConnectionState.Connecting else ConnectionState.Reconnecting(attempt)
                 if (runSession(endpoint)) { attempt = 0; backoff.reset() }
+            } catch (e: TimeoutCancellationException) {
+                // A timeout (connect, info, register) is a failed attempt, not a cancellation of the loop.
+                logger.warn("conn=session_failed error=timeout: ${e.message}")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -173,7 +178,7 @@ class RoonClient(
         val url = "ws://${endpoint.host}:${endpoint.port}/api"
         val connection = MooConnection(okHttp, url, logger, recorder, clock)
         try {
-            connection.connect()
+            connection.connect(connectTimeoutMs)
             return coroutineScope {
                 val watchdog = launch { watchSilence(connection) }
                 try { established(connection, endpoint) } finally { watchdog.cancel() }

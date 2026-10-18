@@ -243,6 +243,28 @@ class RoonClientFakeCoreTest {
     }
 
     @Test
+    fun `an endpoint that accepts but never answers times out and discovery takes over`() = runBlocking {
+        core.requireEnable = false
+        val blackhole = java.net.ServerSocket(0)
+        val accepted = java.util.concurrent.CopyOnWriteArrayList<java.net.Socket>()
+        val acceptor = kotlin.concurrent.thread(isDaemon = true) {
+            try { while (true) accepted += blackhole.accept() } catch (_: java.io.IOException) {}
+        }
+        val c = RoonClient(
+            identity, MemoryTokenStore(), fixed = Endpoint("127.0.0.1", blackhole.localPort),
+            discover = { Endpoint(core.host, core.port) }, backoff = Backoff(baseMs = 50, maxMs = 200),
+            rediscoverAfter = 2, connectTimeoutMs = 300,
+        )
+        c.start(scope)
+        // The loop survives the connect timeouts (a TimeoutCancellationException must not end it) and reaches the real Core.
+        c.await(ConnectionState.Connected)
+        withTimeout(10_000) { c.zones.first { it.size == 3 } }
+        assertTrue(accepted.size >= 2)
+        c.stop(); blackhole.close(); acceptor.join(2000)
+        accepted.forEach { it.close() }
+    }
+
+    @Test
     fun `a rejected token ends in awaiting authorization without reconnecting`() = runBlocking {
         val tokens = MemoryTokenStore().also { it.put(core.coreId, core.token) }
         val c = connected(tokens)

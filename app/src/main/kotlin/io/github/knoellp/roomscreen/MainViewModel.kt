@@ -321,6 +321,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Debug builds only: compact line per Changed message (pure seek messages are skipped). */
     private fun logZonesMessage(name: String, body: kotlinx.serialization.json.JsonObject) {
+        if (name == "Subscribed") {
+            log.info("zones_msg subscribed count=${(body["zones"] as? kotlinx.serialization.json.JsonArray)?.size ?: 0}")
+            return
+        }
         if (name != "Changed") return
         fun ids(key: String) = (body[key] as? kotlinx.serialization.json.JsonArray).orEmpty()
             .mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
