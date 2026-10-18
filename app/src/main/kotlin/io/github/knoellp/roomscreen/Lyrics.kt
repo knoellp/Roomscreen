@@ -150,6 +150,8 @@ private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long, offs
     val centerOffsetPx = with(density) { (LINE_HEIGHT_DP / 2).roundToPx() }
     var placed by remember(lines) { mutableIntStateOf(0) }
 
+    LaunchedEffect(active, offsetMs) { AndroidLogger.info("lyrics active=$active offset_ms=$offsetMs") }
+
     LaunchedEffect(lines, active, heightPx) {
         if (heightPx == 0) return@LaunchedEffect
         val target = active.coerceAtLeast(0)

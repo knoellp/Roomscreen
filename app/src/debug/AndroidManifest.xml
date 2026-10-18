@@ -15,6 +15,7 @@
                 <action android:name="io.github.knoellp.roomscreen.SET_BACKGROUND" />
                 <action android:name="io.github.knoellp.roomscreen.SET_LRCLIB" />
                 <action android:name="io.github.knoellp.roomscreen.SET_LYRICS_OFFSET" />
+                <action android:name="io.github.knoellp.roomscreen.SET_SCREEN_ON" />
             </intent-filter>
         </receiver>
     </application>

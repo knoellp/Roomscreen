@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
  * SET_SHARPNESS (extra value=soft|sharp) writes the "Background sharpness" setting, also while the app is not running.
  * SET_BACKGROUND (extra value=cover|artist|color) writes the "Background" setting, also while the app is not running.
  * SET_LYRICS (extra value=on|off) presses the Lyrics button; DUMP_STATE then shows `lyrics` and `lyrics_on`.
+ * SET_SCREEN_ON (extra value=always|playing) writes the "Screen on" setting; SET_LYRICS_OFFSET (extra value=milliseconds, -3000..3000) the lyrics timing.
  * SET_LRCLIB (extra value=on|off) writes the "Lyrics (LRCLIB)" setting, the same as the settings row.
  * SELECT_ZONE (extra name) selects a zone by display name without sending any command.
  * RESET clears all stored preferences (token, endpoint, zone) and must only be used after asking.
@@ -78,6 +79,20 @@ class DebugReceiver : BroadcastReceiver() {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(lyricsOffsetMs = ms))
                     Log.i(AndroidLogger.TAG, "debug lyrics_offset_ms=$ms")
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
+        if (intent.action == "io.github.knoellp.roomscreen.SET_SCREEN_ON") {
+            val mode = if (intent.getStringExtra("value") == "playing") ScreenOn.PLAYING else ScreenOn.ALWAYS
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val prefs = Prefs(context)
+                    prefs.saveSettings(prefs.settings.first().copy(screenOn = mode))
+                    Log.i(AndroidLogger.TAG, "debug screen_on=${mode.name}")
                 } finally {
                     pending.finish()
                 }
