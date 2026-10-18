@@ -5,7 +5,7 @@ import io.github.knoellp.roomscreen.roon.moo.MooMessage
 import io.github.knoellp.roomscreen.roon.moo.MooVerb
 import io.github.knoellp.roomscreen.roon.moo.str
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -97,7 +97,8 @@ class Registry(
                 else -> logger.info("registry=register_progress verb=${msg.verb} name=${msg.name}")
             }
         }
-        return withTimeout(authTimeoutMs) { result.await() }
+        return withTimeoutOrNull(authTimeoutMs) { result.await() }
+            ?: throw RegistryException("no answer to register within ${authTimeoutMs / 1000} s")
     }
 
     companion object {

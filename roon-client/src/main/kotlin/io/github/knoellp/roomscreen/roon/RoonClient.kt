@@ -64,6 +64,7 @@ fun resolveEndpoint(cached: Endpoint?, logger: Logger, probeTimeoutMs: Int = 150
             return cached
         }
         logger.info("endpoint=cached_unreachable host=${cached.host} port=${cached.port}")
+        logger.info("endpoint=rediscover reason=unreachable")
     }
     return discover()
 }
@@ -84,6 +85,10 @@ class RoonClient(
     private val authTimeoutMs: Long = 10 * 60_000L,
     /** Services requested as optional at registration (for example browse in the CLI). */
     private val optionalServices: List<String> = emptyList(),
+    /** No frame from the Core for this long closes the connection (the Core pings every 2 s). */
+    private val silenceTimeoutMs: Long = 30_000L,
+    /** With a fixed endpoint: after this many failed attempts in a row, discovery runs again. */
+    private val rediscoverAfter: Int = 5,
 ) {
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
@@ -142,8 +147,10 @@ class RoonClient(
                 ConnectionState.Reconnecting(attempt)
             }
             try {
-                val endpoint = fixed ?: withContext(Dispatchers.IO) { discover() }
-                    ?: throw IllegalStateException("no Core found")
+                val endpoint = if (fixed != null && attempt < rediscoverAfter) fixed else {
+                    if (fixed != null) logger.info("endpoint=rediscover reason=unreachable attempts=$attempt host=${fixed.host} port=${fixed.port}")
+                    withContext(Dispatchers.IO) { discover() }
+                } ?: throw IllegalStateException("no Core found")
                 _state.value = if (attempt == 0) ConnectionState.Connecting else ConnectionState.Reconnecting(attempt)
                 if (runSession(endpoint)) { attempt = 0; backoff.reset() }
             } catch (e: CancellationException) {
@@ -167,42 +174,61 @@ class RoonClient(
         val connection = MooConnection(okHttp, url, logger, recorder, clock)
         try {
             connection.connect()
-            val registry = Registry(connection, tokens, identity, logger, optionalServices)
-            val info = registry.info()
-            logger.info("conn=core core_id=${info.coreId} name=${info.displayName} version=${info.displayVersion}")
-
-            coroutineScope {
-                val registration = async {
-                    registry.register(info.coreId, authTimeoutMs) { _state.value = ConnectionState.AwaitingAuthorization }
-                }
-                // A stored token answers at once; a slow answer means the user must enable the extension in Roon.
-                if (withTimeoutOrNull(AUTH_NOTICE_MS) { registration.await() } == null) {
-                    _state.value = ConnectionState.AwaitingAuthorization
-                    logger.info("conn=awaiting_authorization")
-                }
-                registration.await()
+            return coroutineScope {
+                val watchdog = launch { watchSilence(connection) }
+                try { established(connection, endpoint) } finally { watchdog.cancel() }
             }
-            lastEndpoint = endpoint
-            val s = Session(connection)
-            session = s
-            _state.value = ConnectionState.Connected
-            logger.info("conn=connected host=${endpoint.host} port=${endpoint.port}")
-            s.transport.subscribeZones { name, body ->
-                if (name == "Closed") return@subscribeZones
-                try {
-                    _zones.value = ZoneReducer.reduce(_zones.value, name, body)
-                } catch (e: Exception) {
-                    // A malformed message must not take down the socket reader; the next message still applies.
-                    logger.warn("zones=reduce_failed name=$name error=${e.javaClass.simpleName}: ${e.message}")
-                }
-                _events.tryEmit(ZoneEvent(name, body, clock()))
-            }
-            connection.closed.await()
-            logger.info("conn=closed")
-            return true
         } finally {
             connection.close()
         }
+    }
+
+    private suspend fun watchSilence(connection: MooConnection) {
+        val tick = (silenceTimeoutMs / 4).coerceIn(10L, 1_000L)
+        while (true) {
+            delay(tick)
+            if (connection.silentForMs() >= silenceTimeoutMs) {
+                logger.warn("conn watchdog=silence seconds=${silenceTimeoutMs / 1000}")
+                connection.abort()
+                return
+            }
+        }
+    }
+
+    private suspend fun established(connection: MooConnection, endpoint: Endpoint): Boolean {
+        val registry = Registry(connection, tokens, identity, logger, optionalServices)
+        val info = registry.info()
+        logger.info("conn=core core_id=${info.coreId} name=${info.displayName} version=${info.displayVersion}")
+
+        coroutineScope {
+            val registration = async {
+                registry.register(info.coreId, authTimeoutMs) { _state.value = ConnectionState.AwaitingAuthorization }
+            }
+            // A stored token answers at once; a slow answer means the user must enable the extension in Roon.
+            if (withTimeoutOrNull(AUTH_NOTICE_MS) { registration.await() } == null) {
+                _state.value = ConnectionState.AwaitingAuthorization
+                logger.info("conn=awaiting_authorization")
+            }
+            registration.await()
+        }
+        lastEndpoint = endpoint
+        val s = Session(connection)
+        session = s
+        _state.value = ConnectionState.Connected
+        logger.info("conn=connected host=${endpoint.host} port=${endpoint.port}")
+        s.transport.subscribeZones { name, body ->
+            if (name == "Closed") return@subscribeZones
+            try {
+                _zones.value = ZoneReducer.reduce(_zones.value, name, body)
+            } catch (e: Exception) {
+                // A malformed message must not take down the socket reader; the next message still applies.
+                logger.warn("zones=reduce_failed name=$name error=${e.javaClass.simpleName}: ${e.message}")
+            }
+            _events.tryEmit(ZoneEvent(name, body, clock()))
+        }
+        connection.closed.await()
+        logger.info("conn=closed")
+        return true
     }
 
     companion object {

@@ -38,6 +38,13 @@ class MooConnection(
     private val pending = ConcurrentHashMap<Long, (MooMessage?) -> Unit>()
     private val opened = CompletableDeferred<Unit>()
     @Volatile private var socket: WebSocket? = null
+    @Volatile private var lastFrameNanos = System.nanoTime()
+
+    /** Milliseconds since the last frame (any frame, also an empty one) arrived from the Core. */
+    fun silentForMs(): Long = (System.nanoTime() - lastFrameNanos) / 1_000_000
+
+    /** Drops the socket without a close handshake; [closed] completes with the failure. */
+    fun abort() { socket?.cancel() }
 
     suspend fun connect(timeoutMs: Long = 10_000) {
         socket = client.newWebSocket(Request.Builder().url(url).build(), Listener())
@@ -80,6 +87,7 @@ class MooConnection(
     }
 
     private fun handle(bytes: ByteArray) {
+        lastFrameNanos = System.nanoTime()
         recorder?.record(FrameRecorder.Direction.RECEIVE, clock(), bytes)
         if (bytes.isEmpty()) { logger.info("moo=empty_frame"); return }
         val msg = try {
@@ -115,6 +123,7 @@ class MooConnection(
 
     private inner class Listener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            lastFrameNanos = System.nanoTime()
             logger.info("conn=websocket_open url=$url")
             opened.complete(Unit)
         }

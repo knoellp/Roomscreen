@@ -15,6 +15,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import io.github.knoellp.roomscreen.roon.sood.SoodDiscovery
@@ -36,11 +37,19 @@ class RoonClientFakeCoreTest {
     @BeforeTest fun setUp() = core.start()
     @AfterTest fun tearDown() { scope.cancel(); core.stop() }
 
-    private fun client(tokens: TokenStore, rediscover: Boolean = false) = RoonClient(
+    private fun client(
+        tokens: TokenStore,
+        rediscover: Boolean = false,
+        fixed: Endpoint? = if (rediscover) null else Endpoint(core.host, core.port),
+        silenceMs: Long = 30_000L,
+        rediscoverAfter: Int = 5,
+    ) = RoonClient(
         identity, tokens,
-        fixed = if (rediscover) null else Endpoint(core.host, core.port),
+        fixed = fixed,
         discover = { Endpoint(core.host, core.port) },
         backoff = Backoff(baseMs = 50, maxMs = 200),
+        silenceTimeoutMs = silenceMs,
+        rediscoverAfter = rediscoverAfter,
     )
 
     private suspend fun RoonClient.await(s: ConnectionState) = withTimeout(10_000) { state.first { it == s } }
@@ -169,6 +178,116 @@ class RoonClientFakeCoreTest {
         c.await(ConnectionState.Connected)
         withTimeout(10_000) { c.zones.first { it.isNotEmpty() } }
         assertTrue(core.connections >= 2)
+        c.stop()
+    }
+
+    @Test
+    fun `reconnect subscribes to the zones again and replaces the zone list`() = runBlocking {
+        core.requireEnable = false
+        val c = connected()
+        assertEquals(1, core.count("com.roonlabs.transport:2/subscribe_zones"))
+        core.dropConnections()
+        withTimeout(10_000) { c.state.first { it is ConnectionState.Reconnecting } }
+        c.await(ConnectionState.Connected)
+        withTimeout(10_000) { c.zones.first { it.size == 3 } }
+        assertEquals(2, core.count("com.roonlabs.transport:2/subscribe_zones"))
+        assertEquals(3, c.zones.value.size)
+        c.stop()
+    }
+
+    @Test
+    fun `silence from the core closes the connection and reconnects`() = runBlocking {
+        core.requireEnable = false
+        core.startPings(100)
+        val c = client(MemoryTokenStore(), silenceMs = 800)
+        c.start(scope)
+        c.await(ConnectionState.Connected)
+        withTimeout(10_000) { c.zones.first { it.isNotEmpty() } }
+        // With pings arriving the connection is kept well beyond the silence limit.
+        delay(1_800)
+        assertEquals(ConnectionState.Connected, c.state.value)
+        assertEquals(1, core.connections)
+        // Now the Core goes quiet (the socket stays open).
+        core.stopPings()
+        withTimeout(10_000) { c.state.first { it is ConnectionState.Reconnecting } }
+        core.startPings(100)
+        c.await(ConnectionState.Connected)
+        withTimeout(10_000) { c.zones.first { it.size == 3 } }
+        assertEquals(2, core.connections)
+        assertEquals(2, core.count("com.roonlabs.transport:2/subscribe_zones"))
+        c.stop()
+    }
+
+    @Test
+    fun `core down for three attempts and back is connected again with zones`() = runBlocking {
+        core.requireEnable = false
+        val c = connected()
+        core.down()
+        withTimeout(10_000) { c.state.first { it == ConnectionState.Reconnecting(3) } }
+        core.up()
+        c.await(ConnectionState.Connected)
+        withTimeout(10_000) { c.zones.first { it.size == 3 } }
+        c.stop()
+    }
+
+    @Test
+    fun `dead fixed endpoint falls back to discovery after the configured attempts`() = runBlocking {
+        core.requireEnable = false
+        val dead = java.net.ServerSocket(0).use { Endpoint("127.0.0.1", it.localPort) }
+        val c = client(MemoryTokenStore(), fixed = dead, rediscoverAfter = 3)
+        c.start(scope)
+        c.await(ConnectionState.Connected)
+        withTimeout(10_000) { c.zones.first { it.size == 3 } }
+        assertEquals(Endpoint(core.host, core.port), c.lastEndpoint)
+        c.stop()
+    }
+
+    @Test
+    fun `a rejected token ends in awaiting authorization without reconnecting`() = runBlocking {
+        val tokens = MemoryTokenStore().also { it.put(core.coreId, core.token) }
+        val c = connected(tokens)
+        // The user removed the extension in Roon: the old token is no longer valid and register stays unanswered.
+        core.token = "NEW-TOKEN"
+        core.dropConnections()
+        withTimeout(10_000) { c.state.first { it is ConnectionState.Reconnecting } }
+        c.await(ConnectionState.AwaitingAuthorization)
+        val connections = core.connections
+        delay(800)
+        assertEquals(ConnectionState.AwaitingAuthorization, c.state.value)
+        assertEquals(connections, core.connections)
+        assertEquals(listOf<String?>("FIXTURE-TOKEN", "FIXTURE-TOKEN"), core.registerTokens.toList())
+        // Enabling again brings it back and replaces the token.
+        core.enable()
+        c.await(ConnectionState.Connected)
+        c.stop()
+    }
+
+    @Test
+    fun `stop then start never has two sockets open at once`() = runBlocking {
+        core.requireEnable = false
+        val c = client(MemoryTokenStore())
+        c.start(scope)
+        c.await(ConnectionState.Connected)
+        c.stop()
+        withTimeout(10_000) { while (core.openSockets.get() != 0) delay(10) }
+        c.start(scope)
+        c.await(ConnectionState.Connected)
+        c.stop()
+        withTimeout(10_000) { while (core.openSockets.get() != 0) delay(10) }
+        c.start(scope)
+        c.await(ConnectionState.Connected)
+        assertEquals(1, core.openSockets.get())
+        assertEquals(1, core.maxOpenSockets)
+        assertEquals(3, core.connections)
+        c.stop()
+    }
+
+    @Test
+    fun `starting twice without stop is refused`() = runBlocking {
+        core.requireEnable = false
+        val c = connected()
+        assertFailsWith<IllegalStateException> { c.start(scope) }
+        assertEquals(1, core.connections)
         c.stop()
     }
 

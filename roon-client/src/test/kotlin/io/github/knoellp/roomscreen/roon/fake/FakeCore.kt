@@ -34,7 +34,7 @@ class FakeCore(
     private val sockets = CopyOnWriteArrayList<WebSocket>()
 
     /** The token this Core hands out and accepts. */
-    val token = "FIXTURE-TOKEN"
+    @Volatile var token = "FIXTURE-TOKEN"
     /** If true, `register` without a valid token stays unanswered (except `Pending`) until [enable]. */
     @Volatile var requireEnable = true
     @Volatile var pendingMessage = false
@@ -46,6 +46,11 @@ class FakeCore(
     private val waitingRegistrations = CopyOnWriteArrayList<Pair<WebSocket, Long>>()
     private val subscribers = CopyOnWriteArrayList<Pair<WebSocket, Long>>()
     @Volatile var connections = 0
+    /** WebSockets currently open on the server side, and the highest value seen. */
+    val openSockets = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile var maxOpenSockets = 0
+    @Volatile private var refusing = false
+    @Volatile private var pinger: Thread? = null
     @Volatile var soodQueries = 0
     /** Fixture sent as the `Subscribed` body. */
     @Volatile var subscribedFixture = "subscribed.json"
@@ -84,6 +89,31 @@ class FakeCore(
         startServer(0)
     }
 
+    /** The Core goes away: open sockets close and new upgrades are refused (HTTP 503) until [up]. */
+    fun down() {
+        refusing = true
+        dropConnections()
+    }
+
+    fun up() { refusing = false }
+
+    /** Sends the Core's `ping` request to every open socket every [intervalMs] (the real Core does this every 2 s). */
+    fun startPings(intervalMs: Long) {
+        stopPings()
+        pinger = thread(isDaemon = true, name = "fake-pinger") {
+            try {
+                while (true) {
+                    Thread.sleep(intervalMs)
+                    for (ws in sockets) send(ws, MooVerb.REQUEST, "com.roonlabs.ping:1/ping", 900, null)
+                }
+            } catch (_: InterruptedException) {}
+        }
+    }
+
+    fun stopPings() { pinger?.interrupt(); pinger = null }
+
+    fun count(name: String) = received.count { it.name == name }
+
     private fun startServer(port: Int) {
         var attempts = 0
         while (true) {
@@ -91,6 +121,7 @@ class FakeCore(
             server = MockWebServer()
             server.dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
+                    if (refusing) return MockResponse.Builder().code(503).build()
                     connections++
                     return MockResponse.Builder().webSocketUpgrade(Listener()).build()
                 }
@@ -102,7 +133,7 @@ class FakeCore(
         }
     }
 
-    fun stop() { server.close(); udp.close() }
+    fun stop() { stopPings(); server.close(); udp.close() }
 
     /** Simulates the user pressing "Enable" in Roon. */
     fun enable() {
@@ -140,7 +171,15 @@ class FakeCore(
     }
 
     private inner class Listener : WebSocketListener() {
-        override fun onOpen(webSocket: WebSocket, response: Response) { sockets += webSocket }
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            sockets += webSocket
+            val n = openSockets.incrementAndGet()
+            if (n > maxOpenSockets) maxOpenSockets = n
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { openSockets.decrementAndGet() }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) { openSockets.decrementAndGet() }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
 
