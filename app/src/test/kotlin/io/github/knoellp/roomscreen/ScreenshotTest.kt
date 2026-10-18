@@ -154,6 +154,16 @@ class ScreenshotTest {
     /** Active line (number 6 at 62 s, 10 s per line) in the vertical middle. */
     @Test fun lyricsSynced() = lyrics("9-lyrics-synced", LyricsState.Synced(sampleLines))
 
+    /** Sharp background with a bright image: the dark gradient under the text column keeps the dimmed lines readable. */
+    @Test fun lyricsSharpBright() {
+        val bright = fakeCover(0xFFF2E6C8.toInt(), 0xFFE8C98A.toInt(), 0xFFFFFFFF.toInt())
+        shot("9e-lyrics-sharp") {
+            NowPlayingContent(lyricsZone, { 62_000L }, 280_000L, cover, centerCrop16x9(bright).asImageBitmap(),
+                AppSettings(sharpness = BackgroundSharpness.SHARP), barVisible = false,
+                lyrics = LyricsState.Synced(sampleLines), lyricsAvailable = true, lyricsOn = true)
+        }
+    }
+
     @Test fun lyricsPlain() = lyrics("9b-lyrics-plain", LyricsState.Plain((1..30).joinToString("\n") { "Sample lyric line number $it goes here" }))
 
     @Test fun lyricsNone() = lyrics("9c-lyrics-none", LyricsState.None)

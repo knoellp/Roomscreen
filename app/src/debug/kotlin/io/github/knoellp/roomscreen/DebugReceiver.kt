@@ -70,6 +70,11 @@ class DebugReceiver : BroadcastReceiver() {
             }
             return
         }
+        if (intent.action == "io.github.knoellp.roomscreen.SET_SHARP_HW") {
+            BackdropCache.sharpHardware = intent.getStringExtra("value") == "on"
+            Log.i(AndroidLogger.TAG, "debug sharp_hw=${BackdropCache.sharpHardware}")
+            return
+        }
         val vm = StateRegistry.current
         if (vm == null) { Log.w(AndroidLogger.TAG, "debug action=${intent.action} result=no_viewmodel"); return }
         when (intent.action) {

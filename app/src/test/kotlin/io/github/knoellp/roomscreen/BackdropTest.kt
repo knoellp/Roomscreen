@@ -7,6 +7,7 @@ import kotlin.system.measureTimeMillis
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.runner.RunWith
@@ -85,5 +86,20 @@ class BackdropTest {
         // Reading "b" makes it the most recent; adding "e" then evicts "c".
         cache.get("b"); cache.put("e", img)
         assertNull(cache.get("c")); assertNotNull(cache.get("b"))
+    }
+
+    @Test fun evictionRecyclesOnlyBitmapsTheCacheOwns() {
+        val cache = BackdropCache()
+        fun bmp() = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+        val owned = bmp(); val shared = bmp()
+        cache.put("a", owned.asImageBitmap(), owned = owned)
+        cache.put("b", shared.asImageBitmap())
+        cache.put("c", bmp().asImageBitmap())
+        assertFalse(owned.isRecycled)
+        cache.put("d", bmp().asImageBitmap()) // evicts "a"
+        assertTrue(owned.isRecycled)
+        cache.put("e", bmp().asImageBitmap()) // evicts "b", which is shared with Coil
+        assertFalse(shared.isRecycled)
+        assertNull(cache.get("a")); assertNull(cache.get("b"))
     }
 }

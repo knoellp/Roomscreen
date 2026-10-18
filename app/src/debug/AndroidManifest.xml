@@ -14,6 +14,7 @@
                 <action android:name="io.github.knoellp.roomscreen.SET_SHARPNESS" />
                 <action android:name="io.github.knoellp.roomscreen.SET_BACKGROUND" />
                 <action android:name="io.github.knoellp.roomscreen.SET_LRCLIB" />
+                <action android:name="io.github.knoellp.roomscreen.SET_SHARP_HW" />
             </intent-filter>
         </receiver>
     </application>

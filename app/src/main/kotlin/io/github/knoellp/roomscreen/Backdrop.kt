@@ -78,42 +78,63 @@ object BackdropBlur {
     }
 }
 
-/** Loads cover and backdrop bitmaps through Coil; keeps the last [MAX_ENTRIES] backdrops. */
+/**
+ * Loads cover and backdrop bitmaps through Coil; keeps the last [maxEntries] backdrops. A bitmap this cache
+ * created itself (blur result, crop copy) is recycled when it is evicted; a bitmap that is shared with Coil's
+ * memory cache is only dropped.
+ */
 class BackdropCache(private val maxEntries: Int = MAX_ENTRIES) {
-    private val map = object : LinkedHashMap<String, ImageBitmap>(8, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>?) = size > maxEntries
+    private class Entry(val image: ImageBitmap, val owned: Bitmap?)
+
+    private val map = object : LinkedHashMap<String, Entry>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?): Boolean {
+            if (size <= maxEntries) return false
+            eldest?.value?.owned?.let { if (!it.isRecycled) it.recycle() }
+            return true
+        }
     }
 
-    @Synchronized fun get(key: String): ImageBitmap? = map[key]
-    @Synchronized fun put(key: String, value: ImageBitmap) { map[key] = value }
+    @Synchronized fun get(key: String): ImageBitmap? = map[key]?.image
+    @Synchronized fun put(key: String, value: ImageBitmap, owned: Bitmap? = null) { map[key] = Entry(value, owned) }
     val size: Int @Synchronized get() = map.size
 
     /** Backdrop for [url]: cached or computed off the main thread. Null if the image cannot be loaded. */
     suspend fun backdrop(context: Context, url: String, sharp: Boolean = false): ImageBitmap? {
         get(url)?.let { return it }
         if (sharp) {
-            // Sharp: decode at screen-source size, crop to 16:9, no blur. Software bitmap so the crop can read pixels.
+            // Sharp: decode at screen-source size, crop to 16:9, no blur.
+            if (sharpHardware) {
+                // Optional hardware bitmap (pixels live in GPU memory); only usable when no crop is needed.
+                val hw = loadBitmap(context, url, SHARP_W, SHARP_H, hardware = true)
+                if (hw != null && isSixteenNine(hw)) return hw.asImageBitmap().also { put(url, it) }
+            }
+            // Software bitmap so the crop can read pixels.
             val src = loadBitmap(context, url, SHARP_W, SHARP_H) ?: return null
             val cropped = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { centerCrop16x9(src) }
-            return cropped.asImageBitmap().also { put(url, it) }
+            return cropped.asImageBitmap().also { put(url, it, owned = cropped.takeIf { c -> c !== src }) }
         }
         val src = loadBitmap(context, url, SOURCE_PX) ?: return null
         val blurred = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { BackdropBlur.compute(src) }
-        return blurred.asImageBitmap().also { put(url, it) }
+        return blurred.asImageBitmap().also { put(url, it, owned = blurred.takeIf { b -> b !== src }) }
     }
+
+    private fun isSixteenNine(b: Bitmap) = b.width * 9 == b.height * 16
 
     suspend fun cover(context: Context, url: String, size: Int): ImageBitmap? = loadBitmap(context, url, size)?.asImageBitmap()
 
     private suspend fun loadBitmap(context: Context, url: String, size: Int): Bitmap? = loadBitmap(context, url, size, size)
 
-    private suspend fun loadBitmap(context: Context, url: String, w: Int, h: Int): Bitmap? {
+    private suspend fun loadBitmap(context: Context, url: String, w: Int, h: Int, hardware: Boolean = false): Bitmap? {
         val loader = SingletonImageLoader.get(context)
-        val request = ImageRequest.Builder(context).data(url).size(w, h).allowHardware(false).build()
+        val request = ImageRequest.Builder(context).data(url).size(w, h).allowHardware(hardware).build()
         val result = loader.execute(request) as? SuccessResult ?: return null
         return result.image.toBitmap()
     }
 
     companion object {
+        /** Debug switch for measuring hardware bitmaps in the sharp path (see DebugReceiver SET_SHARP_HW). */
+        @Volatile var sharpHardware = false
+
         const val MAX_ENTRIES = 3
         /** Decode size of the backdrop source; it is shrunk to 32 px anyway. */
         const val SOURCE_PX = 160

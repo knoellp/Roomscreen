@@ -63,6 +63,7 @@ import kotlinx.coroutines.launch
 
 private val LYRICS_COVER = 160.dp
 private val ACTIVE_COLOR = Color.White
+private val SHARP_TEXT_SCRIM = Color(0x8C000000)
 /** Height of the active line (42 sp text plus 2 x 6 dp padding), used to put its middle on the middle of the view. */
 private val LINE_HEIGHT_DP = 54.dp
 
@@ -79,9 +80,12 @@ fun LyricsView(
     lengthMs: Long?,
     cover: ImageBitmap?,
     plainScroll: ScrollState = rememberScrollState(),
+    sharp: Boolean = false,
 ) {
     val lines = zone.nowPlaying?.threeLine
     Box(modifier.fillMaxSize()) {
+    // Sharp backgrounds can be bright: darken the text column (transparent on the left, 55 % black under the text).
+    if (sharp) Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color.Transparent, 0.2f to Color.Transparent, 0.34f to SHARP_TEXT_SCRIM, 1f to SHARP_TEXT_SCRIM)))
     Row(
         Modifier.fillMaxSize().padding(start = 48.dp, end = 48.dp, top = 88.dp, bottom = 52.dp),
         horizontalArrangement = Arrangement.spacedBy(40.dp),

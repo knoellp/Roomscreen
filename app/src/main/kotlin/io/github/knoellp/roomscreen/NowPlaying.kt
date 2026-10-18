@@ -169,7 +169,7 @@ fun NowPlayingContent(
                 Text(stringResource(R.string.now_playing_nothing), fontSize = 26.sp, color = Color(0xFFC9D1D9))
             }
         } else if (lyrics is LyricsState.Synced || lyrics is LyricsState.Plain) {
-            LyricsView(Modifier, lyrics, zone, positionMs, lengthMs, cover)
+            LyricsView(Modifier, lyrics, zone, positionMs, lengthMs, cover, sharp = settings.sharpness == BackgroundSharpness.SHARP && settings.background != BackgroundSource.COLOR)
         } else {
             InfoStrip(Modifier.align(Alignment.BottomCenter), zone, positionMs, lengthMs, cover, noLyrics = lyrics is LyricsState.None)
         }
