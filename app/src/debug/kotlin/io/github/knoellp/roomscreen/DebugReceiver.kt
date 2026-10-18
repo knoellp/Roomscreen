@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
  * SET_SCREEN_ON (extra value=always|playing) writes the "Screen on" setting; SET_LYRICS_OFFSET (extra value=milliseconds, -3000..3000) the lyrics timing.
  * SET_LRCLIB (extra value=on|off) writes the "Lyrics (LRCLIB)" setting, the same as the settings row.
  * SELECT_ZONE (extra name) selects a zone by display name without sending any command.
+ * CLEAR_ENDPOINT forgets only the stored Core address (host, port, manual); token and zone stay. Works while the app is stopped;
+ * restart the app afterwards to see discovery run. (RESET below also clears token and zone.)
  * RESET clears all stored preferences (token, endpoint, zone) and must only be used after asking.
  */
 class DebugReceiver : BroadcastReceiver() {
@@ -33,6 +35,18 @@ class DebugReceiver : BroadcastReceiver() {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(viaRoon = on))
                     Log.i(AndroidLogger.TAG, "debug via_roon=${if (on) "on" else "off"}")
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
+        if (intent.action == "io.github.knoellp.roomscreen.CLEAR_ENDPOINT") {
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    Prefs(context).clearEndpoint()
+                    Log.i(AndroidLogger.TAG, "debug endpoint=cleared")
                 } finally {
                     pending.finish()
                 }

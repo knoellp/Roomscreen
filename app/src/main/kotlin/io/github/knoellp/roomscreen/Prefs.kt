@@ -98,5 +98,8 @@ class Prefs(context: Context) : TokenStore {
         store.data.first()[installKey] ?: java.util.UUID.randomUUID().toString().take(8).also { id -> store.edit { it[installKey] = id } }
     }
 
+    /** Forgets the stored Core address only (host, port, manual flag). Token and zone stay. */
+    suspend fun clearEndpoint() { store.edit { it.remove(hostKey); it.remove(portKey); it.remove(manualKey) } }
+
     suspend fun clearAll() { store.edit { val id = it[installKey]; it.clear(); if (id != null) it[installKey] = id } }
 }

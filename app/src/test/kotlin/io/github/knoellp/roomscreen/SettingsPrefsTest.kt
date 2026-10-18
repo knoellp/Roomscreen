@@ -29,6 +29,19 @@ class SettingsPrefsTest {
         assertEquals(true, Prefs(ApplicationProvider.getApplicationContext()).lyricsOn.first())
     }
 
+    @Test fun clearEndpointKeepsTokenAndZone() = runBlocking {
+        val prefs = Prefs(ApplicationProvider.getApplicationContext())
+        prefs.saveEndpoint(io.github.knoellp.roomscreen.roon.Endpoint("192.0.2.7", 9330))
+        prefs.setManual(true)
+        prefs.setZone("zone-1", setOf("out-1"))
+        prefs.put("core-1", "token-1")
+        prefs.clearEndpoint()
+        assertEquals(null, prefs.lastEndpoint())
+        assertEquals(false, prefs.manual())
+        assertEquals("zone-1", prefs.zoneId.first())
+        assertEquals("token-1", prefs.get("core-1"))
+    }
+
     @Test fun cyclingWrapsAround() {
         assertEquals(BackgroundColor.ANTHRACITE, BackgroundColor.BLACK.next())
         assertEquals(BackgroundColor.BLACK, BackgroundColor.WARM_GRAY.next())

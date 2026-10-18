@@ -89,6 +89,13 @@ fun ConnectingContent(status: Status, onManual: () -> Unit, lastAddress: String?
                 Status.LoadingZones -> stringResource(R.string.status_loading_zones)
             },
         )
+        // Visible from the first frame, so a slow start never looks frozen.
+        androidx.compose.material3.CircularProgressIndicator(
+            modifier = Modifier.size(48.dp),
+            color = Color(0xFFC9D1D9),
+            trackColor = Color(0x33FFFFFF),
+            strokeWidth = 4.dp,
+        )
         if (slow) {
             Body(stringResource(R.string.status_unreachable), color = Color(0xFFE3B341))
             if (lastAddress != null) Body(stringResource(R.string.status_last_address, lastAddress), color = Color(0xFF9DA7B3))

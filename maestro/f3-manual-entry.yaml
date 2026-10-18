@@ -1,0 +1,26 @@
+# Phase F3: manual host/port entry on the device. Not run yet (device run pending).
+# Start state (set by scripts/f3-manual-entry.sh): the saved Core address points at an unused address, so the app shows the
+# Connecting screen with the "Enter address manually" button. The real Core host comes in as CORE_HOST, read from the app's own
+# DUMP_STATE before the test (never a constant):
+#   maestro test -e CORE_HOST=<host from DUMP_STATE> maestro/f3-manual-entry.yaml
+# Works for the English and the German UI. The port stays at its default (9330).
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "(Enter address manually|Adresse manuell eingeben)"
+    timeout: 30000
+- tapOn: "(Enter address manually|Adresse manuell eingeben)"
+- extendedWaitUntil:
+    visible: "(Connect manually|Manuell verbinden)"
+    timeout: 10000
+- tapOn: "(Host or IP address|Host oder IP-Adresse).*"
+- eraseText: 64
+- inputText: "${CORE_HOST}"
+- takeScreenshot: build/device-artifacts/p5-02-manual-entry
+- tapOn: "(Test connection|Verbindung testen)"
+- extendedWaitUntil:
+    visible: "(Connected to|Verbunden mit).*"
+    timeout: 30000
+- takeScreenshot: build/device-artifacts/p5-03-manual-connected
