@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() { super.onStart(); viewModel.connect() }
 
-    override fun onStop() { viewModel.disconnect(); super.onStop() }
+    override fun onStop() { viewModel.disconnectDelayed(); super.onStop() }
 }
 
 @Composable

@@ -61,6 +61,7 @@ internal fun optimisticFor(zone: Zone, control: TransportControl): Pending? = wh
 }?.takeIf { it.from != it.to }
 
 private const val PENDING_MS = 3000L
+private const val DISCONNECT_DELAY_MS = 2000L
 
 /**
  * Holds the [RoonClient]; connects in onStart, disconnects in onStop. Selecting a zone never sends control commands;
@@ -260,8 +261,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Called from onStart. Idempotent: never opens two connections. */
+    private var disconnectJob: Job? = null
+
+    /** Called from onStart. Idempotent: never opens two connections. Cancels a pending delayed disconnect. */
     fun connect() {
+        if (disconnectJob != null) { disconnectJob?.cancel(); disconnectJob = null; log.info("lifecycle=disconnect_cancelled") }
         if (client != null) return
         viewModelScope.launch {
             if (client != null) return@launch
@@ -291,7 +295,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Called from onStop. */
+    /**
+     * Called from onStop: the connection is closed after [DISCONNECT_DELAY_MS]. A short change of the activity
+     * (volume overlay, screensaver preview) that returns within that time keeps the connection and registration.
+     */
+    fun disconnectDelayed() {
+        disconnectJob?.cancel()
+        disconnectJob = viewModelScope.launch {
+            delay(DISCONNECT_DELAY_MS)
+            disconnectJob = null
+            log.info("lifecycle=disconnect_after_delay ms=$DISCONNECT_DELAY_MS")
+            disconnect()
+        }
+    }
+
     fun disconnect() {
         client?.stop()
         mirror?.cancel()
