@@ -1,0 +1,58 @@
+# Releasing
+
+How the release key is created, used and (in phase F3b) handed to the release pipeline.
+
+## The release key
+
+One RSA 4096 key signs every build that is installed on a device, **debug and release alike**
+(`buildTypes.debug.signingConfig = release` when the key is configured). That way `adb install -r` can replace a debug build by a
+release build and back without losing the Roon token. A different key makes Android refuse the update; the only way out is an
+uninstall, which loses the token and needs a new "Enable" in Roon.
+
+Files (all gitignored, never commit them):
+
+- `config/release.jks`: the PKCS12 keystore, alias `roomscreen`.
+- `config/signing.env`: `RELEASE_KEYSTORE`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
+  `scripts/dock` hands it to the container, Gradle reads it from the environment. (PKCS12 has one password for store and key,
+  so both values are the same.)
+
+**Back up `config/release.jks` and the passwords in a second place outside this machine. If the keystore is lost, no update can be
+installed over an existing installation any more.**
+
+The public certificate fingerprint is in `config/release-fingerprint.txt` and in the README. Check an APK with
+`scripts/dock /opt/android-sdk/build-tools/36.0.0/apksigner verify --print-certs <apk>`.
+
+### Creating the keystore (done once)
+
+```bash
+openssl rand -base64 24   # run twice, put the values into config/signing.env (copy config/signing.env.example)
+scripts/dock bash -c 'keytool -genkeypair -keystore "$RELEASE_KEYSTORE" -alias "$RELEASE_KEY_ALIAS" \
+  -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=Roomscreen, O=knoellp" \
+  -storepass "$RELEASE_KEYSTORE_PASSWORD" -keypass "$RELEASE_KEY_PASSWORD"'
+```
+
+## Building
+
+```bash
+scripts/dock ./gradlew :app:assembleRelease     # app/build/outputs/apk/release/app-release.apk
+scripts/dock ./gradlew :app:assembleDebug       # same key, plus the debug hooks
+```
+
+Without `config/signing.env` the debug build uses the default Android debug key and the release build is unsigned.
+
+## GitHub secrets for the pipeline (phase F3b, not set yet)
+
+The workflow in F3b signs the release APK with the same key. These are the commands to store it; **nothing has been uploaded yet**.
+Run them from the repository root with `gh` logged in; they read the files, nothing is printed.
+
+```bash
+set -a; . config/signing.env; set +a
+base64 -w0 "$RELEASE_KEYSTORE" | gh secret set RELEASE_KEYSTORE_B64
+printf %s "$RELEASE_KEYSTORE_PASSWORD" | gh secret set RELEASE_KEYSTORE_PASSWORD
+printf %s "$RELEASE_KEY_ALIAS"         | gh secret set RELEASE_KEY_ALIAS
+printf %s "$RELEASE_KEY_PASSWORD"      | gh secret set RELEASE_KEY_PASSWORD
+```
+
+In the workflow, decode `RELEASE_KEYSTORE_B64` to a file, export `RELEASE_KEYSTORE` (path), `RELEASE_KEYSTORE_PASSWORD`,
+`RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`, and run `./gradlew :app:assembleRelease`. Verify that the digest of the built
+APK equals `config/release-fingerprint.txt` before publishing.

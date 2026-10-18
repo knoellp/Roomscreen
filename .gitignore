@@ -13,6 +13,7 @@ captures/
 *.keystore
 keystore.properties
 config/local.env
+config/signing.env
 # Recordings / test artefacts that may contain tokens
 recordings/
 *.token

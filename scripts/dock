@@ -5,7 +5,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 IMAGE=roomscreen-android
 mkdir -p "$HOME/.android" "$HOME/.config/roomscreen-cli"
-ENVFILE=(); [ -f config/local.env ] && ENVFILE=(--env-file config/local.env)
+ENVFILE=()
+[ -f config/local.env ] && ENVFILE+=(--env-file config/local.env)
+# Release signing (gitignored): RELEASE_KEYSTORE, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
+[ -f config/signing.env ] && ENVFILE+=(--env-file config/signing.env)
 TTY=""; [ -t 0 ] && TTY="-it"
 exec docker run --rm $TTY --network host \
   "${ENVFILE[@]}" \

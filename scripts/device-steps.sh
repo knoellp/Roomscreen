@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Runs inside the toolchain container (see deploy-test.sh).
 set -euo pipefail
-FLOW=""; WAIT=15; VIA=""
+FLOW=""; WAIT=15; VIA=""; ALLOW_KEY_CHANGE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --flow) FLOW="$2"; shift 2 ;;
     --wait) WAIT="$2"; shift 2 ;;
     --via-roon) VIA="$2"; shift 2 ;;
+    --allow-key-change) ALLOW_KEY_CHANGE=1; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -22,7 +23,37 @@ adb -s "$DEV" get-state | grep -q device || { echo "device not authorized/reacha
 adb -s "$DEV" shell getprop ro.build.version.sdk
 
 ./gradlew --no-daemon :app:assembleDebug -q
-adb -s "$DEV" install -r app/build/outputs/apk/debug/app-debug.apk
+APK=app/build/outputs/apk/debug/app-debug.apk
+
+# Signature check before installing: the build and the installed app must carry the release key
+# (config/release-fingerprint.txt). `install -r` over a different key fails, and the only way out would be an
+# uninstall, which loses the Roon token. This script never uninstalls. --allow-key-change only turns the abort into a warning.
+APKSIGNER=/opt/android-sdk/build-tools/36.0.0/apksigner
+EXPECTED=$(grep -Eio '^[0-9a-f]{64}$' config/release-fingerprint.txt | head -n1 | tr 'A-F' 'a-f' || true)
+[ -n "$EXPECTED" ] || { echo "config/release-fingerprint.txt missing or without a SHA-256 digest" >&2; exit 1; }
+cert_digest() { "$APKSIGNER" verify --print-certs "$1" 2>/dev/null | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n1; }
+key_mismatch() { # $1 = what, $2 = digest found
+  echo "SIGNATURE MISMATCH: $1 is signed with $2, expected $EXPECTED (config/release-fingerprint.txt)." >&2
+  if [ "$ALLOW_KEY_CHANGE" = 1 ]; then
+    echo "WARNING: --allow-key-change given, continuing. The install will fail with INSTALL_FAILED_UPDATE_INCOMPATIBLE; this script does not uninstall." >&2
+  else
+    echo "Aborting. Use config/signing.env for the build; an installed app with another key needs a one-time uninstall (new Enable in Roon), ask first, then pass --allow-key-change." >&2
+    exit 1
+  fi
+}
+BUILT=$(cert_digest "$APK")
+[ "$BUILT" = "$EXPECTED" ] || key_mismatch "the built APK" "${BUILT:-unknown}"
+if adb -s "$DEV" shell dumpsys package "$PKG" | grep -q "versionName="; then
+  INSTALLED_PATH=$(adb -s "$DEV" shell pm path "$PKG" | head -n1 | sed 's/^package://' | tr -d '\r')
+  adb -s "$DEV" pull "$INSTALLED_PATH" "$OUT/installed-$STAMP.apk" >/dev/null
+  INSTALLED=$(cert_digest "$OUT/installed-$STAMP.apk")
+  rm -f "$OUT/installed-$STAMP.apk"
+  [ "$INSTALLED" = "$EXPECTED" ] || key_mismatch "the installed app" "${INSTALLED:-unknown}"
+  echo "signature check ok: installed app and build carry $EXPECTED"
+else
+  echo "app not installed yet; signature of the build checked ($BUILT)"
+fi
+adb -s "$DEV" install -r "$APK"
 
 adb -s "$DEV" logcat -c
 if [ -n "$VIA" ]; then

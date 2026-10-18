@@ -48,7 +48,7 @@ rediscovery after 5 failed attempts, delayed disconnect (2 s) when the activity 
 view without per-line text re-layout, dark scrim under the lyrics on sharp backgrounds, "Lyrics timing" setting, fading control bar,
 connection hint after 20 s. Measurements: `docs/ARCHITECTURE.md` section 10.
 
-Not implemented yet: Echo Show 15 (Live App Testing, touch layout), release signing.
+Not implemented yet: Echo Show 15 (Live App Testing, touch layout), the release pipeline (GitHub secrets, phase F3b). Release signing exists (`docs/RELEASING.md`); the stick still runs a build with the old debug key until the one-time key change.
 
 Not verified (Phase 4): the Maestro zone-list flow `maestro/phase1-zones.yaml` passes up to
 the zone name assertion with `-e ROON_TEST_ZONE=...` but its last step (title of the zone list) failed on the stick once and was not investigated;
@@ -149,6 +149,12 @@ The app continues by itself.
 3. `adb connect <fire-tv-ip>:5555` and confirm the dialog on the TV, then `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 4. Start it from the apps list, or `adb shell am start -n io.github.knoellp.roomscreen/.MainActivity`.
 
+Signing: debug and release builds are signed with the same release key when `config/signing.env` is present (see `docs/RELEASING.md`;
+without it the debug build uses the Android debug key). Certificate SHA-256 digest (also in `config/release-fingerprint.txt`):
+`76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb`. Check an APK with
+`scripts/dock /opt/android-sdk/build-tools/36.0.0/apksigner verify --print-certs <apk>`. Release build: `scripts/dock ./gradlew :app:assembleRelease`
+(`app/build/outputs/apk/release/app-release.apk`, version 1.0.0, no R8). The key move from the old debug key to this key needs a one-time
+uninstall on the stick and a new "Enable" in Roon (pending, see `docs/ARCHITECTURE.md` section 11).
 Always sign with the same key and use `install -r` so updates keep the stored token.
 `scripts/deploy-test.sh [--flow maestro/phase1.yaml]` does build, install, start, flow, screenshot and logcat in one go
 (set `FIRE_TV_IP` and `ROON_TEST_ZONE` in `config/local.env`, see `config/local.env.example`).

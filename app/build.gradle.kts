@@ -11,8 +11,34 @@ android {
         applicationId = "io.github.knoellp.roomscreen"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "1.0.0"
+    }
+
+    // Release key from the environment (config/signing.env via scripts/dock). Without it the debug build keeps the
+    // default debug key and the release build is unsigned. Debug and release share one key when it is configured,
+    // so that either APK can replace the other with `adb install -r`.
+    val releaseKeystore = System.getenv("RELEASE_KEYSTORE")?.takeIf { it.isNotBlank() }
+    if (releaseKeystore != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = rootProject.file(releaseKeystore)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // No R8 in version 1 (see docs/ARCHITECTURE.md section 11).
+            isMinifyEnabled = false
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     buildFeatures { compose = true }

@@ -1,0 +1,2 @@
+# SHA-256 digest of the Roomscreen signing certificate (public). Debug and release builds carry this key when config/signing.env is present.
+76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb
