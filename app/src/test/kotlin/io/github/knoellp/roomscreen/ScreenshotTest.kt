@@ -77,6 +77,8 @@ class ScreenshotTest {
 
     @Test fun connecting() = shot("1-connecting") { ConnectingScreen(Status.Discovering, {}) }
 
+    @Test fun connectingSlow() = shot("1b-connecting-slow") { ConnectingContent(Status.Reconnecting(4), {}, "192.168.1.194:9330", slow = true) }
+
     @Test fun manualEntry() = shot("2-manual-entry") {
         ManualEntryScreen("192.168.1.10", 9330, TestResult.Ok("Roon Optimized Core Kit", "2.73"), { _, _ -> }, {})
     }

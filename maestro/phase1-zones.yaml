@@ -1,9 +1,10 @@
 # Zones button: any key shows it, Select opens the zone list, Back returns to the same zone.
+# Run with the zone name from the environment: maestro test -e ROON_TEST_ZONE="$ROON_TEST_ZONE" maestro/phase1-zones.yaml
 appId: io.github.knoellp.roomscreen
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "Büro ·.*"
+    visible: "${ROON_TEST_ZONE} ·.*"
     timeout: 60000
 - pressKey: Remote Dpad Down
 - extendedWaitUntil:
@@ -15,5 +16,5 @@ appId: io.github.knoellp.roomscreen
     timeout: 10000
 - pressKey: Back
 - extendedWaitUntil:
-    visible: "Büro ·.*"
+    visible: "${ROON_TEST_ZONE} ·.*"
     timeout: 10000

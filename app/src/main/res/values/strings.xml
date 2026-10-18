@@ -8,6 +8,8 @@
     <string name="status_discovering">Searching for your Roon Core…</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_reconnecting">Connection lost. Reconnecting (attempt %1$d)…</string>
+    <string name="status_unreachable">Core not reachable, still searching…</string>
+    <string name="status_last_address">Last known address: %1$s</string>
     <string name="status_loading_zones">Loading zones…</string>
     <string name="enter_manually">Enter address manually</string>
 

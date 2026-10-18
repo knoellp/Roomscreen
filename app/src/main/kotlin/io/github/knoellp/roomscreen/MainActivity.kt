@@ -53,7 +53,7 @@ private fun Root(vm: MainViewModel) {
     val lastInput by vm.lastInput.collectAsState()
     val settings by vm.settings.collectAsState()
     when (val s = screen) {
-        is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual)
+        is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual, saved?.let { "${it.host}:${it.port}" })
         Screen.Manual -> {
             BackHandler { vm.closeManual() }
             ManualEntryScreen(saved?.host ?: "", saved?.port ?: 9330, test, vm::testConnection, vm::closeManual)

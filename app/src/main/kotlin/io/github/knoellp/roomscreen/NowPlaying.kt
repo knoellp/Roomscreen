@@ -1,6 +1,9 @@
 package io.github.knoellp.roomscreen
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontVariation
@@ -174,9 +177,14 @@ fun NowPlayingContent(
             InfoStrip(Modifier.align(Alignment.BottomCenter), zone, positionMs, lengthMs, cover, noLyrics = lyrics is LyricsState.None)
         }
         if (settings.viaRoon) ViaRoon(Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 14.dp))
-        if (barVisible) {
+        AnimatedVisibility(
+            visible = barVisible,
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn(tween(BAR_FADE_MS)),
+            exit = fadeOut(tween(BAR_FADE_MS)),
+        ) {
             Box(
-                Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                Modifier.fillMaxWidth()
                     .background(Brush.verticalGradient(0f to Color(0xB0000000), 1f to Color.Transparent)),
             ) {
                 ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, lyricsAvailable, lyricsOn, onZones, onSettings, onLyrics, onControl)
@@ -186,6 +194,9 @@ fun NowPlayingContent(
 }
 
 const val CROSSFADE_MS = 600
+
+/** The control bar fades in and out instead of appearing hard. */
+const val BAR_FADE_MS = 200
 
 @Composable
 private fun InfoStrip(modifier: Modifier, zone: Zone, positionMs: () -> Long, lengthMs: Long?, cover: ImageBitmap?, noLyrics: Boolean = false) {

@@ -66,9 +66,19 @@ internal fun Title(text: String) = Text(text, fontSize = 40.sp, lineHeight = 48.
 @Composable
 internal fun Body(text: String, color: Color = Color(0xFFC9D1D9)) = Text(text, fontSize = 24.sp, lineHeight = 34.sp, color = color)
 
-/** Screen 1: searching / connecting with status. */
+/** After this long without a connection the Connecting screen adds a hint with the last known address. */
+const val CONNECT_HINT_AFTER_MS = 20_000L
+
+/** Screen 1: searching / connecting with status; after [CONNECT_HINT_AFTER_MS] a "Core not reachable" hint is added. */
 @Composable
-fun ConnectingScreen(status: Status, onManual: () -> Unit) = Page {
+fun ConnectingScreen(status: Status, onManual: () -> Unit, lastAddress: String? = null, hintAfterMs: Long = CONNECT_HINT_AFTER_MS) {
+    var slow by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(hintAfterMs); slow = true }
+    ConnectingContent(status, onManual, lastAddress, slow)
+}
+
+@Composable
+fun ConnectingContent(status: Status, onManual: () -> Unit, lastAddress: String?, slow: Boolean) = Page {
     Column(Modifier.align(Alignment.Center), verticalArrangement = Arrangement.spacedBy(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Title(stringResource(R.string.app_name))
         Body(
@@ -79,6 +89,10 @@ fun ConnectingScreen(status: Status, onManual: () -> Unit) = Page {
                 Status.LoadingZones -> stringResource(R.string.status_loading_zones)
             },
         )
+        if (slow) {
+            Body(stringResource(R.string.status_unreachable), color = Color(0xFFE3B341))
+            if (lastAddress != null) Body(stringResource(R.string.status_last_address, lastAddress), color = Color(0xFF9DA7B3))
+        }
         Spacer(Modifier.height(16.dp))
         Button(onClick = onManual) { Text(stringResource(R.string.enter_manually)) }
     }
