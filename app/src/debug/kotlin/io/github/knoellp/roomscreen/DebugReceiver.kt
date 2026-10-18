@@ -70,6 +70,20 @@ class DebugReceiver : BroadcastReceiver() {
             }
             return
         }
+        if (intent.action == "io.github.knoellp.roomscreen.SET_LYRICS_OFFSET") {
+            val ms = (intent.getStringExtra("value")?.toIntOrNull() ?: 0).coerceIn(LYRICS_OFFSET_MIN_MS, LYRICS_OFFSET_MAX_MS)
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val prefs = Prefs(context)
+                    prefs.saveSettings(prefs.settings.first().copy(lyricsOffsetMs = ms))
+                    Log.i(AndroidLogger.TAG, "debug lyrics_offset_ms=$ms")
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
         if (intent.action == "io.github.knoellp.roomscreen.SET_SHARP_HW") {
             BackdropCache.sharpHardware = intent.getStringExtra("value") == "on"
             Log.i(AndroidLogger.TAG, "debug sharp_hw=${BackdropCache.sharpHardware}")

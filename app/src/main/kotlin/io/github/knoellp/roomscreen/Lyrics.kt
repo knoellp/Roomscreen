@@ -81,6 +81,7 @@ fun LyricsView(
     cover: ImageBitmap?,
     plainScroll: ScrollState = rememberScrollState(),
     sharp: Boolean = false,
+    offsetMs: Int = 0,
 ) {
     val lines = zone.nowPlaying?.threeLine
     Box(modifier.fillMaxSize()) {
@@ -103,7 +104,7 @@ fun LyricsView(
         }
         Box(Modifier.weight(1f).fillMaxHeight()) {
             when (state) {
-                is LyricsState.Synced -> SyncedLyrics(state, positionMs)
+                is LyricsState.Synced -> SyncedLyrics(state, positionMs, offsetMs)
                 is LyricsState.Plain -> PlainLyrics(state.text, plainScroll)
                 else -> {}
             }
@@ -134,9 +135,9 @@ private fun TopScrim() {
  * (and scrolls) only when the index changes, not on every 10 Hz tick.
  */
 @Composable
-private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long) {
+private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long, offsetMs: Int) {
     val lines = state.lines
-    val active by remember(lines) { derivedStateOf { LyricsSync.activeIndex(lines, positionMs()) } }
+    val active by remember(lines, offsetMs) { derivedStateOf { LyricsSync.activeIndex(lines, positionMs(), offsetMs.toLong()) } }
     val listState = rememberLazyListState()
     var heightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current

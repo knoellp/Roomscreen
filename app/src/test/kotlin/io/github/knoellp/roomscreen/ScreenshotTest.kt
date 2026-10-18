@@ -175,6 +175,8 @@ class ScreenshotTest {
 
     @Test fun settings() = shot("7-settings") { SettingsScreen(AppSettings(), "192.168.1.194:9330", {}, {}, {}) }
 
+    @Test fun settingsLyricsOffset() = shot("7d-settings-offset") { SettingsScreen(AppSettings(lyricsOffsetMs = 1500), "192.168.1.194:9330", {}, {}, {}) }
+
     @Test fun settingsColor() = shot("7c-settings-color") {
         SettingsScreen(AppSettings(background = BackgroundSource.COLOR), "192.168.1.194:9330", {}, {}, {})
     }

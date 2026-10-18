@@ -23,6 +23,18 @@ class LyricsSyncTest {
 
     @Test fun afterLast() = assertEquals(2, LyricsSync.activeIndex(lines, 999_999))
 
+    @Test fun positiveOffsetShowsLinesEarlier() {
+        assertEquals(0, LyricsSync.activeIndex(lines, 15_000))
+        assertEquals(1, LyricsSync.activeIndex(lines, 17_000, offsetMs = 3_000))
+        assertEquals(2, LyricsSync.activeIndex(lines, 27_000, offsetMs = 3_000))
+    }
+
+    @Test fun negativeOffsetShowsLinesLater() {
+        assertEquals(1, LyricsSync.activeIndex(lines, 21_000))
+        assertEquals(0, LyricsSync.activeIndex(lines, 21_000, offsetMs = -3_000))
+        assertEquals(-1, LyricsSync.activeIndex(lines, 11_000, offsetMs = -3_000))
+    }
+
     @Test fun noLines() = assertEquals(-1, LyricsSync.activeIndex(listOf<LrcLine>(), 5_000))
 
     @Test fun sameTimestampPicksLast() {

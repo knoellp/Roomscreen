@@ -47,7 +47,20 @@ data class AppSettings(
     val viaRoon: Boolean = true,
     /** Opt-out switch: false means no request to lrclib.net is ever made and the Lyrics button disappears. */
     val lrclib: Boolean = true,
+    /** Added to the playback position when choosing the active lyrics line: -3000 .. +3000 ms in 500 ms steps. */
+    val lyricsOffsetMs: Int = 0,
 )
+
+const val LYRICS_OFFSET_MIN_MS = -3000
+const val LYRICS_OFFSET_MAX_MS = 3000
+const val LYRICS_OFFSET_STEP_MS = 500
+
+/** Next offset (+0.5 s), wrapping from the maximum to the minimum. */
+fun nextLyricsOffset(ms: Int): Int = if (ms >= LYRICS_OFFSET_MAX_MS) LYRICS_OFFSET_MIN_MS else ms + LYRICS_OFFSET_STEP_MS
+
+/** "0 s", "+0.5 s", "-1.0 s" (decimal separator per locale). */
+fun formatLyricsOffset(ms: Int, locale: java.util.Locale = java.util.Locale.getDefault()): String =
+    if (ms == 0) "0 s" else String.format(locale, "%s%.1f s", if (ms > 0) "+" else "\u2212", kotlin.math.abs(ms) / 1000.0)
 
 /** Next value of an enum, wrapping around (used by the settings list: select cycles the value). */
 inline fun <reified T : Enum<T>> T.next(): T = enumValues<T>().let { it[(ordinal + 1) % it.size] }

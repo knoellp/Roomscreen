@@ -71,6 +71,8 @@
     <string name="setting_screen_playing">Only while playing</string>
     <string name="setting_via_roon">Show \"via roon\"</string>
     <string name="setting_lrclib">Lyrics (LRCLIB)</string>
+    <string name="setting_lyrics_offset">Lyrics timing</string>
+    <string name="setting_lyrics_offset_hint">minus = later, plus = earlier</string>
     <string name="lyrics_button">Lyrics</string>
     <string name="lyrics_none">No lyrics found</string>
     <string name="setting_connection">Core</string>

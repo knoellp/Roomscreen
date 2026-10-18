@@ -42,7 +42,7 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 
 /** One row of the settings list: select runs [onSelect]; [value] is shown on the right. */
-private data class SettingItem(val id: String, val label: Int, val value: String?, val swatch: Color? = null, val onSelect: () -> Unit)
+private data class SettingItem(val id: String, val label: Int, val value: String?, val swatch: Color? = null, val hint: Int? = null, val onSelect: () -> Unit)
 
 /**
  * AppSettings list. Select cycles a value; the last two rows are actions. [coreAddress] is shown as plain information.
@@ -69,6 +69,11 @@ fun SettingsScreen(
         SettingItem("screen", R.string.setting_screen_on, stringResource(settings.screenOn.label)) { onChange(settings.copy(screenOn = settings.screenOn.next())) },
         SettingItem("via", R.string.setting_via_roon, stringResource(if (settings.viaRoon) R.string.on else R.string.off)) { onChange(settings.copy(viaRoon = !settings.viaRoon)) },
         SettingItem("lrclib", R.string.setting_lrclib, stringResource(if (settings.lrclib) R.string.on else R.string.off)) { onChange(settings.copy(lrclib = !settings.lrclib)) },
+        *(if (!settings.lrclib) emptyArray() else arrayOf(
+            SettingItem("lyrics_offset", R.string.setting_lyrics_offset, formatLyricsOffset(settings.lyricsOffsetMs), hint = R.string.setting_lyrics_offset_hint) {
+                onChange(settings.copy(lyricsOffsetMs = nextLyricsOffset(settings.lyricsOffsetMs)))
+            },
+        )),
         SettingItem("rediscover", R.string.setting_rediscover, null, onSelect = onRediscover),
         SettingItem("zone", R.string.setting_switch_zone, null, onSelect = onSwitchZone),
     )
@@ -112,7 +117,10 @@ private fun SettingRow(row: SettingItem, focus: FocusRequester?) {
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = 42.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(row.label), fontSize = 22.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(row.label), fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (row.hint != null) Text(stringResource(row.hint), fontSize = 14.sp, color = Color(0xFF8B96A2), maxLines = 1)
+            }
             if (row.swatch != null) {
                 Box(Modifier.size(22.dp).clip(CircleShape).background(row.swatch).border(1.5.dp, Color(0x99FFFFFF), CircleShape))
                 Spacer(Modifier.width(10.dp))
