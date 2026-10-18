@@ -1,0 +1,146 @@
+{
+ "description": "LRC parsing (docs/SPEC.md lyrics). Derived 1:1 from LrcParserTest; expected times are exactly what the original assertions imply (where the test only compared texts, the times follow from the input). Positive [offset:] moves lines earlier, the time never goes below 0, the result is sorted by time (stable), word tags <mm:ss.xx> are removed, metadata tags and lines without a time stamp are skipped.",
+ "cases": [
+  {
+   "name": "twoAndThreeFractionDigits",
+   "input": "[00:17.84] Under the ruins\n[01:02.345] Second",
+   "expect": [
+    {
+     "timeMs": 17840,
+     "text": "Under the ruins"
+    },
+    {
+     "timeMs": 62345,
+     "text": "Second"
+    }
+   ]
+  },
+  {
+   "name": "oneDigitFractionAndNoFraction",
+   "input": "[00:01.5] a\n[00:02] b",
+   "expect": [
+    {
+     "timeMs": 1500,
+     "text": "a"
+    },
+    {
+     "timeMs": 2000,
+     "text": "b"
+    }
+   ]
+  },
+  {
+   "name": "multipleTimestampsPerLine",
+   "input": "[00:10.00][00:30.50] Chorus",
+   "expect": [
+    {
+     "timeMs": 10000,
+     "text": "Chorus"
+    },
+    {
+     "timeMs": 30500,
+     "text": "Chorus"
+    }
+   ]
+  },
+  {
+   "name": "offsetPositiveShiftsEarlier",
+   "input": "[offset:+500]\n[00:10.00] a",
+   "expect": [
+    {
+     "timeMs": 9500,
+     "text": "a"
+    }
+   ]
+  },
+  {
+   "name": "offsetNegativeShiftsLaterAndOffsetAfterLinesStillApplies",
+   "input": "[00:10.00] a\n[offset:-250]",
+   "expect": [
+    {
+     "timeMs": 10250,
+     "text": "a"
+    }
+   ]
+  },
+  {
+   "name": "offsetNeverGoesNegative",
+   "input": "[offset:5000]\n[00:01.00] a",
+   "expect": [
+    {
+     "timeMs": 0,
+     "text": "a"
+    }
+   ]
+  },
+  {
+   "name": "metadataTagsAndPlainLinesAreSkipped",
+   "input": "[ar:Sting]\n[ti:Fortress]\n[al:Turtles]\n[by:me]\nno stamp here\n[00:05.00] x",
+   "expect": [
+    {
+     "timeMs": 5000,
+     "text": "x"
+    }
+   ]
+  },
+  {
+   "name": "emptyLinesWithStampAreKept",
+   "input": "[00:05.00] a\n[00:09.00]\n\n[00:12.00] b",
+   "expect": [
+    {
+     "timeMs": 5000,
+     "text": "a"
+    },
+    {
+     "timeMs": 9000,
+     "text": ""
+    },
+    {
+     "timeMs": 12000,
+     "text": "b"
+    }
+   ]
+  },
+  {
+   "name": "unsortedInputIsSortedStable",
+   "input": "[00:20.00] c\n[00:10.00] a\n[00:10.00] a2\n[00:15.00] b",
+   "expect": [
+    {
+     "timeMs": 10000,
+     "text": "a"
+    },
+    {
+     "timeMs": 10000,
+     "text": "a2"
+    },
+    {
+     "timeMs": 15000,
+     "text": "b"
+    },
+    {
+     "timeMs": 20000,
+     "text": "c"
+    }
+   ]
+  },
+  {
+   "name": "crlfAndWordTags",
+   "input": "[00:01.00] <00:01.00>Hel<00:01.50>lo\r\n[00:02.00] bye\r\n",
+   "expect": [
+    {
+     "timeMs": 1000,
+     "text": "Hello"
+    },
+    {
+     "timeMs": 2000,
+     "text": "bye"
+    }
+   ]
+  },
+  {
+   "name": "emptyInput",
+   "input": "",
+   "expect": []
+  }
+ ]
+}

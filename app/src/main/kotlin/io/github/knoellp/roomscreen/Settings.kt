@@ -19,12 +19,12 @@ enum class BackgroundSharpness(@StringRes val label: Int) {
 
 /** Curated background tones (also the base colour under the image and the colour when there is no cover). */
 enum class BackgroundColor(val color: Color, @StringRes val label: Int) {
-    BLACK(Color(0xFF000000), R.string.color_black),
-    ANTHRACITE(Color(0xFF23262B), R.string.color_anthracite),
-    MIDNIGHT(Color(0xFF0B1A33), R.string.color_midnight),
-    FOREST(Color(0xFF0E2A1C), R.string.color_forest),
-    WINE(Color(0xFF3A0F1C), R.string.color_wine),
-    WARM_GRAY(Color(0xFF3A3632), R.string.color_warm_gray),
+    BLACK(Tokens.paletteBlack, R.string.color_black),
+    ANTHRACITE(Tokens.paletteAnthracite, R.string.color_anthracite),
+    MIDNIGHT(Tokens.paletteMidnight, R.string.color_midnight),
+    FOREST(Tokens.paletteForest, R.string.color_forest),
+    WINE(Tokens.paletteWine, R.string.color_wine),
+    WARM_GRAY(Tokens.paletteWarmGray, R.string.color_warm_gray),
 }
 
 enum class ControlsMode(@StringRes val label: Int) {

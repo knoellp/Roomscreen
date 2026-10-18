@@ -5,6 +5,9 @@ plugins {
 
 kotlin { jvmToolchain(17) }
 
+// Shared fixtures and test vectors (shared/fixtures, shared/testvectors) are on the test classpath as /fixtures/<name> and /testvectors/<name>.
+sourceSets.named("test") { resources.srcDir(rootDir.resolve("shared")) }
+
 dependencies {
     // roon-client provides the Logger seam and re-exports coroutines, serialization and OkHttp.
     api(project(":roon-client"))

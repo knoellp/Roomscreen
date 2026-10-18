@@ -70,11 +70,7 @@ import io.github.knoellp.roomscreen.roon.transport.TransportControl
 import io.github.knoellp.roomscreen.roon.transport.Zone
 import kotlinx.coroutines.delay
 
-/** How long the control bar stays visible after the last remote key event. */
-const val BAR_VISIBLE_MS = 5000L
-
-/** The progress display is refreshed at 10 Hz, never faster. */
-private const val PROGRESS_TICK_MS = 100L
+/* Durations (control bar visible time 5 s, progress tick 100 ms = 10 Hz, cross-fade, bar fade) live in Tokens. */
 
 /** The cover is shown at 200 dp (400 px on the 1080p Fire TV); a slightly larger source keeps it sharp on 4K sticks. */
 const val COVER_PX = 480
@@ -85,7 +81,7 @@ private val backdropCache = BackdropCache()
 /**
  * Stateful Now Playing screen: loads cover and backdrop off the main thread (the previous images stay until
  * the new ones are ready, so the crossfade never flashes), interpolates progress at 10 Hz, and shows the control bar
- * for [BAR_VISIBLE_MS] after remote input (or always, per setting).
+ * for [Tokens.barVisibleMs] after remote input (or always, per setting).
  */
 @Composable
 fun NowPlayingScreen(
@@ -115,7 +111,7 @@ fun NowPlayingScreen(
     LaunchedEffect(Unit) {
         while (true) {
             position = interpolator.positionMs()
-            delay(PROGRESS_TICK_MS)
+            delay(Tokens.progressTickMs)
         }
     }
 
@@ -123,7 +119,7 @@ fun NowPlayingScreen(
     LaunchedEffect(lastInputMs) {
         if (lastInputMs > 0) {
             inputBarVisible = true
-            delay(BAR_VISIBLE_MS)
+            delay(Tokens.barVisibleMs)
             inputBarVisible = false
         }
     }
@@ -162,20 +158,20 @@ fun NowPlayingContent(
         // The static background (image + darkening) is rendered into one texture and only redrawn when it changes
         // (track change, crossfade); the 10 Hz progress redraw then costs one textured quad instead of three full-screen passes.
         Box(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
-            Crossfade(backdrop, animationSpec = tween(CROSSFADE_MS), label = "backdrop") { image ->
-                if (image != null && settings.background != BackgroundSource.COLOR) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = if (settings.sharpness == BackgroundSharpness.SHARP) 1f else 0.75f)
+            Crossfade(backdrop, animationSpec = tween(Tokens.crossfadeMs.toInt()), label = "backdrop") { image ->
+                if (image != null && settings.background != BackgroundSource.COLOR) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = if (settings.sharpness == BackgroundSharpness.SHARP) 1f else Tokens.backdropSoftAlpha)
             }
             // Darkening towards the bottom keeps the text readable on any image.
             if (settings.background != BackgroundSource.COLOR) Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(0f to Color(0x40000000), 0.4f to Color(0x59000000), 1f to Color(0xF0000000)),
+                    Brush.verticalGradient(0f to Tokens.backdropScrimTop, 0.4f to Tokens.backdropScrimMiddle, 1f to Tokens.backdropScrimBottom),
                 ),
             )
         }
         if (lines == null) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(zone.displayName, fontSize = 44.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                Text(stringResource(R.string.now_playing_nothing), fontSize = 26.sp, color = Color(0xFFC9D1D9))
+                Text(zone.displayName, fontSize = Tokens.fontEmptyZone, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text(stringResource(R.string.now_playing_nothing), fontSize = Tokens.fontArtist, color = Tokens.textBody)
             }
         } else if (lyrics is LyricsState.Synced || lyrics is LyricsState.Plain) {
             LyricsView(Modifier, lyrics, zone, positionMs, lengthMs, cover, sharp = settings.sharpness == BackgroundSharpness.SHARP && settings.background != BackgroundSource.COLOR, offsetMs = settings.lyricsOffsetMs)
@@ -186,23 +182,18 @@ fun NowPlayingContent(
         AnimatedVisibility(
             visible = barVisible,
             modifier = Modifier.align(Alignment.TopCenter),
-            enter = fadeIn(tween(BAR_FADE_MS)),
-            exit = fadeOut(tween(BAR_FADE_MS)),
+            enter = fadeIn(tween(Tokens.barFadeMs.toInt())),
+            exit = fadeOut(tween(Tokens.barFadeMs.toInt())),
         ) {
             Box(
                 Modifier.fillMaxWidth()
-                    .background(Brush.verticalGradient(0f to Color(0xB0000000), 1f to Color.Transparent)),
+                    .background(Brush.verticalGradient(0f to Tokens.barScrim, 1f to Color.Transparent)),
             ) {
                 ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, lyricsAvailable, lyricsOn, onZones, onSettings, onLyrics, onControl)
             }
         }
     }
 }
-
-const val CROSSFADE_MS = 600
-
-/** The control bar fades in and out instead of appearing hard. */
-const val BAR_FADE_MS = 200
 
 @Composable
 private fun InfoStrip(modifier: Modifier, zone: Zone, positionMs: () -> Long, lengthMs: Long?, cover: ImageBitmap?, noLyrics: Boolean = false) {
@@ -212,40 +203,39 @@ private fun InfoStrip(modifier: Modifier, zone: Zone, positionMs: () -> Long, le
         horizontalArrangement = Arrangement.spacedBy(32.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
-        Crossfade(cover, animationSpec = tween(CROSSFADE_MS), label = "cover") { image ->
-            Box(Modifier.size(COVER_SIZE).clip(RoundedCornerShape(8.dp)).background(Color(0xFF2A2F36)), contentAlignment = Alignment.Center) {
+        Crossfade(cover, animationSpec = tween(Tokens.crossfadeMs.toInt()), label = "cover") { image ->
+            Box(Modifier.size(Tokens.coverSize).clip(RoundedCornerShape(8.dp)).background(Tokens.coverPlaceholder), contentAlignment = Alignment.Center) {
                 if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else Text("♪", fontSize = 72.sp, color = Color(0xFF6E7681))
+                else Text("♪", fontSize = Tokens.fontCoverNote, color = Tokens.mutedIcon)
             }
         }
-        Column(Modifier.weight(1f).heightIn(min = COVER_SIZE), verticalArrangement = Arrangement.SpaceBetween) {
+        Column(Modifier.weight(1f).heightIn(min = Tokens.coverSize), verticalArrangement = Arrangement.SpaceBetween) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("${zone.displayName} · ${stateLabel(zone.state)}", fontSize = 16.sp, color = Color(0xFFB0B8C1), maxLines = 1)
-                Text(lines?.line1 ?: stringResource(R.string.now_playing_unknown), fontSize = 38.sp, lineHeight = 44.sp, fontWeight = FontWeight.Bold,
+                Text("${zone.displayName} · ${stateLabel(zone.state)}", fontSize = Tokens.fontSmall, color = Tokens.textInfo, maxLines = 1)
+                Text(lines?.line1 ?: stringResource(R.string.now_playing_unknown), fontSize = Tokens.fontTrackTitle, lineHeight = Tokens.lineTrackTitle, fontWeight = FontWeight.Bold,
                     color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(lines?.line2 ?: "", fontSize = 26.sp, color = Color(0xFFE6EDF3), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(lines?.line3 ?: "", fontSize = 22.sp, color = Color(0xFF9DA7B3), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (noLyrics) Text(stringResource(R.string.lyrics_none), fontSize = 16.sp, color = Color(0xFF7D8793), maxLines = 1)
+                Text(lines?.line2 ?: "", fontSize = Tokens.fontArtist, color = Tokens.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(lines?.line3 ?: "", fontSize = Tokens.fontRow, color = Tokens.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (noLyrics) Text(stringResource(R.string.lyrics_none), fontSize = Tokens.fontSmall, color = Tokens.textFaint, maxLines = 1)
             }
             ProgressRow(positionMs, lengthMs)
         }
     }
 }
 
-private val COVER_SIZE = 200.dp
 
 @Composable
 private fun ProgressRow(positionMs: () -> Long, lengthMs: Long?) {
     val elapsedSeconds by remember { derivedStateOf { positionMs() / 1000 } }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(formatTime(elapsedSeconds), fontSize = 18.sp, color = Color(0xFFC9D1D9), modifier = Modifier.width(64.dp))
+        Text(formatTime(elapsedSeconds), fontSize = Tokens.fontTime, color = Tokens.textBody, modifier = Modifier.width(64.dp))
         Box(
-            Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color(0x40FFFFFF)).drawBehind {
+            Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Tokens.progressTrack).drawBehind {
                 val fraction = if (lengthMs != null) (positionMs().toFloat() / lengthMs).coerceIn(0f, 1f) else 0f
                 drawRoundRect(Color.White, size = Size(size.width * fraction, size.height), cornerRadius = CornerRadius(size.height / 2))
             },
         )
-        Text(if (lengthMs != null) formatTime(lengthMs / 1000) else "", fontSize = 18.sp, color = Color(0xFFC9D1D9), modifier = Modifier.width(64.dp))
+        Text(if (lengthMs != null) formatTime(lengthMs / 1000) else "", fontSize = Tokens.fontTime, color = Tokens.textBody, modifier = Modifier.width(64.dp))
     }
 }
 
@@ -264,8 +254,8 @@ private val ViaRoonFamily = FontFamily(Font(R.font.comfortaa_medium, FontWeight.
 @Composable
 fun ViaRoon(modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text("via", fontSize = 14.sp, fontFamily = FontFamily.SansSerif, color = Color(0x99FFFFFF), modifier = Modifier.alignByBaseline())
-        Text("roon", fontSize = 19.sp, fontFamily = ViaRoonFamily, fontWeight = FontWeight.Medium, color = Color(0xCCFFFFFF), modifier = Modifier.alignByBaseline())
+        Text("via", fontSize = Tokens.fontCaption, fontFamily = FontFamily.SansSerif, color = Tokens.viaLabel, modifier = Modifier.alignByBaseline())
+        Text("roon", fontSize = Tokens.fontViaRoon, fontFamily = ViaRoonFamily, fontWeight = FontWeight.Medium, color = Tokens.viaRoon, modifier = Modifier.alignByBaseline())
     }
 }
 
@@ -285,25 +275,24 @@ private fun ControlBar(
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(autoFocus) { if (autoFocus) repeat(20) { if (runCatching { playFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; delay(50) } }
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        BarButton(onZones) { Text(stringResource(R.string.zones_button), fontSize = 20.sp) }
+        BarButton(onZones) { Text(stringResource(R.string.zones_button), fontSize = Tokens.fontButton) }
         Spacer(Modifier.width(12.dp))
-        BarButton(onSettings) { Text(stringResource(R.string.settings_button), fontSize = 20.sp) }
+        BarButton(onSettings) { Text(stringResource(R.string.settings_button), fontSize = Tokens.fontButton) }
         if (lyricsAvailable) {
             Spacer(Modifier.width(12.dp))
-            BarButton(onLyrics, selected = lyricsOn) { Text(stringResource(R.string.lyrics_button), fontSize = 20.sp) }
+            BarButton(onLyrics, selected = lyricsOn) { Text(stringResource(R.string.lyrics_button), fontSize = Tokens.fontButton) }
         }
         Spacer(Modifier.weight(1f))
-        BarButton({ onControl(TransportControl.PREVIOUS) }, Modifier.size(BAR_BUTTON), description = stringResource(R.string.control_previous)) { TransportIcon(Icon.Previous) }
+        BarButton({ onControl(TransportControl.PREVIOUS) }, Modifier.size(Tokens.barButtonSize), description = stringResource(R.string.control_previous)) { TransportIcon(Icon.Previous) }
         Spacer(Modifier.width(12.dp))
-        BarButton({ onControl(TransportControl.PLAYPAUSE) }, Modifier.size(BAR_BUTTON).focusRequester(playFocus), description = stringResource(R.string.control_play_pause)) {
+        BarButton({ onControl(TransportControl.PLAYPAUSE) }, Modifier.size(Tokens.barButtonSize).focusRequester(playFocus), description = stringResource(R.string.control_play_pause)) {
             TransportIcon(if (zone.state == "playing") Icon.Pause else Icon.Play)
         }
         Spacer(Modifier.width(12.dp))
-        BarButton({ onControl(TransportControl.NEXT) }, Modifier.size(BAR_BUTTON), description = stringResource(R.string.control_next)) { TransportIcon(Icon.Next) }
+        BarButton({ onControl(TransportControl.NEXT) }, Modifier.size(Tokens.barButtonSize), description = stringResource(R.string.control_next)) { TransportIcon(Icon.Next) }
     }
 }
 
-private val BAR_BUTTON = 56.dp
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -313,19 +302,19 @@ private fun BarButton(onClick: () -> Unit, modifier: Modifier = Modifier, descri
         modifier = modifier.heightOrMin().then(if (description != null) Modifier.semanticsDescription(description) else Modifier),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(28.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (selected) Color(0x66FFFFFF) else Color(0x80000000),
+            containerColor = if (selected) Tokens.barButtonSelected else Tokens.barButton,
             focusedContainerColor = Color.White,
             contentColor = Color.White,
             focusedContentColor = Color.Black,
         ),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Color(0xFF8FC4FF)))),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(3.dp, Tokens.barFocusBorder))),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = Tokens.barFocusScale),
     ) {
         Box(Modifier.padding(horizontal = 20.dp).heightOrMin(), contentAlignment = Alignment.Center) { content() }
     }
 }
 
-private fun Modifier.heightOrMin(): Modifier = this.then(Modifier.defaultMinSize(minHeight = BAR_BUTTON))
+private fun Modifier.heightOrMin(): Modifier = this.then(Modifier.defaultMinSize(minHeight = Tokens.barButtonSize))
 
 private fun Modifier.semanticsDescription(text: String): Modifier =
     this.then(Modifier.semantics { contentDescription = text })

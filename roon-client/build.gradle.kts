@@ -5,6 +5,9 @@ plugins {
 
 kotlin { jvmToolchain(17) }
 
+// Shared fixtures and test vectors (shared/fixtures, shared/testvectors) are on the test classpath as /fixtures/<name> and /testvectors/<name>.
+sourceSets.named("test") { resources.srcDir(rootDir.resolve("shared")) }
+
 dependencies {
     api(libs.coroutines.core)
     api(libs.serialization.json)

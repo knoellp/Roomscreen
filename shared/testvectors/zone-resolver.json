@@ -1,0 +1,131 @@
+{
+ "description": "Which zone to show for a saved selection (docs/SPEC.md zone selection). Derived 1:1 from ZoneResolverTest. expect is null (nothing to show) or {zoneId, via} with via ID (saved zone id exists) or OUTPUT (a zone containing a saved output id).",
+ "cases": [
+  {
+   "name": "exact id",
+   "zones": [
+    {
+     "zoneId": "k",
+     "name": "Kamin",
+     "outputIds": [
+      "ok"
+     ]
+    },
+    {
+     "zoneId": "f",
+     "name": "Fernseher",
+     "outputIds": [
+      "of"
+     ]
+    }
+   ],
+   "savedZoneId": "k",
+   "savedOutputIds": [
+    "ok"
+   ],
+   "expect": {
+    "zoneId": "k",
+    "via": "ID"
+   }
+  },
+  {
+   "name": "group found through the output id",
+   "zones": [
+    {
+     "zoneId": "g",
+     "name": "Kamin + 1",
+     "outputIds": [
+      "ok",
+      "of"
+     ]
+    }
+   ],
+   "savedZoneId": "k",
+   "savedOutputIds": [
+    "ok"
+   ],
+   "expect": {
+    "zoneId": "g",
+    "via": "OUTPUT"
+   }
+  },
+  {
+   "name": "none when neither id nor output matches",
+   "zones": [
+    {
+     "zoneId": "f",
+     "name": "Fernseher",
+     "outputIds": [
+      "of"
+     ]
+    }
+   ],
+   "savedZoneId": "k",
+   "savedOutputIds": [
+    "ok"
+   ],
+   "expect": null
+  },
+  {
+   "name": "none when the output set is empty",
+   "zones": [
+    {
+     "zoneId": "g",
+     "name": "Kamin + 1",
+     "outputIds": [
+      "ok",
+      "of"
+     ]
+    }
+   ],
+   "savedZoneId": "k",
+   "savedOutputIds": [],
+   "expect": null
+  },
+  {
+   "name": "none when no zone id is saved",
+   "zones": [
+    {
+     "zoneId": "k",
+     "name": "Kamin",
+     "outputIds": [
+      "ok"
+     ]
+    }
+   ],
+   "savedZoneId": null,
+   "savedOutputIds": [
+    "ok"
+   ],
+   "expect": null
+  },
+  {
+   "name": "exact id wins over a group containing the output",
+   "zones": [
+    {
+     "zoneId": "k",
+     "name": "Kamin",
+     "outputIds": [
+      "ok"
+     ]
+    },
+    {
+     "zoneId": "g",
+     "name": "Kamin + 1",
+     "outputIds": [
+      "ok",
+      "of"
+     ]
+    }
+   ],
+   "savedZoneId": "k",
+   "savedOutputIds": [
+    "ok"
+   ],
+   "expect": {
+    "zoneId": "k",
+    "via": "ID"
+   }
+  }
+ ]
+}

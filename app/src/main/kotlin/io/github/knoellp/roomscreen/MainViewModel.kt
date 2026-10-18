@@ -60,8 +60,7 @@ internal fun optimisticFor(zone: Zone, control: TransportControl): Pending? = wh
     else -> null
 }?.takeIf { it.from != it.to }
 
-private const val PENDING_MS = 3000L
-private const val DISCONNECT_DELAY_MS = 2000L
+/* Optimistic play/pause hold time (3 s) and the delayed disconnect (2 s) live in Tokens (pendingMs, disconnectDelayMs). */
 
 /**
  * Holds the [RoonClient]; connects in onStart, disconnects in onStop. Selecting a zone never sends control commands;
@@ -248,7 +247,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         log.info("control send=${control.wire} zone=\"${zone.displayName}\" state=${zone.state}${optimistic?.let { " optimistic=${it.to}" } ?: ""}")
         if (optimistic != null) {
             pending.value = optimistic
-            viewModelScope.launch { delay(PENDING_MS); if (pending.value == optimistic) pending.value = null }
+            viewModelScope.launch { delay(Tokens.pendingMs); if (pending.value == optimistic) pending.value = null }
         }
         viewModelScope.launch {
             try {
@@ -296,15 +295,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Called from onStop: the connection is closed after [DISCONNECT_DELAY_MS]. A short change of the activity
+     * Called from onStop: the connection is closed after [Tokens.disconnectDelayMs]. A short change of the activity
      * (volume overlay, screensaver preview) that returns within that time keeps the connection and registration.
      */
     fun disconnectDelayed() {
         disconnectJob?.cancel()
         disconnectJob = viewModelScope.launch {
-            delay(DISCONNECT_DELAY_MS)
+            delay(Tokens.disconnectDelayMs)
             disconnectJob = null
-            log.info("lifecycle=disconnect_after_delay ms=$DISCONNECT_DELAY_MS")
+            log.info("lifecycle=disconnect_after_delay ms=${Tokens.disconnectDelayMs}")
             disconnect()
         }
     }

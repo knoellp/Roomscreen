@@ -13,7 +13,7 @@ devices. It does **not** run on devices with Vega OS (Fire TV Stick 4K Select, F
 
 Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHITECTURE.md`.
 
-## Status (Phase 4)
+## Status (Phase 4, Phase F3 code part)
 
 | Area | Automated tests | Verified on device (Fire TV Stick HD, Fire OS 7.7.1.7, API 28) | Open |
 |---|---|---|---|
@@ -29,8 +29,8 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Lifecycle (Home key, Activity restart) | fake Core: start/stop/start never has two sockets open | Home, 3 s, start: one `websocket_open` and one `register_sent`; Home with immediate start: connection kept (`lifecycle=disconnect_cancelled`) | - |
 | Lyrics timing setting (-3.0 to +3.0 s) | `LyricsSyncTest`, `SettingsPrefsTest`, screenshot `7d-settings-offset` | +3 s moved the active line by one at once (`lyrics active=41 offset_ms=0` then `lyrics active=42 offset_ms=3000`), screenshots `p4-41-*` | - |
 | Soak, 2 hours, Büro playing, lyrics on, sharp artist image | - | **done 2026-10-18**: 13 samples over 121 min, connection stayed Connected without any reconnect, no crash or ANR, PSS 194 MB at the start (after warm-up) and 157 MB at the end, GL mtrack 38 to 99 MB without trend (`scripts/phase4-soak.sh`) | see `docs/ARCHITECTURE.md` section 10.5 |
-| Manual host/port entry | screenshot only | not exercised | open |
-| Several devices with the same Roon | - | - | two installs not tested together |
+| Manual host/port entry | screenshot only | script and flow written (`scripts/f3-manual-entry.sh`, `maestro/f3-manual-entry.yaml`), **not run yet** | open: device run pending |
+| Several devices with the same Roon | - | - | two instances for 30 min not run yet (`roon-cli watch`), device run pending |
 | Now Playing layout (blurred backdrop, info strip, cover, progress) | Roborazzi: playing, paused, stopped, no cover, long texts, German | screenshots on the device, 0.5 % janky frames over 60 s of playback | - |
 | Progress between the 1 Hz seek events | `ProgressInterpolatorTest` (10 cases) | bar and time follow playback (screenshots) | - |
 | Remote media keys (play/pause, rewind, fast forward, next, previous) | key mapping tests | Maestro `pressKey` (codes 85, 89, 90, 87, 88) and `adb input keyevent`; commands arrive at the Core | the physical Fire TV remote was not pressed |
@@ -47,6 +47,12 @@ Phase 4 (stability and polish): silence watchdog (30 s without a frame from the 
 rediscovery after 5 failed attempts, delayed disconnect (2 s) when the activity stops, evicted backdrop bitmaps are recycled, lyrics
 view without per-line text re-layout, dark scrim under the lyrics on sharp backgrounds, "Lyrics timing" setting, fading control bar,
 connection hint after 20 s. Measurements: `docs/ARCHITECTURE.md` section 10.
+
+Phase F3 (code and documents, done): release signing with one key for debug and release (`docs/RELEASING.md`), loading indicator on the connecting screen
+(Roborazzi `1-connecting`, `1b-connecting-slow`), debug hook `CLEAR_ENDPOINT`, `scripts/acceptance-firetv.sh` and the repaired Maestro flows (`scripts/maestro-regression.sh`),
+`docs/SPEC.md`, shared test data (`shared/fixtures`, `shared/testvectors`, `shared/design/tokens.json`, `shared/strings`) with tests on the Kotlin side. **Written but not run on the
+device yet (device run pending):** the one-time key change on the stick, the acceptance script, the ten Maestro flows after the repair, the manual-entry run, the 30 minute two-instance run,
+the physical remote, the memory criterion below.
 
 Not implemented yet: Echo Show 15 (Live App Testing, touch layout), the release pipeline (GitHub secrets, phase F3b). Release signing exists (`docs/RELEASING.md`); the stick still runs a build with the old debug key until the one-time key change.
 
@@ -74,6 +80,13 @@ publishes zones only after Roon has started up. Roon pauses playback when it res
 **Memory criterion (version 1, measurement pending):** total PSS after 30 track changes with lyrics and a sharp artist image stays under 200 MB,
 with no trend over the soak run (`docs/ARCHITECTURE.md` section 9.5). Not measured against this criterion yet; the earlier numbers (194 MB after warm-up,
 157 MB at the end of the 2 h soak) are from Phase 4.
+
+## Shared specification and test data
+
+`docs/SPEC.md` is the platform-neutral specification derived from this app (screens, connection, zones, progress, control, settings, lyrics, platform interface); it is the
+reference for the planned web core (Samsung Tizen, Fire TV Vega, `docs/PLAN.md` sections 4 and 6). `shared/` holds data both implementations use:
+`fixtures/` (recorded Core messages), `testvectors/` (JSON cases for the pure logic, read by JUnit 5 `@TestFactory` tests in `roon-client` and `lyrics`),
+`design/tokens.json` (checked against `Tokens.kt` by `SharedConsistencyTest`) and `strings/en.json`, `de.json` (checked against the Android string resources).
 
 ## Remote control
 
@@ -164,6 +177,7 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 (set `FIRE_TV_IP` and `ROON_TEST_ZONE` in `config/local.env`, see `config/local.env.example`).
 `scripts/phase2-device.sh` and `scripts/phase2-perf.sh` run the Phase 2 flows and the jank/memory measurements (zone Büro only).
 `scripts/phase4-resilience.sh restart-playing|restart-paused|wifi|dead-host` (Core software restart, Wi-Fi cut, dead address), `scripts/phase4-perf.sh`, `scripts/phase4-jank.sh` (memory and jank) and `scripts/phase4-soak.sh` (2 h soak) are the Phase 4 device runs; they share `scripts/phase4-lib.sh`. The Core address always comes from the app's `DUMP_STATE`, never from a script constant.
+`scripts/acceptance-firetv.sh` (Fire TV version 1 acceptance, criteria 1 to 12), `scripts/f3-manual-entry.sh` (manual entry and `CLEAR_ENDPOINT`) and `scripts/maestro-regression.sh` (all ten Maestro flows with a defined start state) are written for phase F3 and **not run yet**. `scripts/device-steps.sh` refuses to install when the built or the installed app is signed with another key than `config/release-fingerprint.txt` (`--allow-key-change` only turns the abort into a warning; nothing is ever uninstalled).
 `scripts/phase3-device.sh` runs the Phase 3 lyrics flows (`maestro/phase3-*.yaml`), `scripts/phase3-mem.sh` and `scripts/phase3-gl.sh` the memory probes (zone Büro only; Büro ends paused).
 
 ## Development
@@ -175,7 +189,7 @@ Always sign with the same key and use `install -r` so updates keep the stored to
 - `lyrics`: pure JVM module (LRC parser, line sync, query variants, LRCLIB client, cache), used by the app and the CLI.
 - `app`: the Android TV app. Debug builds accept broadcasts that must name the package (an implicit broadcast is
   silently dropped): `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_STATE`
-  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `SET_LYRICS` with `--es value on|off` (presses the Lyrics button; `DUMP_STATE` then shows `lyrics_on` and `lyrics`), `SET_LRCLIB` with `--es value on|off` (the "Lyrics (LRCLIB)" setting), `SET_LYRICS_OFFSET` with `--es value MS` (-3000 to 3000), `SET_SCREEN_ON` with `--es value always|playing`, `SET_SHARPNESS` with `--es value soft|sharp`, `SET_BACKGROUND` with `--es value cover|artist|color`, `RESET`). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
+  (also `DUMP_ZONES`, `SET_HOST` with `--es host H --ei port P`, `SELECT_ZONE` with `--es name N`, `SET_VIA_ROON` with `--es value on|off`, `SET_LYRICS` with `--es value on|off` (presses the Lyrics button; `DUMP_STATE` then shows `lyrics_on` and `lyrics`), `SET_LRCLIB` with `--es value on|off` (the "Lyrics (LRCLIB)" setting), `CLEAR_ENDPOINT` (forgets only host, port and the manual flag; token and zone stay), `SET_LYRICS_OFFSET` with `--es value MS` (-3000 to 3000), `SET_SCREEN_ON` with `--es value always|playing`, `SET_SHARPNESS` with `--es value soft|sharp`, `SET_BACKGROUND` with `--es value cover|artist|color`, `RESET`). `DUMP_STATE` also reports `seek` (seconds). Log tag `Roomscreen`; debug builds also log each zone change as `zones_msg`.
 
 Privacy: the app stores only the Roon token, the Core address, the chosen zone and the display settings, locally.
 

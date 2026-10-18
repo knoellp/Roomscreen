@@ -1,0 +1,80 @@
+{
+ "description": "Recorded group / ungroup sequence from a real Core (fixtures in shared/fixtures, read from the classpath as /fixtures/<name>). Derived from the two group tests in RoonClientFakeCoreTest. Each step applies the fixture to the zone map (message Subscribed replaces the map, Changed applies it) and then checks the map and the zone shown for the saved selection. The saved selection never changes.",
+ "saved": {
+  "zoneId": "16013ab75efd324893701b89290cfd38c18d",
+  "outputIds": [
+   "17013ab75efd324893701b89290cfd38c18d"
+  ],
+  "name": "Kamin"
+ },
+ "steps": [
+  {
+   "message": "Subscribed",
+   "fixture": "subscribed_six.json",
+   "expect": {
+    "zoneCount": 6,
+    "shown": {
+     "name": "Kamin",
+     "via": "ID"
+    },
+    "present": [
+     "Kamin",
+     "Fernseher"
+    ]
+   }
+  },
+  {
+   "message": "Changed",
+   "fixture": "group_added.json",
+   "expect": {
+    "zoneCount": 5,
+    "shown": {
+     "name": "Kamin + 1",
+     "via": "OUTPUT"
+    },
+    "present": [
+     "Kamin + 1"
+    ],
+    "absent": [
+     "Kamin",
+     "Fernseher"
+    ]
+   }
+  },
+  {
+   "message": "Changed",
+   "fixture": "group_removed.json",
+   "expect": {
+    "zoneCount": 6,
+    "shown": {
+     "name": "Kamin",
+     "via": "ID"
+    },
+    "absent": [
+     "Kamin + 1"
+    ],
+    "states": {
+     "Kamin": "playing",
+     "Fernseher": "paused"
+    }
+   }
+  },
+  {
+   "message": "Changed",
+   "fixture": "group_member_changed.json",
+   "expect": {
+    "zoneCount": 6,
+    "shown": {
+     "name": "Kamin",
+     "via": "ID"
+    },
+    "states": {
+     "Kamin": "playing"
+    },
+    "titles": {
+     "Kamin": "The Space Between"
+    }
+   }
+  }
+ ]
+}

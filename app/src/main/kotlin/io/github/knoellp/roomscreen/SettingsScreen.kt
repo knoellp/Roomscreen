@@ -79,17 +79,17 @@ fun SettingsScreen(
     )
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { repeat(20) { if (runCatching { first.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; delay(50) } }
-    Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(top = 20.dp, start = 64.dp, end = 64.dp)) {
+    Box(Modifier.fillMaxSize().background(Tokens.pageBackground).padding(top = 20.dp, start = 64.dp, end = 64.dp)) {
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = 680.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(stringResource(R.string.settings_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-            Text(stringResource(R.string.settings_hint), fontSize = 16.sp, color = Color(0xFF9DA7B3))
+            Text(stringResource(R.string.settings_title), fontSize = Tokens.fontHeading, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(stringResource(R.string.settings_hint), fontSize = Tokens.fontSmall, color = Tokens.textMuted)
             LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)) {
                 items(rows, key = { it.id }) { row ->
                     Column {
                     if (row.id == "rediscover") {
                         Text(
                             stringResource(R.string.setting_connection) + ": " + (coreAddress ?: stringResource(R.string.setting_core_unknown)),
-                            fontSize = 16.sp, color = Color(0xFF9DA7B3), modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+                            fontSize = Tokens.fontSmall, color = Tokens.textMuted, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
                         )
                     }
                     SettingRow(row, if (row.id == "bg") first else null)
@@ -108,24 +108,24 @@ private fun SettingRow(row: SettingItem, focus: FocusRequester?) {
         modifier = Modifier.fillMaxWidth().then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color(0xFF1C2833),
-            focusedContainerColor = Color(0xFF2A3A48),
-            contentColor = Color(0xFFE6EDF3),
+            containerColor = Tokens.rowBackground,
+            focusedContainerColor = Tokens.rowFocused,
+            contentColor = Tokens.textSecondary,
             focusedContentColor = Color.White,
         ),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color(0xFF8FA3B5)))),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Tokens.rowFocusBorder))),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = 42.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(row.label), fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (row.hint != null) Text(stringResource(row.hint), fontSize = 14.sp, color = Color(0xFF8B96A2), maxLines = 1)
+                Text(stringResource(row.label), fontSize = Tokens.fontRow, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (row.hint != null) Text(stringResource(row.hint), fontSize = Tokens.fontCaption, color = Tokens.textHint, maxLines = 1)
             }
             if (row.swatch != null) {
-                Box(Modifier.size(22.dp).clip(CircleShape).background(row.swatch).border(1.5.dp, Color(0x99FFFFFF), CircleShape))
+                Box(Modifier.size(22.dp).clip(CircleShape).background(row.swatch).border(1.5.dp, Tokens.swatchBorder, CircleShape))
                 Spacer(Modifier.width(10.dp))
             }
-            if (row.value != null) Text(row.value, fontSize = 22.sp, color = Color(0xFFB6C2CE))
+            if (row.value != null) Text(row.value, fontSize = Tokens.fontRow, color = Tokens.textValue)
         }
     }
 }

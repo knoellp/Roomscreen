@@ -1,0 +1,519 @@
+{
+ "description": "LRCLIB HTTP answers and the result the client must produce (docs/SPEC.md lyrics). Derived 1:1 from LrclibClientTest, except the timeout test (stays a Kotlin test). responses are served in order, one per HTTP request; retries after 5xx/429/IO error happen immediately in these vectors (retry delays 0, two retries, so up to 3 requests); 404 is NotFound; other 4xx and unparsable bodies are Unavailable. expect.kind is found, notFound or unavailable; for found: synced (lines or null), plain, instrumental. expectRequest: path, query parameters that must have these values, absentQuery parameters that must not be sent, userAgent. User agent version is 9.9 in these vectors.",
+ "userAgentVersion": "9.9",
+ "cases": [
+  {
+   "name": "syncedResponseAndRequestShape",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": {
+      "id": 1,
+      "trackName": "x",
+      "artistName": "y",
+      "albumName": "z",
+      "duration": 280.0,
+      "instrumental": false,
+      "plainLyrics": "Under the ruins\nSecond",
+      "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+     }
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": [
+     {
+      "timeMs": 17840,
+      "text": "Under the ruins"
+     },
+     {
+      "timeMs": 25000,
+      "text": "Second"
+     }
+    ],
+    "plain": "Under the ruins\nSecond",
+    "instrumental": false
+   },
+   "expectRequest": {
+    "path": "/api/get",
+    "query": {
+     "track_name": "Fortress Around Your Heart",
+     "artist_name": "Sting",
+     "album_name": "The Dream Of The Blue Turtles",
+     "duration": "280"
+    }
+   }
+  },
+  {
+   "name": "userAgentHeader",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": {
+      "id": 1,
+      "trackName": "x",
+      "artistName": "y",
+      "albumName": "z",
+      "duration": 280.0,
+      "instrumental": false,
+      "plainLyrics": "Under the ruins\nSecond",
+      "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+     }
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": [
+     {
+      "timeMs": 17840,
+      "text": "Under the ruins"
+     },
+     {
+      "timeMs": 25000,
+      "text": "Second"
+     }
+    ],
+    "plain": "Under the ruins\nSecond",
+    "instrumental": false
+   },
+   "expectRequest": {
+    "userAgent": "Roomscreen/9.9 (https://github.com/knoellp/Roomscreen)"
+   }
+  },
+  {
+   "name": "emptyAlbumAndUnknownDurationAreOmitted",
+   "endpoint": "get",
+   "query": {
+    "title": "T",
+    "artist": "A",
+    "album": "",
+    "durationSec": 0
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": {
+      "id": 1,
+      "trackName": "x",
+      "artistName": "y",
+      "albumName": "z",
+      "duration": 280.0,
+      "instrumental": false,
+      "plainLyrics": "Under the ruins\nSecond",
+      "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+     }
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": [
+     {
+      "timeMs": 17840,
+      "text": "Under the ruins"
+     },
+     {
+      "timeMs": 25000,
+      "text": "Second"
+     }
+    ],
+    "plain": "Under the ruins\nSecond",
+    "instrumental": false
+   },
+   "expectRequest": {
+    "path": "/api/get",
+    "query": {
+     "track_name": "T",
+     "artist_name": "A"
+    },
+    "absentQuery": [
+     "album_name",
+     "duration"
+    ]
+   }
+  },
+  {
+   "name": "plainOnly",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": {
+      "id": 1,
+      "trackName": "x",
+      "artistName": "y",
+      "albumName": "z",
+      "duration": 280.0,
+      "instrumental": false,
+      "plainLyrics": "Under the ruins\nSecond",
+      "syncedLyrics": null
+     }
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": null,
+    "plain": "Under the ruins\nSecond",
+    "instrumental": false
+   }
+  },
+  {
+   "name": "instrumental",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": {
+      "id": 1,
+      "trackName": "x",
+      "artistName": "y",
+      "albumName": "z",
+      "duration": 280.0,
+      "instrumental": true,
+      "plainLyrics": null,
+      "syncedLyrics": null
+     }
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": null,
+    "plain": null,
+    "instrumental": true
+   }
+  },
+  {
+   "name": "notFound404",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 404,
+     "bodyJson": {
+      "statusCode": 404,
+      "name": "TrackNotFound",
+      "message": "Failed to find specified track"
+     }
+    }
+   ],
+   "expect": {
+    "kind": "notFound"
+   },
+   "expectRequestCount": 1
+  },
+  {
+   "name": "overloaded503IsRetriedThenSucceeds",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 503,
+     "bodyJson": {
+      "name": "ServerOverloaded",
+      "statusCode": 503
+     }
+    },
+    {
+     "status": 503,
+     "bodyJson": {
+      "name": "ServerOverloaded",
+      "statusCode": 503
+     }
+    },
+    {
+     "status": 200,
+     "bodyJson": {
+      "id": 1,
+      "trackName": "x",
+      "artistName": "y",
+      "albumName": "z",
+      "duration": 280.0,
+      "instrumental": false,
+      "plainLyrics": "Under the ruins\nSecond",
+      "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+     }
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": [
+     {
+      "timeMs": 17840,
+      "text": "Under the ruins"
+     },
+     {
+      "timeMs": 25000,
+      "text": "Second"
+     }
+    ],
+    "plain": "Under the ruins\nSecond",
+    "instrumental": false
+   },
+   "expectRequestCount": 3
+  },
+  {
+   "name": "overloadedForeverIsUnavailableNotNotFound",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 503,
+     "bodyJson": {
+      "name": "ServerOverloaded",
+      "statusCode": 503
+     }
+    },
+    {
+     "status": 503,
+     "bodyJson": {
+      "name": "ServerOverloaded",
+      "statusCode": 503
+     }
+    },
+    {
+     "status": 503,
+     "bodyJson": {
+      "name": "ServerOverloaded",
+      "statusCode": 503
+     }
+    }
+   ],
+   "expect": {
+    "kind": "unavailable"
+   },
+   "expectRequestCount": 3
+  },
+  {
+   "name": "garbageBodyIsUnavailable",
+   "endpoint": "get",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "body": "<html>oops</html>"
+    }
+   ],
+   "expect": {
+    "kind": "unavailable"
+   }
+  },
+  {
+   "name": "searchFiltersByDurationAndPrefersSynced",
+   "endpoint": "search",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": [
+      {
+       "id": 1,
+       "trackName": "x",
+       "artistName": "y",
+       "albumName": "z",
+       "duration": 348.0,
+       "instrumental": false,
+       "plainLyrics": "Under the ruins\nSecond",
+       "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+      },
+      {
+       "id": 1,
+       "trackName": "x",
+       "artistName": "y",
+       "albumName": "z",
+       "duration": 279.0,
+       "instrumental": false,
+       "plainLyrics": "plain only",
+       "syncedLyrics": null
+      },
+      {
+       "id": 1,
+       "trackName": "x",
+       "artistName": "y",
+       "albumName": "z",
+       "duration": 281.5,
+       "instrumental": false,
+       "plainLyrics": "Under the ruins\nSecond",
+       "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+      },
+      {
+       "id": 1,
+       "trackName": "x",
+       "artistName": "y",
+       "albumName": "z",
+       "duration": 411.0,
+       "instrumental": false,
+       "plainLyrics": "Under the ruins\nSecond",
+       "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": [
+     {
+      "timeMs": 17840,
+      "text": "Under the ruins"
+     },
+     {
+      "timeMs": 25000,
+      "text": "Second"
+     }
+    ],
+    "plain": "Under the ruins\nSecond",
+    "instrumental": false
+   },
+   "expectRequest": {
+    "path": "/api/search",
+    "query": {
+     "artist_name": "Sting"
+    },
+    "absentQuery": [
+     "duration"
+    ]
+   }
+  },
+  {
+   "name": "searchWithOnlyWrongDurationsIsNotFound",
+   "endpoint": "search",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": [
+      {
+       "id": 1,
+       "trackName": "x",
+       "artistName": "y",
+       "albumName": "z",
+       "duration": 348.0,
+       "instrumental": false,
+       "plainLyrics": "Under the ruins\nSecond",
+       "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+      },
+      {
+       "id": 1,
+       "trackName": "x",
+       "artistName": "y",
+       "albumName": "z",
+       "duration": 283.1,
+       "instrumental": false,
+       "plainLyrics": "Under the ruins\nSecond",
+       "syncedLyrics": "[00:17.84] Under the ruins\n[00:25.00] Second"
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "kind": "notFound"
+   }
+  },
+  {
+   "name": "searchFallsBackToPlain",
+   "endpoint": "search",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": [
+      {
+       "id": 1,
+       "trackName": "x",
+       "artistName": "y",
+       "albumName": "z",
+       "duration": 279.0,
+       "instrumental": false,
+       "plainLyrics": "p",
+       "syncedLyrics": null
+      }
+     ]
+    }
+   ],
+   "expect": {
+    "kind": "found",
+    "synced": null,
+    "plain": "p",
+    "instrumental": false
+   }
+  },
+  {
+   "name": "searchEmptyArray",
+   "endpoint": "search",
+   "query": {
+    "title": "Fortress Around Your Heart",
+    "artist": "Sting",
+    "album": "The Dream Of The Blue Turtles",
+    "durationSec": 280
+   },
+   "responses": [
+    {
+     "status": 200,
+     "bodyJson": []
+    }
+   ],
+   "expect": {
+    "kind": "notFound"
+   }
+  }
+ ]
+}

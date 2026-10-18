@@ -22,7 +22,7 @@ import okio.ByteString.Companion.toByteString
 
 /**
  * A scripted Roon Core: a MockWebServer WebSocket on /api that replays message bodies from
- * `resources/fixtures` (see the README there for which are recorded and which derived), plus a
+ * `shared/fixtures` (see the README there for which are recorded and which derived), plus a
  * SOOD UDP responder on a local port.
  * Behaviour recorded from the real Core: before "Enable" the Core does not answer `register` at all
  * (it only pings every 2 s); afterwards `Registered` arrives as CONTINUE.

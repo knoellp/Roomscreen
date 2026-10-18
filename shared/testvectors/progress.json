@@ -1,0 +1,406 @@
+{
+ "description": "Playback position interpolation between 1 Hz seek events (docs/SPEC.md, ARCHITECTURE 8.4). Derived 1:1 from ProgressInterpolatorTest. The monotonic clock starts at 10000 ms. Steps: zone (feed a zone update; seek and length in seconds, null = absent; nowPlaying null = zone without now_playing), advance (clock += ms), clear (feed no zone), expect (positionMs; lengthMs only checked when the key is present, null = unknown).",
+ "initialClockMs": 10000,
+ "cases": [
+  {
+   "name": "interpolatesWhilePlaying",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 42,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 42000
+    },
+    {
+     "op": "advance",
+     "ms": 400
+    },
+    {
+     "op": "expect",
+     "positionMs": 42400
+    },
+    {
+     "op": "advance",
+     "ms": 600
+    },
+    {
+     "op": "expect",
+     "positionMs": 43000
+    }
+   ]
+  },
+  {
+   "name": "repeatedIdenticalUpdatesDoNotResetTheAnchor",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 42,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 500
+    },
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 42,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 42500
+    }
+   ]
+  },
+  {
+   "name": "pauseFreezesAndResumeContinues",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 42,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 700
+    },
+    {
+     "op": "zone",
+     "state": "paused",
+     "nowPlaying": {
+      "seek": 43,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 43000
+    },
+    {
+     "op": "advance",
+     "ms": 5000
+    },
+    {
+     "op": "expect",
+     "positionMs": 43000
+    },
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 43,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 250
+    },
+    {
+     "op": "expect",
+     "positionMs": 43250
+    }
+   ]
+  },
+  {
+   "name": "optimisticPauseFreezesAtTheInterpolatedPosition",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 42,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 700
+    },
+    {
+     "op": "zone",
+     "state": "paused",
+     "nowPlaying": {
+      "seek": 42,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 5000
+    },
+    {
+     "op": "expect",
+     "positionMs": 42700
+    }
+   ]
+  },
+  {
+   "name": "seekJumpReplacesTheAnchor",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 42,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 300
+    },
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 120,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 120000
+    },
+    {
+     "op": "advance",
+     "ms": 100
+    },
+    {
+     "op": "expect",
+     "positionMs": 120100
+    }
+   ]
+  },
+  {
+   "name": "backwardsSeekIsFollowed",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 100,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 2000
+    },
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 10,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 10000
+    }
+   ]
+  },
+  {
+   "name": "trackChangeRestartsFromTheNewPosition",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 200,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 1000
+    },
+    {
+     "op": "zone",
+     "state": "loading",
+     "nowPlaying": {
+      "seek": null,
+      "length": 180,
+      "title": "Next",
+      "image": "k2"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 0
+    },
+    {
+     "op": "advance",
+     "ms": 3000
+    },
+    {
+     "op": "expect",
+     "positionMs": 0
+    },
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 1,
+      "length": 180,
+      "title": "Next",
+      "image": "k2"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 1000,
+     "lengthMs": 180000
+    }
+   ]
+  },
+  {
+   "name": "driftIsCorrectedByTheNextSeekEvent",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 10,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 1300
+    },
+    {
+     "op": "expect",
+     "positionMs": 11300
+    },
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 11,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "expect",
+     "positionMs": 11000
+    }
+   ]
+  },
+  {
+   "name": "cappedAtLength",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 214,
+      "length": 215,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 5000
+    },
+    {
+     "op": "expect",
+     "positionMs": 215000
+    }
+   ]
+  },
+  {
+   "name": "noNowPlayingMeansZero",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "stopped",
+     "nowPlaying": null
+    },
+    {
+     "op": "expect",
+     "positionMs": 0,
+     "lengthMs": null
+    },
+    {
+     "op": "clear"
+    },
+    {
+     "op": "expect",
+     "positionMs": 0
+    }
+   ]
+  },
+  {
+   "name": "unknownLengthIsNotCapped",
+   "steps": [
+    {
+     "op": "zone",
+     "state": "playing",
+     "nowPlaying": {
+      "seek": 42,
+      "length": null,
+      "title": "Alive",
+      "image": "k"
+     }
+    },
+    {
+     "op": "advance",
+     "ms": 90000
+    },
+    {
+     "op": "expect",
+     "positionMs": 132000,
+     "lengthMs": null
+    }
+   ]
+  }
+ ]
+}

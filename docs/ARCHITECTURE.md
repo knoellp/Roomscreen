@@ -613,3 +613,79 @@ system processes (`storaged`, `ion`, Amazon services), none to the app. Last PSS
 GL mtrack between 38 and 99 MB with no trend: the GPU share follows the current track (image size, lyrics length) and is released again. Java heap
 7 to 12 MB. LRCLIB over the run: 24 synced, 4 plain, 3 unavailable (not cached), 2 cache hits. The script paused Büro at the end
 (`control pause ok`, final state `paused`). Screenshots `soak-00.png` to `soak-12.png` all show Now Playing with lyrics; no screensaver.
+
+## 11. Phase F3: release signing, remaining proofs, hand-over
+
+State of this phase: the code and document part is done; everything that needs the Fire TV is **pending (device run)**.
+
+### 11.1 Release signing (done; installing on the stick pending)
+
+- One RSA 4096 key (`config/release.jks`, alias `roomscreen`, valid 100 years, PKCS12, gitignored together with `config/signing.env`) signs the debug **and** the
+  release build (`buildTypes.debug.signingConfig = release` when `RELEASE_KEYSTORE` is set). Reason: the debug hooks used for device tests and the release APK used for the
+  acceptance must replace each other with `adb install -r`, so the stick needs the one-time uninstall only once. Without `config/signing.env` the debug build still builds
+  with the Android debug key and the release build stays unsigned.
+- Both APKs carry the same certificate; SHA-256 `76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb` (`apksigner verify --print-certs`, also in
+  `config/release-fingerprint.txt`). Version 1.0.0, versionCode 2.
+- PKCS12 keystores have one password for store and key, so `RELEASE_KEYSTORE_PASSWORD` and `RELEASE_KEY_PASSWORD` hold the same value.
+- No R8 in version 1 (`isMinifyEnabled = false`): the APK is sideloaded, so its size does not matter, a shrinker would need keep rules for kotlinx.serialization and Coil that
+  were never tested, and every measurement in this document (jank, memory, soak) was taken on an unminified build; the release build must behave the same. Revisit when the APK goes to a store.
+- `scripts/device-steps.sh` (and so `scripts/deploy-test.sh`) checks the signature before every install: the built APK and the installed package (pulled with `adb pull`, read with
+  `apksigner`) must carry the digest from `config/release-fingerprint.txt`; otherwise it aborts. `--allow-key-change` turns the abort into a warning; the script never uninstalls.
+  `dumpsys package` on Fire OS 7 prints only a hash of the signature, not the SHA-256 digest, so the installed APK is compared instead.
+- **One-time key change on the stick: pending (device run).** Needs the user's approval, then `adb uninstall`, install of the release APK, a new "Enable" in Roon
+  (Settings, Extensions) and the zone chosen again. `docs/RELEASING.md` has the key handling and the (not yet executed) commands for the GitHub secrets of phase F3b.
+
+### 11.2 Loading state (code done; device photo pending)
+
+`ConnectingContent` shows a 48 dp `CircularProgressIndicator` under the status line from the first frame (the 20 s hint stays). Roborazzi `1-connecting` and
+`1b-connecting-slow` were re-recorded and looked at; no other screenshot changed. Device photo `p5-01-connecting.png`: pending (device run).
+
+### 11.3 Manual host/port entry (written, not run)
+
+Debug hook `CLEAR_ENDPOINT` removes only host, port and the manual flag (`Prefs.clearEndpoint`, covered by `SettingsPrefsTest`); token and zone stay.
+`scripts/f3-manual-entry.sh` and `maestro/f3-manual-entry.yaml`: read the Core host from `DUMP_STATE`, `SET_HOST 192.0.2.1`, Connecting screen, press
+"Enter address manually", type the host, "Test connection", expect `endpoint=<Core>:9330` and Connected; then `CLEAR_ENDPOINT`, restart, expect
+`discovery result=found` and the endpoint saved again. A successful test closes the manual screen at once, so the flow waits for Now Playing of the test zone instead of the
+result line. Run: pending (device run).
+
+### 11.4 Two instances, physical remote (pending)
+
+30 minutes with the app and `roon-cli watch --zone "$ROON_TEST_ZONE" --duration 1800` (own `extension_id`), and the three physical remote keys with the `key code=` log lines:
+pending (device run); results will be added here.
+
+### 11.5 Memory criterion (measurement pending)
+
+Version 1: TOTAL PSS after 30 track changes with lyrics and a sharp artist image under 200 MB, no trend over the soak (decision 14.1 a, a fixed ceiling instead of a tolerance
+against Phase 2). `scripts/phase3-mem.sh on 30 10` once plus the 13 soak samples of 10.5: measurement pending (device run).
+
+### 11.6 Acceptance flow and Maestro flows (written, not run)
+
+- `scripts/acceptance-firetv.sh` (criteria 1 to 12 of `docs/PLAN.md` section 13, one result line and screenshot `p5-acc-NN.png` each, ends with Büro paused). Criterion 1 installs the
+  **release** APK and starts it; since only the debug build has `DUMP_STATE`, the state checks run on the debug build with the same key (installed with `install -r`).
+  Criterion 9 uses injected key codes 85, 87, 88; the physical remote is separate. Criterion 12 refers to 10.2. `DUMP_STATE` got a `seek` field (seconds) for criterion 7.
+- Six Maestro flows were stale after the sharpness row, the Lyrics bar button and the lyrics timing row were added. Repaired: the bar needs one more Left press to reach
+  Settings (Zones, Settings, Lyrics, previous, play/pause, next), and the settings rows are Background, Sharpness, Colour, Controls, Screen on, via roon, Lyrics (LRCLIB),
+  Lyrics timing, Search for Core again, Switch zone. `phase1.yaml` and `phase1-zones.yaml` looked for "Choose a zone" but the title is "Select zone" (English UI): fixed.
+  The scripts that run the flows now set a defined state first (`SET_LRCLIB on`, `SET_BACKGROUND cover`, `SET_SCREEN_ON always`, `SET_LYRICS off`); `scripts/maestro-regression.sh` runs all
+  ten flows in order. No flow was run in this phase part: pending (device run).
+
+### 11.7 Hand-over structure (done)
+
+- `docs/SPEC.md`: platform-neutral specification (screens and transitions, connection, zones, progress, control, control bar, settings, lyrics, screen on, platform interface).
+- `shared/fixtures/` (moved with `git mv` from `roon-client/src/test/resources/fixtures`; `roon-client` and `lyrics` add `shared/` as a test resource directory, so `/fixtures/<name>` and
+  `/testvectors/<name>` stay on the classpath).
+- `shared/testvectors/`: `progress.json` (11 cases), `zone-resolver.json` (6), `zone-groups.json` (4 steps), `lrc.json` (11), `lyrics-sync.json` (8), `query-variants.json`
+  (12 title cleanings, 2 first-artist, 3 variant lists, 1 key), `lrclib-responses.json` (13). Derived 1:1 from the inline tests, which stay for what is not a vector (timeouts, retry
+  timing, file cache, optimistic state). JUnit 5 `@TestFactory` readers: `ProgressVectorsTest`, `ZoneVectorsTest` (roon-client), `LyricsVectorsTest` (lyrics); they use the
+  kotlinx.serialization already present in both modules.
+- `shared/design/tokens.json` and `app/.../Tokens.kt`: colours, text sizes and line heights, five dimensions (page padding, cover sizes, bar button, lyrics line height), durations,
+  factors. All colour literals, all text-size literals and the named duration constants were replaced by `Tokens`; spacing and corner values that occur once stay inline.
+  Values are registered by the property delegates, so `SharedConsistencyTest` compares both ways without reflection. Roborazzi images did not change (checked with `git status` on
+  `app/src/test/screenshots` before and after the refactor).
+- `shared/strings/en.json`, `de.json`: generated from the Android resources (71 strings each); `SharedConsistencyTest` compares names (both ways, against `strings.xml` and `values-de`)
+  and values (against the Robolectric resources of both locales).
+
+### 11.8 Test result of the code and document part
+
+`scripts/dock ./gradlew test`: 251 tests, 0 failures (roon-client 93, lyrics 100, app 58; before this phase part: 175). New: 71 vector tests, 4 `SharedConsistencyTest`, 1 `clearEndpointKeepsTokenAndZone`.
+`git status` on `app/src/test/screenshots` after the run: no changed image (the two `1-connecting*` images were re-recorded and committed in the loading-indicator step; the `Tokens` refactor changed none).

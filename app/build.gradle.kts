@@ -56,6 +56,8 @@ android {
             all { test ->
                 // Always write the screenshots (no Roborazzi Gradle plugin in use).
                 test.systemProperty("roborazzi.test.record", "true")
+                // Shared tokens and strings (shared/design, shared/strings) for SharedConsistencyTest.
+                test.systemProperty("shared.dir", rootProject.file("shared").path)
                 System.getenv("HOME")?.let { test.systemProperty("user.home", it) } }
         }
     }

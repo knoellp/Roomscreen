@@ -64,13 +64,10 @@ import io.github.knoellp.roomscreen.roon.transport.Zone
 import kotlin.math.abs
 import kotlinx.coroutines.launch
 
-private val LYRICS_COVER = 160.dp
 private val ACTIVE_COLOR = Color.White
-private val SHARP_TEXT_SCRIM = Color(0x8C000000)
-/** Height of the active line (38 sp line plus 2 x 6 dp padding), used to put its middle on the middle of the view. */
-private val LINE_HEIGHT_DP = 50.dp
-/** The active line is the 30 sp text drawn 13 % larger (about the former 34 sp). */
-private const val ACTIVE_SCALE = 1.13f
+private val SHARP_TEXT_SCRIM = Tokens.sharpTextScrim
+/* Tokens.lyricsLineHeight: height of the active line (38 sp line plus 2 x 6 dp padding), puts its middle on the middle of the view.
+   Tokens.lyricsActiveScale: the active line is the 30 sp text drawn 13 % larger (about the former 34 sp). */
 
 /**
  * Lyrics layout: small cover, title and artist with a thin progress bar on the left, the text on the right.
@@ -96,14 +93,14 @@ fun LyricsView(
         Modifier.fillMaxSize().padding(start = 48.dp, end = 48.dp, top = 88.dp, bottom = 52.dp),
         horizontalArrangement = Arrangement.spacedBy(40.dp),
     ) {
-        Column(Modifier.width(LYRICS_COVER + 20.dp).fillMaxHeight(), verticalArrangement = Arrangement.Bottom) {
-            Box(Modifier.size(LYRICS_COVER).clip(RoundedCornerShape(8.dp)).background(Color(0xFF2A2F36)), contentAlignment = Alignment.Center) {
+        Column(Modifier.width(Tokens.lyricsCoverSize + 20.dp).fillMaxHeight(), verticalArrangement = Arrangement.Bottom) {
+            Box(Modifier.size(Tokens.lyricsCoverSize).clip(RoundedCornerShape(8.dp)).background(Tokens.coverPlaceholder), contentAlignment = Alignment.Center) {
                 if (cover != null) Image(cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else Text("♪", fontSize = 56.sp, color = Color(0xFF6E7681))
+                else Text("♪", fontSize = Tokens.fontLyricsCoverNote, color = Tokens.mutedIcon)
             }
             Spacer(Modifier.height(14.dp))
-            Text(lines?.line1 ?: "", fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(lines?.line2 ?: "", fontSize = 16.sp, color = Color(0xFFC9D1D9), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+            Text(lines?.line1 ?: "", fontSize = Tokens.fontButton, lineHeight = Tokens.lineLyricsTitle, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(lines?.line2 ?: "", fontSize = Tokens.fontSmall, color = Tokens.textBody, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             Spacer(Modifier.height(14.dp))
             MiniProgress(positionMs, lengthMs)
         }
@@ -122,7 +119,7 @@ fun LyricsView(
 @Composable
 private fun MiniProgress(positionMs: () -> Long, lengthMs: Long?) {
     Box(
-        Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color(0x40FFFFFF)).drawBehind {
+        Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Tokens.progressTrack).drawBehind {
             val fraction = if (lengthMs != null) (positionMs().toFloat() / lengthMs).coerceIn(0f, 1f) else 0f
             drawRoundRect(Color.White, size = Size(size.width * fraction, size.height), cornerRadius = CornerRadius(size.height / 2))
         },
@@ -132,7 +129,7 @@ private fun MiniProgress(positionMs: () -> Long, lengthMs: Long?) {
 /** Soft top edge of the text column without an offscreen layer: a dark scrim over the upper part of the screen. */
 @Composable
 private fun TopScrim() {
-    Box(Modifier.fillMaxWidth().height(200.dp).background(Brush.verticalGradient(0f to Color(0x99000000), 0.45f to Color(0x66000000), 1f to Color.Transparent)))
+    Box(Modifier.fillMaxWidth().height(200.dp).background(Brush.verticalGradient(0f to Tokens.lyricsHeaderScrimTop, 0.45f to Tokens.lyricsHeaderScrimMiddle, 1f to Color.Transparent)))
 }
 
 /**
@@ -147,7 +144,7 @@ private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long, offs
     var heightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val halfHeight = with(density) { (heightPx / 2).toDp() }
-    val centerOffsetPx = with(density) { (LINE_HEIGHT_DP / 2).roundToPx() }
+    val centerOffsetPx = with(density) { (Tokens.lyricsLineHeight / 2).roundToPx() }
     var placed by remember(lines) { mutableIntStateOf(0) }
 
     LaunchedEffect(active, offsetMs) { AndroidLogger.info("lyrics active=$active offset_ms=$offsetMs") }
@@ -172,15 +169,15 @@ private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long, offs
                 // Every line has the same layout; the active line is enlarged and the others dimmed in the draw phase
                 // only (graphicsLayer reads the index), so a line change causes no recomposition and no text re-layout.
                 Text(
-                    line.text, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold, color = ACTIVE_COLOR,
+                    line.text, fontSize = Tokens.fontLyricsActive, lineHeight = Tokens.lineLyrics, fontWeight = FontWeight.SemiBold, color = ACTIVE_COLOR,
                     modifier = Modifier.padding(vertical = 6.dp).graphicsLayer {
                         val distance = abs(i - active)
                         compositingStrategy = CompositingStrategy.ModulateAlpha
                         transformOrigin = TransformOrigin(0f, 0.5f)
                         if (distance == 0 && active >= 0) {
-                            scaleX = ACTIVE_SCALE; scaleY = ACTIVE_SCALE
+                            scaleX = Tokens.lyricsActiveScale; scaleY = Tokens.lyricsActiveScale
                         } else {
-                            alpha = when (distance) { 1 -> 0.62f; 2 -> 0.42f; 3 -> 0.28f; else -> 0.16f }
+                            alpha = when (distance) { 1 -> Tokens.lyricsAlphaDistance1; 2 -> Tokens.lyricsAlphaDistance2; 3 -> Tokens.lyricsAlphaDistance3; else -> Tokens.lyricsAlphaFarther }
                         }
                     },
                 )
@@ -209,6 +206,6 @@ private fun PlainLyrics(text: String, scroll: ScrollState) {
             .focusRequester(focus).focusable()
             .verticalScroll(scroll),
     ) {
-        Text(text, fontSize = 28.sp, lineHeight = 38.sp, fontWeight = FontWeight.Medium, color = Color(0xE6FFFFFF), modifier = Modifier.padding(vertical = 40.dp))
+        Text(text, fontSize = Tokens.fontHeading, lineHeight = Tokens.lineLyrics, fontWeight = FontWeight.Medium, color = Tokens.lyricsPlainText, modifier = Modifier.padding(vertical = 40.dp))
     }
 }

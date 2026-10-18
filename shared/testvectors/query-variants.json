@@ -1,0 +1,166 @@
+{
+ "description": "LRCLIB query variants and cache keys (docs/SPEC.md lyrics). Derived 1:1 from QueryNormalizerTest. Roon three_line: line1 title, line2 artist, line3 album, duration in seconds (0 unknown). Variants in order exact, title, artist, no-album; each builds on the previous; variants equal to an earlier one are dropped. key = title|artist|album|durationSec.",
+ "cleanTitle": [
+  {
+   "input": "Captain Jack (Album Version)",
+   "expect": "Captain Jack"
+  },
+  {
+   "input": "Alive - Remastered 2011",
+   "expect": "Alive"
+  },
+  {
+   "input": "Alive - 2011 Remaster",
+   "expect": "Alive"
+  },
+  {
+   "input": "Song [Mono Version]",
+   "expect": "Song"
+  },
+  {
+   "input": "Song - Single Version",
+   "expect": "Song"
+  },
+  {
+   "input": "Song (Remastered) (Album Version)",
+   "expect": "Song"
+  },
+  {
+   "input": "Song (Live)",
+   "expect": "Song (Live)"
+  },
+  {
+   "input": "Song (Live at Wembley Edit)",
+   "expect": "Song (Live at Wembley Edit)"
+  },
+  {
+   "input": "Song (Part 2)",
+   "expect": "Song (Part 2)"
+  },
+  {
+   "input": "Fortress Around Your Heart",
+   "expect": "Fortress Around Your Heart"
+  },
+  {
+   "input": "A - B",
+   "expect": "A - B"
+  },
+  {
+   "input": "(Remastered)",
+   "expect": "(Remastered)"
+  }
+ ],
+ "firstArtist": [
+  {
+   "input": "Melody Gardot / Ken Pendergast",
+   "expect": "Melody Gardot"
+  },
+  {
+   "input": "Sting",
+   "expect": "Sting"
+  }
+ ],
+ "variants": [
+  {
+   "name": "variantOrderAndCumulativeChanges",
+   "query": {
+    "title": "Song (Album Version)",
+    "artist": "A / B",
+    "album": "Alb",
+    "durationSec": 200
+   },
+   "expect": [
+    {
+     "name": "exact",
+     "title": "Song (Album Version)",
+     "artist": "A / B",
+     "album": "Alb",
+     "durationSec": 200,
+     "key": "Song (Album Version)|A / B|Alb|200"
+    },
+    {
+     "name": "title",
+     "title": "Song",
+     "artist": "A / B",
+     "album": "Alb",
+     "durationSec": 200,
+     "key": "Song|A / B|Alb|200"
+    },
+    {
+     "name": "artist",
+     "title": "Song",
+     "artist": "A",
+     "album": "Alb",
+     "durationSec": 200,
+     "key": "Song|A|Alb|200"
+    },
+    {
+     "name": "no-album",
+     "title": "Song",
+     "artist": "A",
+     "album": "",
+     "durationSec": 200,
+     "key": "Song|A||200"
+    }
+   ]
+  },
+  {
+   "name": "duplicatesAreDropped (no album, one artist)",
+   "query": {
+    "title": "Song",
+    "artist": "Solo",
+    "album": "",
+    "durationSec": 100
+   },
+   "expect": [
+    {
+     "name": "exact",
+     "title": "Song",
+     "artist": "Solo",
+     "album": "",
+     "durationSec": 100,
+     "key": "Song|Solo||100"
+    }
+   ]
+  },
+  {
+   "name": "duplicatesAreDropped (with album)",
+   "query": {
+    "title": "Song",
+    "artist": "Solo",
+    "album": "Alb",
+    "durationSec": 100
+   },
+   "expect": [
+    {
+     "name": "exact",
+     "title": "Song",
+     "artist": "Solo",
+     "album": "Alb",
+     "durationSec": 100,
+     "key": "Song|Solo|Alb|100"
+    },
+    {
+     "name": "no-album",
+     "title": "Song",
+     "artist": "Solo",
+     "album": "",
+     "durationSec": 100,
+     "key": "Song|Solo||100"
+    }
+   ]
+  }
+ ],
+ "keys": [
+  {
+   "name": "keyContainsAllFields",
+   "query": {
+    "title": "T",
+    "artist": "A",
+    "album": "B",
+    "durationSec": 7
+   },
+   "expect": "T|A|B|7"
+  }
+ ]
+}

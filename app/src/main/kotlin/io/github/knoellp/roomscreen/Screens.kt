@@ -53,25 +53,21 @@ import coil3.compose.AsyncImage
 import io.github.knoellp.roomscreen.roon.transport.Zone
 import kotlinx.coroutines.delay
 
-private val PagePadding = 64.dp
-
 @Composable
 internal fun Page(content: @Composable BoxScope.() -> Unit) {
-    Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(PagePadding)) { content() }
+    Box(Modifier.fillMaxSize().background(Tokens.pageBackground).padding(Tokens.pagePadding)) { content() }
 }
 
 @Composable
-internal fun Title(text: String) = Text(text, fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+internal fun Title(text: String) = Text(text, fontSize = Tokens.fontTitle, lineHeight = Tokens.lineTitle, fontWeight = FontWeight.SemiBold, color = Color.White)
 
 @Composable
-internal fun Body(text: String, color: Color = Color(0xFFC9D1D9)) = Text(text, fontSize = 24.sp, lineHeight = 34.sp, color = color)
+internal fun Body(text: String, color: Color = Tokens.textBody) = Text(text, fontSize = Tokens.fontBody, lineHeight = Tokens.lineBody, color = color)
 
-/** After this long without a connection the Connecting screen adds a hint with the last known address. */
-const val CONNECT_HINT_AFTER_MS = 20_000L
-
-/** Screen 1: searching / connecting with status; after [CONNECT_HINT_AFTER_MS] a "Core not reachable" hint is added. */
+/** After [Tokens.connectHintAfterMs] without a connection the Connecting screen adds a hint with the last known address. */
+/** Screen 1: searching / connecting with status; after [Tokens.connectHintAfterMs] a "Core not reachable" hint is added. */
 @Composable
-fun ConnectingScreen(status: Status, onManual: () -> Unit, lastAddress: String? = null, hintAfterMs: Long = CONNECT_HINT_AFTER_MS) {
+fun ConnectingScreen(status: Status, onManual: () -> Unit, lastAddress: String? = null, hintAfterMs: Long = Tokens.connectHintAfterMs) {
     var slow by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { delay(hintAfterMs); slow = true }
     ConnectingContent(status, onManual, lastAddress, slow)
@@ -92,13 +88,13 @@ fun ConnectingContent(status: Status, onManual: () -> Unit, lastAddress: String?
         // Visible from the first frame, so a slow start never looks frozen.
         androidx.compose.material3.CircularProgressIndicator(
             modifier = Modifier.size(48.dp),
-            color = Color(0xFFC9D1D9),
-            trackColor = Color(0x33FFFFFF),
+            color = Tokens.textBody,
+            trackColor = Tokens.spinnerTrack,
             strokeWidth = 4.dp,
         )
         if (slow) {
-            Body(stringResource(R.string.status_unreachable), color = Color(0xFFE3B341))
-            if (lastAddress != null) Body(stringResource(R.string.status_last_address, lastAddress), color = Color(0xFF9DA7B3))
+            Body(stringResource(R.string.status_unreachable), color = Tokens.warning)
+            if (lastAddress != null) Body(stringResource(R.string.status_last_address, lastAddress), color = Tokens.textMuted)
         }
         Spacer(Modifier.height(16.dp))
         Button(onClick = onManual) { Text(stringResource(R.string.enter_manually)) }
@@ -136,10 +132,10 @@ fun ManualEntryScreen(
             Button(onClick = onBack) { Text(stringResource(R.string.manual_back)) }
         }
         when {
-            invalid -> Body(stringResource(R.string.manual_invalid), Color(0xFFFF8A80))
+            invalid -> Body(stringResource(R.string.manual_invalid), Tokens.error)
             result is TestResult.Testing -> Body(stringResource(R.string.manual_testing))
-            result is TestResult.Ok -> Body(stringResource(R.string.manual_ok, result.coreName, result.version), Color(0xFF8BD17C))
-            result is TestResult.Failed -> Body(stringResource(R.string.manual_failed, result.reason), Color(0xFFFF8A80))
+            result is TestResult.Ok -> Body(stringResource(R.string.manual_ok, result.coreName, result.version), Tokens.success)
+            result is TestResult.Failed -> Body(stringResource(R.string.manual_failed, result.reason), Tokens.error)
             else -> {}
         }
     }
@@ -180,13 +176,13 @@ fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (
         }
     }
     // No bottom page padding: the list runs to the screen edge and scrolls instead of being cut at a margin.
-    Box(Modifier.fillMaxSize().background(Color(0xFF101820)).padding(top = 32.dp, start = 64.dp, end = 64.dp)) {
+    Box(Modifier.fillMaxSize().background(Tokens.pageBackground).padding(top = 32.dp, start = 64.dp, end = 64.dp)) {
     Column(
         Modifier.align(Alignment.TopCenter).widthIn(max = 600.dp).fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(stringResource(R.string.zones_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-        Text(stringResource(R.string.zones_hint), fontSize = 16.sp, color = Color(0xFF9DA7B3))
+        Text(stringResource(R.string.zones_title), fontSize = Tokens.fontHeading, fontWeight = FontWeight.SemiBold, color = Color.White)
+        Text(stringResource(R.string.zones_hint), fontSize = Tokens.fontSmall, color = Tokens.textMuted)
         Spacer(Modifier.height(6.dp))
         LazyColumn(
             Modifier.fillMaxWidth().weight(1f),
@@ -212,12 +208,12 @@ private fun ZoneRow(zone: Zone, isCurrent: Boolean, focus: FocusRequester?, onCl
         modifier = Modifier.fillMaxWidth().then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color(0xFF1C2833),
-            focusedContainerColor = Color(0xFF2A3A48),
-            contentColor = Color(0xFFE6EDF3),
+            containerColor = Tokens.rowBackground,
+            focusedContainerColor = Tokens.rowFocused,
+            contentColor = Tokens.textSecondary,
             focusedContentColor = Color.White,
         ),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Color(0xFF8FA3B5)))),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Tokens.rowFocusBorder))),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
         Row(
@@ -226,20 +222,20 @@ private fun ZoneRow(zone: Zone, isCurrent: Boolean, focus: FocusRequester?, onCl
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    zone.displayName, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    zone.displayName, fontSize = Tokens.fontRow, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isCurrent) Color.White else Color(0xFFD0D7DE),
+                    color = if (isCurrent) Color.White else Tokens.textZoneName,
                 )
                 if (detail.isNotEmpty()) {
-                    Text(detail, fontSize = 15.sp, color = Color(0xFF9DA7B3), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(detail, fontSize = Tokens.fontDetail, color = Tokens.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Spacer(Modifier.width(12.dp))
-            Box(Modifier.size(10.dp).clip(CircleShape).background(if (playing) Color(0xFF3FB950) else Color(0xFF6E7681)))
+            Box(Modifier.size(10.dp).clip(CircleShape).background(if (playing) Tokens.playingDot else Tokens.mutedIcon))
             Spacer(Modifier.width(8.dp))
-            Text(stateLabel(zone.state), fontSize = 16.sp, color = Color(0xFF9DA7B3))
+            Text(stateLabel(zone.state), fontSize = Tokens.fontSmall, color = Tokens.textMuted)
             Box(Modifier.width(32.dp), contentAlignment = Alignment.CenterEnd) {
-                if (isCurrent) Text("✓", fontSize = 22.sp, color = Color.White)
+                if (isCurrent) Text("✓", fontSize = Tokens.fontRow, color = Color.White)
             }
         }
     }

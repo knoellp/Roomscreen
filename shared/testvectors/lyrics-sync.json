@@ -1,0 +1,216 @@
+{
+ "description": "Active lyric line (docs/SPEC.md lyrics). Derived 1:1 from LyricsSyncTest. Active index = last line with timeMs <= positionMs + offsetMs + 250 (LEAD_MS), -1 before the first line. Positive offset shows lines earlier.",
+ "leadMs": 250,
+ "cases": [
+  {
+   "name": "beforeFirstLine",
+   "lines": [
+    {
+     "timeMs": 10000,
+     "text": "a"
+    },
+    {
+     "timeMs": 20000,
+     "text": "b"
+    },
+    {
+     "timeMs": 30000,
+     "text": "c"
+    }
+   ],
+   "checks": [
+    {
+     "positionMs": 0,
+     "offsetMs": 0,
+     "expect": -1
+    },
+    {
+     "positionMs": 9749,
+     "offsetMs": 0,
+     "expect": -1
+    }
+   ]
+  },
+  {
+   "name": "leadMakesLineActiveEarly",
+   "lines": [
+    {
+     "timeMs": 10000,
+     "text": "a"
+    },
+    {
+     "timeMs": 20000,
+     "text": "b"
+    },
+    {
+     "timeMs": 30000,
+     "text": "c"
+    }
+   ],
+   "checks": [
+    {
+     "positionMs": 9750,
+     "offsetMs": 0,
+     "expect": 0
+    },
+    {
+     "positionMs": 19750,
+     "offsetMs": 0,
+     "expect": 1
+    }
+   ]
+  },
+  {
+   "name": "between",
+   "lines": [
+    {
+     "timeMs": 10000,
+     "text": "a"
+    },
+    {
+     "timeMs": 20000,
+     "text": "b"
+    },
+    {
+     "timeMs": 30000,
+     "text": "c"
+    }
+   ],
+   "checks": [
+    {
+     "positionMs": 15000,
+     "offsetMs": 0,
+     "expect": 0
+    },
+    {
+     "positionMs": 25000,
+     "offsetMs": 0,
+     "expect": 1
+    }
+   ]
+  },
+  {
+   "name": "afterLast",
+   "lines": [
+    {
+     "timeMs": 10000,
+     "text": "a"
+    },
+    {
+     "timeMs": 20000,
+     "text": "b"
+    },
+    {
+     "timeMs": 30000,
+     "text": "c"
+    }
+   ],
+   "checks": [
+    {
+     "positionMs": 999999,
+     "offsetMs": 0,
+     "expect": 2
+    }
+   ]
+  },
+  {
+   "name": "positiveOffsetShowsLinesEarlier",
+   "lines": [
+    {
+     "timeMs": 10000,
+     "text": "a"
+    },
+    {
+     "timeMs": 20000,
+     "text": "b"
+    },
+    {
+     "timeMs": 30000,
+     "text": "c"
+    }
+   ],
+   "checks": [
+    {
+     "positionMs": 15000,
+     "offsetMs": 0,
+     "expect": 0
+    },
+    {
+     "positionMs": 17000,
+     "offsetMs": 3000,
+     "expect": 1
+    },
+    {
+     "positionMs": 27000,
+     "offsetMs": 3000,
+     "expect": 2
+    }
+   ]
+  },
+  {
+   "name": "negativeOffsetShowsLinesLater",
+   "lines": [
+    {
+     "timeMs": 10000,
+     "text": "a"
+    },
+    {
+     "timeMs": 20000,
+     "text": "b"
+    },
+    {
+     "timeMs": 30000,
+     "text": "c"
+    }
+   ],
+   "checks": [
+    {
+     "positionMs": 21000,
+     "offsetMs": 0,
+     "expect": 1
+    },
+    {
+     "positionMs": 21000,
+     "offsetMs": -3000,
+     "expect": 0
+    },
+    {
+     "positionMs": 11000,
+     "offsetMs": -3000,
+     "expect": -1
+    }
+   ]
+  },
+  {
+   "name": "noLines",
+   "lines": [],
+   "checks": [
+    {
+     "positionMs": 5000,
+     "offsetMs": 0,
+     "expect": -1
+    }
+   ]
+  },
+  {
+   "name": "sameTimestampPicksLast",
+   "lines": [
+    {
+     "timeMs": 1000,
+     "text": "a"
+    },
+    {
+     "timeMs": 1000,
+     "text": "b"
+    }
+   ],
+   "checks": [
+    {
+     "positionMs": 1000,
+     "offsetMs": 0,
+     "expect": 1
+    }
+   ]
+  }
+ ]
+}

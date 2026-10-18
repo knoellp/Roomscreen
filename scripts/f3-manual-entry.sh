@@ -18,7 +18,7 @@ state | grep -o '"screen":"[A-Za-z]*","connection":"[^"]*"'
 shot p5-01-connecting
 
 echo "== 2. Maestro: press 'Enter address manually', type the Core host, test"
-maestro --device "$DEV" test -e CORE_HOST="$CORE" maestro/f3-manual-entry.yaml 2>&1 | grep -E "COMPLETED|FAILED|Flow|Assertion|Error" | sed 's/^/  /'
+maestro --device "$DEV" test -e CORE_HOST="$CORE" -e ROON_TEST_ZONE="$ROON_TEST_ZONE" maestro/f3-manual-entry.yaml 2>&1 | grep -E "COMPLETED|FAILED|Flow|Assertion|Error" | sed 's/^/  /'
 find /home/dev/.maestro/tests -name 'p5-*.png' -exec cp {} "$OUT/" \; 2>/dev/null
 sleep 8
 ST=$(state); echo "$ST" | grep -o '"screen":"[A-Za-z]*","connection":"[^"]*","zones":[0-9]*,"endpoint":"[^"]*"'
