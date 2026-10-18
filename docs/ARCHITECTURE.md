@@ -690,21 +690,27 @@ seek_rate: 0 event(s) in 1800.0s                                  (CLI summary, 
 | CLI exit | 0, no abort |
 
 Physical remote (the user at the TV, 2026-10-18 23:59 to 2026-10-19 00:04 device time, zone Büro). The Fire TV remote sends `KEYCODE_MEDIA_FAST_FORWARD` (90) and
-`KEYCODE_MEDIA_REWIND` (89), not `MEDIA_NEXT`/`MEDIA_PREVIOUS`; `KeyMapping` maps both pairs to next/previous (`KeyMapping.kt` lines 15 and 16). Reported by the user's session: D-pad Up, play/pause (85),
-fast forward (90), rewind (89), each acted on Büro. The app log lines of those presses that I could still read (control lines, verbatim):
+`KEYCODE_MEDIA_REWIND` (89), not `MEDIA_NEXT`/`MEDIA_PREVIOUS`; `KeyMapping` maps both pairs to next/previous (`KeyMapping.kt` lines 15 and 16). The user pressed play/pause, fast forward and rewind
+on the physical remote; app log read at 23:59:49 (`logcat -d -s Roomscreen:V`, verbatim, key-up lines omitted):
 
 ```
+10-18 23:59:30.663 22038 22038 I Roomscreen: key code=85 name=KEYCODE_MEDIA_PLAY_PAUSE action=0 repeat=0
+10-18 23:59:30.670 22038 22038 I Roomscreen: control send=playpause zone="Büro" state=paused optimistic=playing
+10-18 23:59:30.762 22038 22038 I Roomscreen: control ok=playpause
+10-18 23:59:36.544 22038 22038 I Roomscreen: key code=90 name=KEYCODE_MEDIA_FAST_FORWARD action=0 repeat=0
 10-18 23:59:36.544 22038 22038 I Roomscreen: control send=next zone="Büro" state=playing
 10-18 23:59:36.916 22038 22038 I Roomscreen: control ok=next
+10-18 23:59:44.855 22038 22038 I Roomscreen: key code=89 name=KEYCODE_MEDIA_REWIND action=0 repeat=0
 10-18 23:59:44.855 22038 22038 I Roomscreen: control send=previous zone="Büro" state=playing
 10-18 23:59:45.209 22038 22038 I Roomscreen: control ok=previous
 10-18 23:59:51.105 22038 22038 I Roomscreen: control send=playpause zone="Büro" state=playing optimistic=paused
 10-18 23:59:51.585 22038 22038 I Roomscreen: control ok=playpause
 ```
 
-Limit of this evidence: the `key code=` lines of these first presses had already been overwritten in the small logcat ring buffer when I read it (the buffer holds only a few minutes); the control lines above are
-what was captured, and the key codes 90, 89 and 85 are the user's report, not my log. Later presses of the same session (D-pad Left/Right/Up/Center/Back, 00:01 to 00:03) are in `build/device-artifacts/p5-remote-user-logcat.txt`
-(for example `key code=19 name=KEYCODE_DPAD_UP action=0` and `control send=next zone="Büro" state=paused` at 00:02:13). The injected key codes 85, 87, 88 are covered by the acceptance run (11.6).
+The user reported that the display reacted at once. Later presses of the same session (D-pad Left/Right/Up/Center/Back, 00:01 to 00:03) are in `build/device-artifacts/p5-remote-user-logcat.txt`
+(for example `key code=19 name=KEYCODE_DPAD_UP action=0` and `control send=next zone="Büro" state=paused` at 00:02:13): the D-pad ring navigates the control bar and Center triggers the focused button,
+only the media keys act directly. The user asked for direct D-pad control (Left/Right = previous/next, Center = play/pause, Up/Down = show the bar); that is a planned change, not part of version 1 as measured here.
+The injected key codes 85, 87, 88 are covered by the acceptance run (11.6).
 The same user presses disturbed one acceptance-time Maestro run (phase2) because they changed Büro's state under the flow; that flow was re-run after the session.
 
 ### 11.5 Memory criterion (measured 2026-10-18)
