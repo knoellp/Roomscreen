@@ -12,7 +12,11 @@ grab() { find /home/dev/.maestro/tests -name 'p2-*.png' -exec cp {} "$OUT/" \; 2
 log() { adb -s "$DEV" logcat -d -s Roomscreen:V; }
 roon() { "$CLI" "$@" 2>&1 | grep -E "control|NOT ALLOWED|REFUSED|ERROR" || true; }
 
-echo "== prepare: Büro paused"
+echo "== prepare: defined settings (the flows count key presses), Büro paused"
+# SET_LRCLIB on: Lyrics bar button and "Textversatz" row exist; SET_BACKGROUND cover: the sharpness row exists; lyrics button off.
+for kv in "SET_LRCLIB on" "SET_BACKGROUND cover" "SET_SCREEN_ON always" "SET_LYRICS off"; do
+  adb -s "$DEV" shell am broadcast -p "$PKG" -a "io.github.knoellp.roomscreen.${kv% *}" --es value "${kv#* }" >/dev/null; done
+sleep 2
 roon play --zone "$ROON_TEST_ZONE"; sleep 4; roon pause --zone "$ROON_TEST_ZONE"; sleep 3
 
 echo "== flow phase2.yaml"

@@ -25,6 +25,7 @@ appId: io.github.knoellp.roomscreen
 - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Center
 - pressKey: Back
 - extendedWaitUntil:

@@ -471,6 +471,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             put("artist", s.zone.nowPlaying?.threeLine?.line2 ?: "")
             put("album", s.zone.nowPlaying?.threeLine?.line3 ?: "")
             put("backdrop", s.backdropUrl ?: "")
+            put("seek", s.zone.nowPlaying?.seekPosition ?: -1L)
         }
         put("lyrics_on", lyricsOn.value)
         put("lyrics", when (val l = _lyrics.value) {

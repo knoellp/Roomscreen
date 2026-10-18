@@ -5,12 +5,12 @@ appId: io.github.knoellp.roomscreen
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "(Büro ·.*|Choose a zone|Zone wählen)"
+    visible: "(Büro ·.*|Select zone|Zone wählen)"
     timeout: 60000
 # First start (no saved zone): the list opens directly.
 - runFlow:
     when:
-      visible: "(Choose a zone|Zone wählen)"
+      visible: "(Select zone|Zone wählen)"
     commands:
       - pressKey: Remote Dpad Down
       - pressKey: Remote Dpad Down
@@ -18,12 +18,12 @@ appId: io.github.knoellp.roomscreen
 # A zone is already saved: open the list through the Zones button; the current zone has focus.
 - runFlow:
     when:
-      notVisible: "(Choose a zone|Zone wählen)"
+      notVisible: "(Select zone|Zone wählen)"
     commands:
       - pressKey: Remote Dpad Down
       - pressKey: Remote Dpad Center
       - extendedWaitUntil:
-          visible: "(Choose a zone|Zone wählen)"
+          visible: "(Select zone|Zone wählen)"
           timeout: 10000
       - pressKey: Remote Dpad Center
 - extendedWaitUntil:

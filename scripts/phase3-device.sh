@@ -33,6 +33,7 @@ echo "== 0. preflight: app up, zone Büro selected, lyrics off"
 sh am start -n $PKG/.MainActivity >/dev/null; sleep 8
 sh am broadcast -p $PKG -a io.github.knoellp.roomscreen.SELECT_ZONE --es name "$ROON_TEST_ZONE" >/dev/null; sleep 2
 sh am broadcast -p $PKG -a io.github.knoellp.roomscreen.SET_LRCLIB --es value on >/dev/null; sleep 1
+sh am broadcast -p $PKG -a io.github.knoellp.roomscreen.SET_BACKGROUND --es value cover >/dev/null; sleep 1   # the lrclib flows count the sharpness row
 sh am broadcast -p $PKG -a io.github.knoellp.roomscreen.SET_LYRICS --es value off >/dev/null; sleep 2
 need_buero; state
 roon pause --zone "$ROON_TEST_ZONE"; sleep 3

@@ -1,4 +1,6 @@
 # Background "Künstlerbild": switch, look, switch back. Sends no transport command.
+# State the wrapper script sets first (SET_LRCLIB on, SET_BACKGROUND cover): bar = Zonen, Einstellungen, Liedtexte, previous, play/pause, next;
+# settings rows = Hintergrund, Hintergrund-Schärfe, Hintergrundfarbe, Bedienelemente, Bildschirm an, via roon, Liedtexte (LRCLIB), Textversatz, Core neu suchen, Zone wechseln.
 appId: io.github.knoellp.roomscreen
 ---
 - launchApp
@@ -9,6 +11,7 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "Einstellungen"
     timeout: 5000
+- pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center
@@ -30,6 +33,7 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "Einstellungen"
     timeout: 5000
+- pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center

@@ -1,4 +1,6 @@
 # Settings rows "Core neu suchen" and "Zone wechseln". Neither sends a transport command.
+# State the wrapper script sets first (SET_LRCLIB on, SET_BACKGROUND cover): bar = Zonen, Einstellungen, Liedtexte, previous, play/pause, next;
+# settings rows = Hintergrund, Hintergrund-Schärfe, Hintergrundfarbe, Bedienelemente, Bildschirm an, via roon, Liedtexte (LRCLIB), Textversatz, Core neu suchen, Zone wechseln.
 appId: io.github.knoellp.roomscreen
 ---
 - launchApp
@@ -12,12 +14,13 @@ appId: io.github.knoellp.roomscreen
     timeout: 5000
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center
 - extendedWaitUntil:
     visible: "Core neu suchen"
     timeout: 5000
 - repeat:
-    times: 6
+    times: 9
     commands:
       - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Center
@@ -36,12 +39,13 @@ appId: io.github.knoellp.roomscreen
     timeout: 5000
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center
 - extendedWaitUntil:
     visible: "Core neu suchen"
     timeout: 5000
 - repeat:
-    times: 5
+    times: 8
     commands:
       - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Center

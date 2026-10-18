@@ -1,5 +1,7 @@
 # Phase 2 settings flow: open settings from the control bar, change values, go back.
 # Leaves the colour on Mitternachtsblau (restart check follows) and "Bedienelemente" as at the start. Needs no transport command.
+# State the wrapper script sets first (SET_LRCLIB on, SET_BACKGROUND cover): bar = Zonen, Einstellungen, Liedtexte, previous, play/pause, next;
+# settings rows = Hintergrund, Hintergrund-Schärfe, Hintergrundfarbe, Bedienelemente, Bildschirm an, via roon, Liedtexte (LRCLIB), Textversatz, Core neu suchen, Zone wechseln.
 appId: io.github.knoellp.roomscreen
 ---
 - launchApp
@@ -13,12 +15,14 @@ appId: io.github.knoellp.roomscreen
 # Focus starts on play/pause; Settings is two to the left (previous track, then Einstellungen).
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center
 - extendedWaitUntil:
     visible: "Hintergrundfarbe"
     timeout: 5000
 - takeScreenshot: build/device-artifacts/p2-10-settings
-# Colour: Anthrazit -> Mitternachtsblau
+# Colour: Anthrazit -> Mitternachtsblau (Hintergrund, Hintergrund-Schärfe, Hintergrundfarbe: two down)
+- pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Center
 - assertVisible: "Mitternachtsblau"
@@ -47,6 +51,7 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "Hintergrundfarbe"
     timeout: 5000
+- pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Center
