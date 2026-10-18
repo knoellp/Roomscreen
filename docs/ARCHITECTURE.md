@@ -549,7 +549,7 @@ spread between runs of the same variant is about 10 MB, and the one lyrics jank 
 can also not be cropped, so it would only work for images that are exactly 16:9 (artist images). The experiment (debug switch, log line
 `backdrop sharp path=hardware`) was removed again; the software path logs `backdrop sharp path=software size=1280x720 owned=...`.
 `BackdropCache` recycles the bitmaps it created itself (blur result, crop copy) when they are evicted; bitmaps shared with Coil's memory cache
-(no crop needed) are only dropped. No `recycled bitmap` crash in about 130 track changes with the final code.
+(no crop needed) are only dropped. No `recycled bitmap` crash was seen in any run with the final code.
 
 Jank (`dumpsys gfxinfo` over 60 s, `scripts/phase4-jank.sh` and `phase4-perf.sh`; the number of rendered frames is about 1270 to 1400 per run):
 
