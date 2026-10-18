@@ -585,8 +585,30 @@ is SHARP and the background is not a plain colour: Roborazzi `9e-lyrics-sharp.pn
 
 ### 10.5 Soak (2 hours)
 
-**Running, results pending.** `scripts/phase4-soak.sh` (started 2026-10-18 09:39 local time): Büro playing, lyrics on, artist image, sharp; after 10 warm-up
-track changes a sample every 10 minutes (TOTAL PSS, GL mtrack, Java heap, `DUMP_STATE` summary, screenshot `soak-NN.png`), a `KEYCODE_MEDIA_NEXT` every
-20 minutes on Büro, the app log harvested into `build/device-artifacts/soak-logcat.txt`, a final scan for Reconnecting / watchdog / failed / Exception /
-crash / ANR, then Büro is paused. Success criteria: no unplanned reconnect, last PSS at most first + 15 MB with a plateauing GPU share, no ANR or crash.
-First sample after the warm-up: PSS 194.2 MB, GL mtrack 99.2 MB, Java heap 8.0 MB.
+`scripts/phase4-soak.sh`, 2026-10-18 09:39 to 11:42 device time: Büro playing, lyrics on, artist image, sharp. After 10 warm-up track changes
+(so the cold-start cache fill-up is not counted) a sample every 10 minutes: TOTAL PSS, GL mtrack and Java heap from `dumpsys meminfo`, a `DUMP_STATE`
+summary and a screenshot (`build/device-artifacts/soak-NN.png`); a `KEYCODE_MEDIA_NEXT` on Büro every 20 minutes. The app log was harvested into
+`build/device-artifacts/soak-logcat.txt` (6323 app lines, covering the whole run) and scanned at the end. Values in MB.
+
+| Sample | t (min) | PSS | GL mtrack | Java heap | Lyrics |
+|---|---|---|---|---|---|
+| 00 | 0 | 194.2 | 99.2 | 8.0 | synced |
+| 01 | 10 | 149.7 | 66.2 | 10.8 | synced |
+| 02 | 20 | 154.1 | 74.9 | 11.0 | synced |
+| 03 | 30 | 136.8 | 68.0 | 6.9 | synced |
+| 04 | 40 | 164.6 | 86.5 | 9.1 | plain |
+| 05 | 50 | 117.3 | 41.5 | 7.7 | synced |
+| 06 | 60 | 161.0 | 75.9 | 11.9 | synced |
+| 07 | 70 | 103.7 | 38.1 | 9.7 | synced |
+| 08 | 80 | 141.2 | 67.2 | 10.4 | synced |
+| 09 | 91 | 110.4 | 45.0 | 10.6 | synced |
+| 10 | 101 | 151.1 | 68.9 | 12.2 | synced |
+| 11 | 111 | 145.3 | 70.0 | 10.5 | synced |
+| 12 | 121 | 157.2 | 84.5 | 8.1 | synced |
+
+Result: all 13 samples `connection=Connected`, zone Büro, state playing; the app process kept its pid (31978) for the whole run. The log scan found
+0 `Reconnecting`, 0 `watchdog`, 0 `conn=websocket_failure`, 0 `session_failed`, 0 `FATAL`, 0 ANR; the `failed`/`Exception` hits belong to
+system processes (`storaged`, `ion`, Amazon services), none to the app. Last PSS 157.2 MB against first 194.2 MB (criterion: at most first + 15 MB),
+GL mtrack between 38 and 99 MB with no trend: the GPU share follows the current track (image size, lyrics length) and is released again. Java heap
+7 to 12 MB. LRCLIB over the run: 24 synced, 4 plain, 3 unavailable (not cached), 2 cache hits. The script paused Büro at the end
+(`control pause ok`, final state `paused`). Screenshots `soak-00.png` to `soak-12.png` all show Now Playing with lyrics; no screensaver.

@@ -25,7 +25,7 @@ Full project brief: `docs/PLAN.md`. Protocol findings and decisions: `docs/ARCHI
 | Core address wrong or unreachable | fake Core (blackhole endpoint, discovery fallback) | manual address 192.0.2.1: after 5 failed attempts discovery found the Core again (84 s), hint "Core not reachable" after 20 s | - |
 | Lifecycle (Home key, Activity restart) | fake Core: start/stop/start never has two sockets open | Home, 3 s, start: one `websocket_open` and one `register_sent`; Home with immediate start: connection kept (`lifecycle=disconnect_cancelled`) | - |
 | Lyrics timing setting (-3.0 to +3.0 s) | `LyricsSyncTest`, `SettingsPrefsTest`, screenshot `7d-settings-offset` | +3 s moved the active line by one at once (`lyrics active=41 offset_ms=0` then `lyrics active=42 offset_ms=3000`), screenshots `p4-41-*` | - |
-| Soak, 2 hours, Büro playing, lyrics on, sharp artist image | - | **running, results pending** (`scripts/phase4-soak.sh`, log `build/device-artifacts/soak.log`) | see `docs/ARCHITECTURE.md` section 10 |
+| Soak, 2 hours, Büro playing, lyrics on, sharp artist image | - | **done 2026-10-18**: 13 samples over 121 min, connection stayed Connected without any reconnect, no crash or ANR, PSS 194 MB at the start (after warm-up) and 157 MB at the end, GL mtrack 38 to 99 MB without trend (`scripts/phase4-soak.sh`) | see `docs/ARCHITECTURE.md` section 10.5 |
 | Manual host/port entry | screenshot only | not exercised | open |
 | Several devices with the same Roon | - | - | two installs not tested together |
 | Now Playing layout (blurred backdrop, info strip, cover, progress) | Roborazzi: playing, paused, stopped, no cover, long texts, German | screenshots on the device, 0.5 % janky frames over 60 s of playback | - |
@@ -47,7 +47,7 @@ connection hint after 20 s. Measurements: `docs/ARCHITECTURE.md` section 10.
 
 Not implemented yet: Echo Show 15 (Live App Testing, touch layout), release signing.
 
-Not verified (Phase 4): the 2 hour soak result (running when this was written); the Maestro zone-list flow `maestro/phase1-zones.yaml` passes up to
+Not verified (Phase 4): the Maestro zone-list flow `maestro/phase1-zones.yaml` passes up to
 the zone name assertion with `-e ROON_TEST_ZONE=...` but its last step (title of the zone list) failed on the stick once and was not investigated;
 the Core was restarted only through the web UI's software restart, not a reboot of the machine; Wi-Fi cut tested once with playback running.
 
