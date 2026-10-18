@@ -71,6 +71,10 @@ input, re-registered with the stored token, and showed Now Playing for Büro aga
 shown again: 41 s (playing) and 41 s (paused); about 35 s of this is the Core itself, which accepts connections 5 s after the restart but
 publishes zones only after Roon has started up. Roon pauses playback when it restarts, so both runs ended with Büro paused.
 
+**Memory criterion (version 1, measurement pending):** total PSS after 30 track changes with lyrics and a sharp artist image stays under 200 MB,
+with no trend over the soak run (`docs/ARCHITECTURE.md` section 9.5). Not measured against this criterion yet; the earlier numbers (194 MB after warm-up,
+157 MB at the end of the 2 h soak) are from Phase 4.
+
 ## Remote control
 
 | Key | Action |
