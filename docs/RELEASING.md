@@ -40,9 +40,9 @@ scripts/dock ./gradlew :app:assembleDebug       # same key, plus the debug hooks
 
 Without `config/signing.env` the debug build uses the default Android debug key and the release build is unsigned.
 
-## GitHub secrets for the pipeline (phase F3b, not set yet)
+## GitHub secrets for the pipeline (set on 2026-10-18)
 
-The workflow in F3b signs the release APK with the same key. These are the commands to store it; **nothing has been uploaded yet**.
+The workflow in F3b signs the release APK with the same key. The four secrets were stored on 2026-10-18 with the commands below; re-run them only to rotate the key.
 Run them from the repository root with `gh` logged in; they read the files, nothing is printed.
 
 ```bash
@@ -56,3 +56,5 @@ printf %s "$RELEASE_KEY_PASSWORD"      | gh secret set RELEASE_KEY_PASSWORD
 In the workflow, decode `RELEASE_KEYSTORE_B64` to a file, export `RELEASE_KEYSTORE` (path), `RELEASE_KEYSTORE_PASSWORD`,
 `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`, and run `./gradlew :app:assembleRelease`. Verify that the digest of the built
 APK equals `config/release-fingerprint.txt` before publishing.
+
+The decoded keystore must have the SHA-256 `59ee46a3bd37775e89a312a0acd84ef735ddd18ade745526904769359cf1c588` (that of `config/release.jks`); the workflow checks this before building.
