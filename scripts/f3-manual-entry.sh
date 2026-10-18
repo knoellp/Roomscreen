@@ -2,7 +2,7 @@
 # Phase F3: manual host/port entry on the device, then the cached endpoint is forgotten and discovery finds the Core again.
 # Run inside the toolchain container: scripts/dock bash scripts/f3-manual-entry.sh
 # Needs the debug build installed (same key) and the app connected to the Core with zone Büro selected.
-# Not run yet (device run pending). The Core host is read from the app's DUMP_STATE, never hardcoded. No transport command is sent.
+# Run green on the device on 2026-10-18. The Core host is read from the app's DUMP_STATE, never hardcoded. No transport command is sent.
 source "$(dirname "$0")/phase4-lib.sh"
 PATTERN='endpoint=|discovery|conn state|conn=|registry=|debug endpoint'
 
