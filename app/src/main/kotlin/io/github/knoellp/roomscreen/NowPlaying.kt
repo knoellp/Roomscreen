@@ -191,7 +191,7 @@ fun NowPlayingContent(
                 ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, lyricsAvailable, lyricsOn, onZones, onSettings, onLyrics, onControl, onVolume)
             }
         }
-        if (volumePanel != null) VolumePanel(volumePanel, Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 40.dp))
+        if (volumePanel != null) VolumePanel(volumePanel, Modifier.align(Alignment.TopEnd).padding(end = 40.dp, top = 108.dp))
     }
 }
 
@@ -363,7 +363,7 @@ fun TransportIcon(icon: Icon, modifier: Modifier = Modifier) {
                     drawArc(color, -45f, 90f, false, Offset(w * 0.34f, h * 0.30f), Size(w * 0.4f, h * 0.4f), style = stroke)
                     drawArc(color, -45f, 90f, false, Offset(w * 0.22f, h * 0.12f), Size(w * 0.76f, h * 0.76f), style = stroke)
                 } else {
-                    drawLine(color, Offset(w * 0.02f, h * 0.96f), Offset(w * 0.96f, h * 0.04f), stroke.width, StrokeCap.Round)
+                    drawLine(color, Offset(w * 0.02f, h * 0.98f), Offset(w * 0.98f, h * 0.02f), w * 0.11f, StrokeCap.Round)
                 }
             }
         }

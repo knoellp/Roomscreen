@@ -68,7 +68,7 @@ Zones opens the zone list to switch zones; Settings opens the settings page.
 
 ## Volume
 
-The panel at the bottom right shows one row per output of the shown zone; for a group of outputs a group row comes first. Holding or repeating a key speeds up: clicks 1 to 3 change the volume by one step, clicks 4 to 9 by three steps, from click 10 by five; a change of direction starts again at one. It closes with Back or after 8 seconds without a key; the control bar stays hidden while it is open.
+The panel at the top right, directly below the transport buttons of the control bar, shows one row per output of the shown zone; for a group of outputs a group row comes first. Holding or repeating a key speeds up: clicks 1 to 3 change the volume by one step, clicks 4 to 9 by three steps, from click 10 by five; a change of direction starts again at one. It closes with Back or after 8 seconds without a key; the control bar stays hidden while it is open.
 For a group, the group value is the average of its outputs and a click moves that average; every output follows in proportion (40 and 10 become 44 and 11 when the average rises by 10 percent), as Sonos does it. An output at 0 stays at 0, outputs without volume control are shown as "fixed" and never changed, a muted output is marked with a struck-through speaker. Not tested on the Fire TV yet (see `docs/STATUS.md`).
 
 ## Settings

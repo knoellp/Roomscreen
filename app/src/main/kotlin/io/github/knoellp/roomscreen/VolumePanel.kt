@@ -71,7 +71,7 @@ private fun VolumeRowView(row: VolumeRow, selected: Boolean, indent: Boolean) {
             if (row.muted) {
                 Spacer(Modifier.width(6.dp))
                 val muted = stringResource(R.string.volume_muted)
-                androidx.compose.runtime.CompositionLocalProvider(LocalContentColor provides Tokens.warning) {
+                androidx.compose.runtime.CompositionLocalProvider(LocalContentColor provides faded) {
                     Box(Modifier.size(20.dp).semantics { contentDescription = muted }) { TransportIcon(Icon.VolumeMuted, Modifier.size(20.dp)) }
                 }
             }
