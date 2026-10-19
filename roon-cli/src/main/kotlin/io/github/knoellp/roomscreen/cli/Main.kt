@@ -364,7 +364,8 @@ private fun describe(z: Zone): String {
     return "zone name=\"${z.displayName}\" id=${z.zoneId} state=${z.state}" +
         (if (np != null) " title=\"${l?.line1}\" artist=\"${l?.line2}\" album=\"${l?.line3}\" seek=${np.seekPosition}/${np.length} image_key=${np.imageKey}" else " now_playing=none") +
         " artist_image_keys=${np?.artistImageKeys?.size ?: 0}" +
-        " allowed=play:${z.isPlayAllowed},pause:${z.isPauseAllowed},next:${z.isNextAllowed},prev:${z.isPreviousAllowed}"
+        " allowed=play:${z.isPlayAllowed},pause:${z.isPauseAllowed},next:${z.isNextAllowed},prev:${z.isPreviousAllowed}" +
+        " volume=" + z.outputs.joinToString(",") { o -> "${o.displayName}:${o.volume?.let { v -> v.value?.let { x -> if (x == Math.floor(x)) x.toLong().toString() else x.toString() } ?: "incremental" } ?: "fixed"}" }
 }
 
 private fun findZone(zones: Map<String, Zone>, name: String?): Zone? {

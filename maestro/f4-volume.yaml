@@ -1,0 +1,54 @@
+# Volume panel (docs/SPEC.md section 6.1), German UI, zone "Büro" selected and connected. Driven in steps by scripts/f4-volume.sh:
+# the script reads DUMP_STATE (volume, volume_panel) and `roon-cli zones` between the steps. Not run yet (device part pending).
+# STEP=open   : Up shows the bar, Right Right moves from Play to the speaker button, Center opens the panel; the bar is hidden then.
+# STEP=up3    : Right x3 in the panel (three clicks of one step each).
+# STEP=down3  : Left x3 in the panel (back to the start value).
+# STEP=back   : Back closes the panel and the app stays in the foreground.
+# Screenshots go to build/device-artifacts/p7-*.png.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Büro · .*"
+    timeout: 30000
+- runFlow:
+    when:
+      true: ${STEP == 'open'}
+    commands:
+      - pressKey: Remote Dpad Up
+      - extendedWaitUntil:
+          visible: "Einstellungen"
+          timeout: 5000
+      - pressKey: Remote Dpad Right
+      - pressKey: Remote Dpad Right
+      - takeScreenshot: build/device-artifacts/p7-01-speaker-focused
+      - pressKey: Remote Dpad Center
+      - extendedWaitUntil:
+          notVisible: "Einstellungen"
+          timeout: 5000
+      - takeScreenshot: build/device-artifacts/p7-02-panel-open
+- runFlow:
+    when:
+      true: ${STEP == 'up3'}
+    commands:
+      - pressKey: Remote Dpad Right
+      - pressKey: Remote Dpad Right
+      - pressKey: Remote Dpad Right
+      - takeScreenshot: build/device-artifacts/p7-03-after-right-3
+- runFlow:
+    when:
+      true: ${STEP == 'down3'}
+    commands:
+      - pressKey: Remote Dpad Left
+      - pressKey: Remote Dpad Left
+      - pressKey: Remote Dpad Left
+      - takeScreenshot: build/device-artifacts/p7-04-after-left-3
+- runFlow:
+    when:
+      true: ${STEP == 'back'}
+    commands:
+      - pressKey: Back
+      - assertVisible: "Büro · .*"
+      - assertNotVisible: "Einstellungen"
+      - takeScreenshot: build/device-artifacts/p7-05-after-back
