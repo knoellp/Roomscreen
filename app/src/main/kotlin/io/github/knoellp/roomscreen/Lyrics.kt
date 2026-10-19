@@ -168,9 +168,10 @@ private fun SyncedLyrics(state: LyricsState.Synced, positionMs: () -> Long, offs
             else {
                 // Every line has the same layout; the active line is enlarged and the others dimmed in the draw phase
                 // only (graphicsLayer reads the index), so a line change causes no recomposition and no text re-layout.
+                // The wrap width is the column divided by the active scale, so an enlarged full-width line still ends inside the column.
                 Text(
                     line.text, fontSize = Tokens.fontLyricsActive, lineHeight = Tokens.lineLyrics, fontWeight = FontWeight.SemiBold, color = ACTIVE_COLOR,
-                    modifier = Modifier.padding(vertical = 6.dp).graphicsLayer {
+                    modifier = Modifier.fillMaxWidth(1f / Tokens.lyricsActiveScale).padding(vertical = 6.dp).graphicsLayer {
                         val distance = abs(i - active)
                         compositingStrategy = CompositingStrategy.ModulateAlpha
                         transformOrigin = TransformOrigin(0f, 0.5f)

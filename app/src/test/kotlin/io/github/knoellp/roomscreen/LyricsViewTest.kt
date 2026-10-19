@@ -2,6 +2,11 @@ package io.github.knoellp.roomscreen
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -50,5 +55,20 @@ class LyricsViewTest {
         rule.mainClock.advanceTimeBy(1000)
         rule.waitForIdle()
         assertTrue(scroll.value < down, "scroll after DPAD up: ${scroll.value} < $down")
+    }
+
+    @Test fun activeLineStaysInsideColumnWhenScaled() {
+        val long = "word ".repeat(40).trim()
+        val lines = listOf(io.github.knoellp.roomscreen.lyrics.LrcLine(0L, long), io.github.knoellp.roomscreen.lyrics.LrcLine(60_000L, "next"))
+        rule.setContent {
+            MaterialTheme(colorScheme = darkColorScheme()) {
+                androidx.compose.foundation.layout.Box(Modifier.width(600.dp).height(400.dp)) {
+                    LyricsView(Modifier, LyricsState.Synced(lines), zone, { 1_000L }, 200_000L, null)
+                }
+            }
+        }
+        rule.waitForIdle()
+        val width = rule.onNode(androidx.compose.ui.test.hasText(long)).getBoundsInRoot().width
+        assertTrue(width * Tokens.lyricsActiveScale <= 600.dp + 0.5.dp, "unscaled width $width, scaled ${width * Tokens.lyricsActiveScale}")
     }
 }

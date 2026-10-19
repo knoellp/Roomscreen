@@ -156,6 +156,13 @@ class ScreenshotTest {
     /** Active line (number 6 at 62 s, 10 s per line) in the vertical middle. */
     @Test fun lyricsSynced() = lyrics("9-lyrics-synced", LyricsState.Synced(sampleLines))
 
+    /** The active line is long enough to fill the column: the enlarged line must end inside the right padding. */
+    @Test fun lyricsLongActive() {
+        val long = "This placeholder line is deliberately very long so that it wraps over several rows and fills the whole column width"
+        val lines = sampleLines.toMutableList().apply { this[5] = io.github.knoellp.roomscreen.lyrics.LrcLine(60_000L, long) }
+        lyrics("9e-lyrics-long-active", LyricsState.Synced(lines))
+    }
+
     /** Sharp background with a bright image: the dark gradient under the text column keeps the dimmed lines readable. */
     @Test fun lyricsSharpBright() {
         val bright = fakeCover(0xFFF2E6C8.toInt(), 0xFFE8C98A.toInt(), 0xFFFFFFFF.toInt())
