@@ -198,6 +198,7 @@ Defaults (`AppSettings`), row order:
 | Background colour | Anthracite, Black, Midnight blue, Dark green, Wine red, Warm grey (palette tokens) | always |
 | Controls | On input, Always visible | always |
 | Screen on | Always, Only while playing | always |
+| Key sounds | off, on (default off) | always |
 | Show "via roon" | on, off | always |
 | Lyrics (LRCLIB) | on, off | always |
 | Lyrics timing | 0 s, then -3.0 s to +3.0 s in 0.5 s steps (select adds 0.5 s, from +3.0 s wraps to -3.0 s); hint "minus = later, plus = earlier" | LRCLIB on |
@@ -293,7 +294,7 @@ What every platform provides to the core (`docs/PLAN.md` 4.4) and what the core 
 |---|---|---|
 | Discovery | run SOOD (UDP multicast 239.255.90.90:9003 and broadcast, query for the Roon service, see ARCHITECTURE 2), return host and port; multicast permission held only while it runs | Report "not available". The connection logic skips discovery: with a cached endpoint it still connects; without one the Connecting screen stays and the user enters host and port by hand (1.2). "Search for Core again" shows the same behaviour |
 | Storage | persistent key-value store (keys in section 7), and a cache area for lyrics (section 8.4) | Without persistence: the app works for the session but asks for the Enable and the zone again after a restart. Without a lyrics cache: memory only, same TTLs |
-| Keys | map platform key codes to: up, down, left, right, select, back, play, pause, playpause, next, previous (also rewind -> previous, fast-forward -> next); register media keys where the platform needs it. Rule on Now Playing with the bar hidden: left/right/select = previous/next/playpause, up/down = show the bar; with the bar visible the keys navigate (section 6) | Without media keys: left/right/select still control playback while the bar is hidden, and the control bar works with the D-pad |
+| Keys | map platform key codes to: up, down, left, right, select, back, play, pause, playpause, next, previous (also rewind -> previous, fast-forward -> next); register media keys where the platform needs it. Rule on Now Playing with the bar hidden: left/right/select = previous/next/playpause, up/down = show the bar; with the bar visible the keys navigate (section 6) | Without media keys: left/right/select still control playback while the bar is hidden, and the control bar works with the D-pad. No interaction sounds (focus move, click) unless the setting "Key sounds" is on: they can switch HDMI audio and stop a Roon zone on the TV |
 | Screen | keep the display awake or release it | Without it: the setting "Screen on" has no effect (the platform's own screensaver rules apply) |
 | Lifecycle | foreground and background events; a way to leave the app | Without background events: the connection stays open; without a way to leave: Back on the root screens does nothing |
 | Network status | link confirmed or lost | Without it: the watchdog (2.3) detects loss after 30 s |

@@ -17,7 +17,7 @@ appId: io.github.knoellp.roomscreen
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center
 - extendedWaitUntil:
-    visible: "Core neu suchen"
+    visible: "Hintergrundfarbe"
     timeout: 5000
 - repeat:
     times: 10
@@ -42,7 +42,7 @@ appId: io.github.knoellp.roomscreen
 - pressKey: Remote Dpad Left
 - pressKey: Remote Dpad Center
 - extendedWaitUntil:
-    visible: "Core neu suchen"
+    visible: "Hintergrundfarbe"
     timeout: 5000
 - repeat:
     times: 9

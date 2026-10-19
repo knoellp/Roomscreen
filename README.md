@@ -67,6 +67,7 @@ Open **Settings** from the control bar; OK changes a value, Back returns. Values
 | Background colour | Anthracite, Black, Midnight blue, Dark green, Wine red, Warm grey |
 | Controls | show on input, always visible |
 | Screen on | always, only while playing |
+| Key sounds | off (default), on. The interaction sounds (focus move, click) go out over HDMI and can switch the TV audio, which stops a Roon zone on the TV; hence off by default |
 | Show "via roon" | on, off |
 | Lyrics (LRCLIB) | on, off (off: no requests to lrclib.net at all, no Lyrics button) |
 | Lyrics timing | 0 s, then -3.0 s to +3.0 s in 0.5 s steps. Plus shows the lines earlier, minus later. |
@@ -89,6 +90,7 @@ on the device, plus a lyrics cache (at most 300 files; "not found" for 7 days). 
 - **The Core is not found:** on the connecting screen choose "Enter address manually" and type the Core's IP address (port 9330 by default);
   or open Settings and use "Search for Core again". The TV device and the Core must be in the same network.
 - **The extension disappeared in Roon or Now Playing never appears:** open Roon, Settings → Extensions, and press Enable again.
+- **Playback on a zone connected to the TV stops when you press keys:** keep "Key sounds" off (the default); the interaction sounds can switch the HDMI audio.
 - **A hint "Core not reachable" appears after 20 seconds:** check that the Core is running and reachable from the TV; the app keeps trying and searches again after a few failures.
 - **`adb install -r` fails with a signature error:** the installed app was signed with another key. Compare the certificate SHA-256 digest of your APK with
   `76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb` (also in `config/release-fingerprint.txt`). A different key needs a one-time uninstall (the stored authorization is lost) and a new Enable in Roon.
