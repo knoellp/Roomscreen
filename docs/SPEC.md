@@ -166,7 +166,7 @@ mutates its input. Cases: `shared/testvectors/zone-groups.json` with `shared/fix
   changes, after **3 s** (`pendingMs`), or when the command fails.
 - Media keys (`mapMediaKey`): play/pause -> playpause, play -> play, pause -> pause, rewind and media-previous -> previous, fast-forward and
   media-next -> next. Android codes seen on the Fire TV remote: 85, 89, 90, 87, 88. A key acts once per press (key repeat ignored) and is
-  consumed when it maps to a control on the Now Playing screen; every other key (D-pad, select, back) goes to focus handling.
+  consumed when it maps to a control on the Now Playing screen; every other key goes to focus handling, except the D-pad direct control while the bar is hidden (section 6).
 
 ## 6. Control bar
 
@@ -174,9 +174,17 @@ Order, left to right: **Zones**, **Settings**, **Lyrics** (only when the LRCLIB 
 Initial focus: Play/Pause. D-pad left/right moves; select presses. Zones opens the zone list, Settings the settings page, Lyrics toggles the
 lyrics view (selected look while on), the transport buttons send controls (section 5).
 
-Visibility (setting "Controls"): *On input* (default): every key event shows the bar for **5 s** (`barVisibleMs`) after the last key; it fades
-in and out in **200 ms** (`barFadeMs`); the first key gives focus to the bar. *Always*: the bar is always visible and does not take focus by itself.
-A key event is also delivered to the focus system.
+Visibility (setting "Controls"): *On input* (default): the bar is hidden until an opening key (see below) is pressed; it then shows for **5 s** (`barVisibleMs`) after the last key; it fades
+in and out in **200 ms** (`barFadeMs`); the focus lands on Play/Pause. *Always*: the bar is always visible and does not take focus by itself.
+
+Keys on Now Playing (decided 2026-10-19 after the manual acceptance; applies to every platform):
+
+- **Bar hidden** (mode *On input*): `left` = previous, `right` = next (the bar stays hidden), `select`/`enter` = playpause **and** show the bar (so the user can navigate afterwards),
+  `up`/`down` = show the bar only (no command). The key press acts once (key repeat ignored); down and up of a handled key are consumed. A command the zone does not allow is not sent (section 5).
+- **Bar visible**, or mode *Always*: the keys go to the focus system (left/right move between the buttons, select presses the focused button) and extend the 5 s.
+- **Other screens** (zone list, settings, connecting, manual entry): keys are never consumed; navigation only.
+- Media keys (section 5) act directly in every case and do not show the bar. Back is unchanged.
+- Log line per direct action: `dpad direct key=<KEYCODE name> control=<wire>`.
 
 ## 7. Settings
 
@@ -285,7 +293,7 @@ What every platform provides to the core (`docs/PLAN.md` 4.4) and what the core 
 |---|---|---|
 | Discovery | run SOOD (UDP multicast 239.255.90.90:9003 and broadcast, query for the Roon service, see ARCHITECTURE 2), return host and port; multicast permission held only while it runs | Report "not available". The connection logic skips discovery: with a cached endpoint it still connects; without one the Connecting screen stays and the user enters host and port by hand (1.2). "Search for Core again" shows the same behaviour |
 | Storage | persistent key-value store (keys in section 7), and a cache area for lyrics (section 8.4) | Without persistence: the app works for the session but asks for the Enable and the zone again after a restart. Without a lyrics cache: memory only, same TTLs |
-| Keys | map platform key codes to: up, down, left, right, select, back, play, pause, playpause, next, previous (also rewind -> previous, fast-forward -> next); register media keys where the platform needs it | Without media keys: the control bar still works with the D-pad |
+| Keys | map platform key codes to: up, down, left, right, select, back, play, pause, playpause, next, previous (also rewind -> previous, fast-forward -> next); register media keys where the platform needs it. Rule on Now Playing with the bar hidden: left/right/select = previous/next/playpause, up/down = show the bar; with the bar visible the keys navigate (section 6) | Without media keys: left/right/select still control playback while the bar is hidden, and the control bar works with the D-pad |
 | Screen | keep the display awake or release it | Without it: the setting "Screen on" has no effect (the platform's own screensaver rules apply) |
 | Lifecycle | foreground and background events; a way to leave the app | Without background events: the connection stays open; without a way to leave: Back on the root screens does nothing |
 | Network status | link confirmed or lost | Without it: the watchdog (2.3) detects loss after 30 s |

@@ -579,6 +579,7 @@ Eine Funktion gilt erst als fertig, wenn Claude Code sie selbst automatisiert ge
 3. **Release-Schlüssel** (in F3). Einmalige Deinstallation auf dem Fire TV (Token und Freigabe gehen verloren, neues „Enable“). Vorschlag: in F3, vor der Abnahme, damit die abgenommene APK die ist, die später auch über LAT verteilt wird.
 4. **Amazon Appstore** (frühestens nach F3). Ob Roomscreen öffentlich im Appstore erscheinen soll. Voraussetzung: schriftliche Erlaubnis von Roon Labs zur Nennung von „Roon“; dann Demo-Modus und LAT (5.3, Phase S). Für Vega-Geräte ist der Appstore der einzige Weg zu anderen Nutzern.
 5. **Fire OS auf den Web-Kern** (nach V3). Ob die Kotlin-App durch eine WebView-Hülle um den Web-Kern ersetzt wird (Phase W). Grundlage: Ruckeln, Speicher und Startzeit des Web-Kerns auf dem 1-GB-Stick im Vergleich zur Kotlin-App und der Aufwand, zwei Oberflächen synchron zu halten.
+6. **Speicher, Entscheidung 14.1 a (2026-10-19, festgehalten).** Der feste Höchstwert gilt: TOTAL PSS nach 30 Titelwechseln mit Liedtext und scharfem Künstlerbild unter 200 MB, kein Trend. Messwert 196,3 MB am Messpunkt (erfüllt, Reserve 3,7 MB), Spitze 218 MB zwischen den Wechseln 1 und 21 (offen benannt, transienter GPU-Cache; `docs/ARCHITECTURE.md` 11.5). Keine Code-Änderung; `onTrimMemory` mit Leeren des Coil-Speichercaches nur auf Zuruf des Nutzers.
 
 ### Offene technische Punkte [zu prüfen]
 

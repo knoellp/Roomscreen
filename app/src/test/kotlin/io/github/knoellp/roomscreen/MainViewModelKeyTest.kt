@@ -112,7 +112,16 @@ class MainViewModelKeyTest {
             assertFalse(k.onKey(code, isDown = false), "up $code")
         }
         assertTrue(sent.isEmpty())
-        assertFalse(k.barShown.value)
+    }
+
+    @Test fun aKeyOnAnotherScreenLeavesTheBarVisibleOnReturn() = runTest {
+        nowPlaying = false
+        val k = keys(this)
+        assertFalse(k.onKey(KeyEvent.KEYCODE_BACK, isDown = true))
+        nowPlaying = true // Settings closed
+        assertTrue(k.barShown.value)
+        assertFalse(k.press(KeyEvent.KEYCODE_DPAD_LEFT), "bar visible: the ring navigates")
+        assertTrue(sent.isEmpty())
     }
 
     @Test fun mediaKeysAreUnchanged() = runTest {

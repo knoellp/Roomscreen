@@ -359,8 +359,8 @@ the CLI waited in `AwaitingAuthorization` and was stopped. Not needed given the 
 produces match the plan; whether the physical remote sends the same codes was not checked (nobody pressed it). The
 activity handles media keys in `dispatchKeyEvent` before the focus system: down with repeat 0 sends the command, both
 down and up are consumed. Commands are checked against `is_*_allowed` first.
-Control bar focus: with `ON_INPUT` the first key only shows the bar and focus lands on play/pause; with `ALWAYS` the first
-D-pad key focuses "Zones" (top left).
+Control bar focus: with `ON_INPUT` the bar is shown by Up, Down or Center/Enter (section 11.9) and focus lands on play/pause; with `ALWAYS` the first
+D-pad key focuses "Zones" (top left). While the bar is hidden the D-pad ring acts on the zone directly (Left/Right = previous/next, Center = play/pause, section 11.9); with the bar visible it navigates.
 
 ### 8.3 Backdrop (no live blur)
 
@@ -709,7 +709,7 @@ on the physical remote; app log read at 23:59:49 (`logcat -d -s Roomscreen:V`, v
 
 The user reported that the display reacted at once. Later presses of the same session (D-pad Left/Right/Up/Center/Back, 00:01 to 00:03) are in `build/device-artifacts/p5-remote-user-logcat.txt`
 (for example `key code=19 name=KEYCODE_DPAD_UP action=0` and `control send=next zone="Büro" state=paused` at 00:02:13): the D-pad ring navigates the control bar and Center triggers the focused button,
-only the media keys act directly. The user asked for direct D-pad control (Left/Right = previous/next, Center = play/pause, Up/Down = show the bar); that is a planned change, not part of version 1 as measured here.
+only the media keys acted directly in that build. The user asked for direct D-pad control (Left/Right = previous/next, Center = play/pause, Up/Down = show the bar); this was implemented afterwards, see section 11.9.
 The injected key codes 85, 87, 88 are covered by the acceptance run (11.6).
 The same user presses disturbed one acceptance-time Maestro run (phase2) because they changed Büro's state under the flow; that flow was re-run after the session.
 
@@ -808,3 +808,42 @@ remote was in use by the user and the flows were stale; run 2: same cause, the u
 
 `scripts/dock ./gradlew test`: 251 tests, 0 failures (roon-client 93, lyrics 100, app 58; before this phase part: 175). New: 71 vector tests, 4 `SharedConsistencyTest`, 1 `clearEndpointKeepsTokenAndZone`.
 `git status` on `app/src/test/screenshots` after the run: no changed image (the two `1-connecting*` images were re-recorded and committed in the loading-indicator step; the `Tokens` refactor changed none).
+
+### 11.9 Direct D-pad control (2026-10-19)
+
+Reason: at the manual acceptance on 2026-10-19 the user found that the navigation ring of the Fire TV remote (Left/Right/OK) only moved the focus in the control bar; only the media keys acted directly (section 11.4).
+Wish: Left/Right = previous/next track, OK = play/pause, only Up/Down open the control bar. Rules (also `SPEC.md` section 6):
+
+| Bar | Left | Right | Center / Enter | Up / Down |
+|---|---|---|---|---|
+| hidden (`ON_INPUT`) | `previous`, bar stays hidden | `next`, bar stays hidden | `playpause` **and** show the bar (so the user can navigate afterwards; focus lands on play/pause) | show the bar, no command |
+| visible, or `ALWAYS` | focus moves | focus moves | presses the focused button | focus moves |
+
+Implementation: `RemoteKeys` (pure Kotlin routing, unit-tested) is owned by `MainViewModel`; `MainActivity.dispatchKeyEvent` calls `MainViewModel.onKey` after logging the key. The bar state moved from the Compose screen into the view model
+(`barVisible`, 5 s timer renewed by every key while the bar is open); `NowPlayingContent` is unchanged. A key acts only on `ACTION_DOWN` with repeat 0; down, repeat and up of a handled key are all consumed (so the release cannot reach a button
+that appeared in the meantime). Media keys act directly as before and do not show the bar. On other screens (connecting, manual entry, zone list, settings) keys are never consumed; a key there arms the bar so that it is visible for 5 s after
+Back or a zone selection returns to Now Playing, as it was before this change (the Maestro flows rely on it). Back is unchanged. A command the zone does not allow is not sent (`control ignored=not_allowed`).
+Log line per direct action: `dpad direct key=<KEYCODE name> control=<wire>`.
+
+Roon note seen in the device run: `previous` on a paused zone whose track has run for more than a few seconds first stops/restarts the track (state `stopped`, same title); only the second `previous` goes to the earlier track.
+
+Device proof (Fire TV Stick HD, zone Büro, `scripts/f3-dpad.sh` with `maestro/f3-dpad.yaml`, 2026-10-19; app log, `control ok=` lines omitted):
+
+```
+14:03:58.052 key code=22 name=KEYCODE_DPAD_RIGHT action=0 repeat=0
+14:03:58.054 dpad direct key=KEYCODE_DPAD_RIGHT control=next
+14:03:58.055 control send=next zone="Büro" state=playing
+14:03:58.618 track zone="Büro" state=playing title="Aire" artist="Chicago"            (was "Embrace Me, You Child"; bar not visible: assertNotVisible "Einstellungen")
+14:04:10.792 key code=23 name=KEYCODE_DPAD_CENTER action=0 repeat=0
+14:04:10.795 dpad direct key=KEYCODE_DPAD_CENTER control=playpause
+14:04:11.575 track zone="Büro" state=paused title="Aire"                              (bar visible: "Einstellungen" found, screenshot p6-02)
+14:04:14.299 key code=21 name=KEYCODE_DPAD_LEFT action=0 repeat=0                     (Left in the visible bar: no "dpad direct", no command, title unchanged)
+14:04:22.030 key code=21 ... / dpad direct key=KEYCODE_DPAD_LEFT control=previous     (bar hidden again: previous; zone stopped, same title)
+14:04:23.678 key code=21 ... / dpad direct key=KEYCODE_DPAD_LEFT control=previous     (second previous)
+14:04:23.734 track zone="Büro" state=stopped title="Embrace Me, You Child"            (the earlier title)
+14:04:30.039 key code=23 ... / dpad direct key=KEYCODE_DPAD_CENTER control=playpause
+14:04:30.567 track zone="Büro" state=playing title="Embrace Me, You Child"
+```
+
+Büro was paused again afterwards. Regression run `scripts/maestro-regression.sh` after the change: PASS for all 11 flows (phase1, phase1-zones, phase2, phase2-settings, phase2-settings-restore, phase2-artist, phase2-connection, phase3-lyrics-on, phase3-lrclib-off, phase3-lrclib-on, f3-dpad). A first run before the "key on another screen arms the bar" rule failed three flows because Back from Settings no longer showed the bar; that rule restored the old behaviour. Tests: `scripts/dock ./gradlew test` 263 tests, 0 failures (before: 251); `MainViewModelKeyTest` (12 cases: hidden bar, visible bar, `ALWAYS`, other screens, media keys, key repeat, 5 s timer on a test dispatcher). The Roborazzi images are unchanged (`git status` on `app/src/test/screenshots` clean after the run).
+The Maestro flows all press Up first on Now Playing (Left/Center first would now change playback); the regression runner has `maestro/f3-dpad.yaml` as its eleventh flow. `shared/strings` is unchanged (no new strings). The user still has to try it at the TV.

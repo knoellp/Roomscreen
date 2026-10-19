@@ -1,0 +1,52 @@
+# Phase F3: the D-pad ring controls playback directly while the control bar is hidden (German UI, zone "Büro" selected).
+# Start state (set by scripts/f3-dpad.sh): Büro plays a track, the bar is hidden.
+#   Right  -> next track, bar stays hidden
+#   Center -> play/pause (pauses) and the bar appears
+#   Left (bar visible) -> focus moves inside the bar, the track does not change
+#   (wait until the bar is gone) Left, Left -> previous track (Roon: first previous restarts/stops, second goes back)
+#   Center -> play/pause again (starts), bar appears
+# The titles and the sent commands are checked by the script from the app log (`dpad direct …`, `control send=…`, `track zone=…`).
+# Screenshots go to build/device-artifacts/p6-*.png.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Büro · Spielt"
+    timeout: 30000
+- assertNotVisible: "Einstellungen"
+# 1. Right: next track, the bar stays hidden.
+- pressKey: Remote Dpad Right
+- extendedWaitUntil:
+    visible: "Büro · Spielt"
+    timeout: 10000
+- assertNotVisible: "Einstellungen"
+- takeScreenshot: build/device-artifacts/p6-01-after-right
+# 2. Center: pauses and shows the bar. Maestro needs several seconds per step and the bar is only visible for 5 s after the
+# last key, so the steps between Center and the following Left carry no extra assertion or screenshot.
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+# 3. Left inside the visible bar only moves the focus (to the previous button); the track and the play state stay.
+- pressKey: Remote Dpad Left
+- takeScreenshot: build/device-artifacts/p6-02-center-paused-left-in-bar
+- assertVisible: "Büro · Pausiert"
+- extendedWaitUntil:
+    notVisible: "Einstellungen"
+    timeout: 15000
+# 4. Bar hidden again: Left is previous. Roon restarts a track that has run for more than a few seconds (here: stops the paused
+# zone) on the first previous and goes to the previous track on the second one, so Left is pressed twice.
+- pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Left
+- assertNotVisible: "Einstellungen"
+- extendedWaitUntil:
+    visible: "Büro · Gestoppt"
+    timeout: 10000
+- takeScreenshot: build/device-artifacts/p6-03-after-left-left
+# 5. Center: play/pause starts the stopped zone and the bar appears.
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Büro · Spielt"
+    timeout: 10000
+- takeScreenshot: build/device-artifacts/p6-04-center-again

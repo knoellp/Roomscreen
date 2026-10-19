@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
  * Routes remote keys on Now Playing. While the control bar is hidden the D-pad controls playback directly
  * (left = previous, right = next, center/enter = play/pause and show the bar, up/down = show the bar);
  * while it is visible (or always shown) the keys pass through to the focus system. Media keys always act directly.
+ * On every other screen keys are never consumed; they only arm the bar so it is visible after returning to Now Playing.
  *
  * [onNowPlaying] and [barAlways] are read on every key; [send] performs the transport command.
  */
@@ -53,7 +54,12 @@ class RemoteKeys(
     private val heldDirect = mutableSetOf<Int>()
 
     private fun route(keyCode: Int, isDown: Boolean): Boolean {
-        if (!onNowPlaying()) return false
+        if (!onNowPlaying()) {
+            // Never consumed. A key that closes Settings or the zone list (Back, or select on a zone) leaves the bar visible for
+            // 5 s on the Now Playing screen it returns to, as before the direct D-pad control.
+            showBar()
+            return false
+        }
         val media = mapMediaKey(keyCode)
         if (media != null) {
             if (isDown) send(media)

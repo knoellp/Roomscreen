@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression run of all ten Maestro flows with a defined start state (inside the toolchain container:
+# Regression run of all eleven Maestro flows with a defined start state (inside the toolchain container:
 #   scripts/dock bash scripts/maestro-regression.sh).
 # The flows count D-pad presses, so the settings that add or remove rows and bar buttons are set first:
 #   SET_LRCLIB on (Lyrics bar button and "Textversatz" row exist), SET_BACKGROUND cover (the sharpness row exists), lyrics button off.
@@ -51,6 +51,10 @@ need_zone || exit 1; park
 run maestro/phase3-lrclib-off.yaml
 park
 run maestro/phase3-lrclib-on.yaml
+# f3-dpad starts with Büro playing (the ring keys act on the playing zone directly) and is parked paused afterwards
+prep
+roon play --zone "$ROON_TEST_ZONE"; sleep 8
+run maestro/f3-dpad.yaml
 bcast SET_LRCLIB --es value on; bcast SET_LYRICS --es value off; sleep 2
-roon pause --zone "$ROON_TEST_ZONE"
+need_zone || exit 1; roon pause --zone "$ROON_TEST_ZONE"; sleep 3
 echo "== results"; printf '%s\n' "${RES[@]}"; state
