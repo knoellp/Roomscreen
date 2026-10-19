@@ -34,9 +34,9 @@ class MainActivity : ComponentActivity() {
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         AndroidLogger.info("key code=${event.keyCode} name=${android.view.KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} repeat=${event.repeatCount}")
-        viewModel.onRemoteInput()
-        // Media keys: act once per press (ignore key repeat); both down and up are consumed when handled.
-        if (viewModel.onMediaKey(event.keyCode, isDown = event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0)) return true
+        // Act once per press (ignore key repeat); both down and up are consumed when handled.
+        val down = event.action == android.view.KeyEvent.ACTION_DOWN
+        if (viewModel.onKey(event.keyCode, isDown = down && event.repeatCount == 0, isRepeat = down && event.repeatCount > 0)) return true
         return super.dispatchKeyEvent(event)
     }
 
@@ -50,7 +50,7 @@ private fun Root(vm: MainViewModel) {
     val screen by vm.screen.collectAsState()
     val test by vm.testResult.collectAsState()
     val saved by vm.savedEndpoint.collectAsState()
-    val lastInput by vm.lastInput.collectAsState()
+    val barVisible by vm.barVisible.collectAsState()
     val settings by vm.settings.collectAsState()
     when (val s = screen) {
         is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual, saved?.let { "${it.host}:${it.port}" })
@@ -64,7 +64,7 @@ private fun Root(vm: MainViewModel) {
             ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it) }
         }
         Screen.MissingZone -> MissingZoneScreen(onChoose = vm::openZoneList)
-        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, lastInput, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics)
+        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, barVisible, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics)
         is Screen.SettingsPage -> {
             BackHandler { vm.closeSettings() }
             SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings)

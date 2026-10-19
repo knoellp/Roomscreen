@@ -81,7 +81,7 @@ private val backdropCache = BackdropCache()
 /**
  * Stateful Now Playing screen: loads cover and backdrop off the main thread (the previous images stay until
  * the new ones are ready, so the crossfade never flashes), interpolates progress at 10 Hz, and shows the control bar
- * for [Tokens.barVisibleMs] after remote input (or always, per setting).
+ * while [barVisible] (the view model shows it for [Tokens.barVisibleMs] after a bar-opening key, or always per setting).
  */
 @Composable
 fun NowPlayingScreen(
@@ -89,7 +89,7 @@ fun NowPlayingScreen(
     coverUrl: String?,
     backdropUrl: String?,
     settings: AppSettings,
-    lastInputMs: Long,
+    barVisible: Boolean,
     onZones: () -> Unit,
     onSettings: () -> Unit,
     onControl: (TransportControl) -> Unit,
@@ -115,19 +115,11 @@ fun NowPlayingScreen(
         }
     }
 
-    var inputBarVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(lastInputMs) {
-        if (lastInputMs > 0) {
-            inputBarVisible = true
-            delay(Tokens.barVisibleMs)
-            inputBarVisible = false
-        }
-    }
     val always = settings.controls == ControlsMode.ALWAYS
     NowPlayingContent(
         zone = zone, positionMs = { position }, lengthMs = zone.nowPlaying?.length?.takeIf { it > 0 }?.times(1000),
         cover = cover, backdrop = backdrop, settings = settings,
-        barVisible = always || inputBarVisible, autoFocusBar = !always,
+        barVisible = barVisible, autoFocusBar = !always,
         onZones = onZones, onSettings = onSettings, onControl = onControl,
         lyrics = lyrics, lyricsAvailable = lyricsAvailable, lyricsOn = lyricsOn, onLyrics = onLyrics,
     )

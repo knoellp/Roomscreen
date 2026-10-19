@@ -77,9 +77,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val zones = MutableStateFlow<Map<String, Zone>>(emptyMap())
     private val showManual = MutableStateFlow(false)
     private val showZoneList = MutableStateFlow(false)
-    private val _lastInput = MutableStateFlow(0L)
-    /** Time of the last remote key event (ms); Now Playing shows the Zones button for a few seconds after it. */
-    val lastInput: StateFlow<Long> = _lastInput
     private val endpoint = MutableStateFlow<Endpoint?>(null)
     private val showSettings = MutableStateFlow(false)
     private val pending = MutableStateFlow<Pending?>(null)
@@ -221,19 +218,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun sortedZones(zoneMap: Map<String, Zone>) =
         zoneMap.values.sortedWith(compareBy(java.text.Collator.getInstance()) { it.displayName })
 
-    /** Called from the activity for every remote key event. */
-    fun onRemoteInput() { _lastInput.value = System.currentTimeMillis() }
+    private val remoteKeys = RemoteKeys(
+        scope = viewModelScope,
+        onNowPlaying = { screen.value is Screen.NowPlaying },
+        barAlways = { settings.value.controls == ControlsMode.ALWAYS },
+        send = { control(it) },
+        log = log,
+    )
+
+    /** Whether the Now Playing control bar is shown: for [Tokens.barVisibleMs] after a bar-opening key, or always per setting. */
+    val barVisible: StateFlow<Boolean> = combine(remoteKeys.barShown, settings) { shown, st -> shown || st.controls == ControlsMode.ALWAYS }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /**
-     * Media key from the remote. Returns true if the key was handled (consumed). Only acts on Now Playing;
-     * the command is sent only if the zone's `is_*_allowed` flag permits it, otherwise it is ignored and logged.
+     * Remote key from the activity. Returns true if the key was handled (consumed). Media keys and, while the bar is hidden,
+     * the D-pad act on the zone directly (see [RemoteKeys]); everything else passes through to the focus system.
+     * A command is sent only if the zone's `is_*_allowed` flag permits it, otherwise it is ignored and logged.
      */
-    fun onMediaKey(keyCode: Int, isDown: Boolean): Boolean {
-        val mapped = mapMediaKey(keyCode) ?: return false
-        if (screen.value !is Screen.NowPlaying) return false
-        if (isDown) control(mapped)
-        return true
-    }
+    fun onKey(keyCode: Int, isDown: Boolean, isRepeat: Boolean = false): Boolean = remoteKeys.onKey(keyCode, isDown, isRepeat)
 
     /** Sends a transport command to the selected zone (control bar and media keys). */
     fun control(control: TransportControl) {
