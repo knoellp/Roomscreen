@@ -205,11 +205,17 @@ class FakeCore(
                     send(webSocket, MooVerb.CONTINUE, "Subscribed", msg.requestId, Fixtures.text(subscribedFixture))
                 }
                 "com.roonlabs.transport:2/control" -> send(webSocket, MooVerb.COMPLETE, "Success", msg.requestId, null)
+                "com.roonlabs.transport:2/change_volume" ->
+                    if (body?.get("output_id")?.jsonPrimitive?.content == BAD_OUTPUT) send(webSocket, MooVerb.COMPLETE, "InvalidRequest", msg.requestId, """{"error":"bad output"}""")
+                    else send(webSocket, MooVerb.COMPLETE, "Success", msg.requestId, null)
                 else -> send(webSocket, MooVerb.COMPLETE, "InvalidRequest", msg.requestId, """{"error":"unknown"}""")
             }
         }
     }
 }
+
+/** `change_volume` for this output id is answered with `InvalidRequest`. */
+const val BAD_OUTPUT = "bad-output"
 
 object Fixtures {
     fun text(name: String): String =

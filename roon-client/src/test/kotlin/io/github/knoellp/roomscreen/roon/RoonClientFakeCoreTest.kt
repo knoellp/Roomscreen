@@ -170,6 +170,47 @@ class RoonClientFakeCoreTest {
     }
 
     @Test
+    fun `change_volume sends output, how and value to the core`() = runBlocking {
+        core.requireEnable = false
+        val c = connected()
+        c.changeVolume("out-1", "absolute", 44.0)
+        c.changeVolume("out-1", "absolute", -19.5)
+        c.changeVolume("out-2", "relative", -1.0)
+        val sent = core.received.filter { it.name == "com.roonlabs.transport:2/change_volume" }.map { it.json()!! }
+        assertEquals(3, sent.size)
+        assertEquals("out-1", sent[0]["output_id"]!!.jsonPrimitive.content)
+        assertEquals("absolute", sent[0]["how"]!!.jsonPrimitive.content)
+        assertEquals("44", sent[0]["value"]!!.jsonPrimitive.content)
+        assertEquals("-19.5", sent[1]["value"]!!.jsonPrimitive.content)
+        assertEquals("relative", sent[2]["how"]!!.jsonPrimitive.content)
+        assertEquals("-1", sent[2]["value"]!!.jsonPrimitive.content)
+        c.stop()
+    }
+
+    @Test
+    fun `change_volume error reply throws`() = runBlocking {
+        core.requireEnable = false
+        val c = connected()
+        val e = assertFailsWith<io.github.knoellp.roomscreen.roon.transport.TransportException> {
+            c.changeVolume(io.github.knoellp.roomscreen.roon.fake.BAD_OUTPUT, "absolute", 10.0)
+        }
+        assertTrue(e.message!!.contains("InvalidRequest"), e.message)
+        c.stop()
+    }
+
+    @Test
+    fun `outputs carry their volume object and fixed outputs have none`() = runBlocking {
+        core.requireEnable = false
+        val c = connected()
+        val outs = c.zones.value.values.flatMap { it.outputs }
+        assertTrue(outs.any { it.volume != null }, "some output has a volume")
+        val v = outs.first { it.volume != null }.volume!!
+        assertEquals(io.github.knoellp.roomscreen.roon.transport.VolumeKind.NUMBER, v.kind)
+        assertEquals(100.0, v.max)
+        c.stop()
+    }
+
+    @Test
     fun `reconnects after the connection is closed`() = runBlocking {
         core.requireEnable = false
         val c = connected()

@@ -38,6 +38,22 @@ class TransportService(private val connection: MooConnection) {
         }
     }
 
+    /**
+     * `change_volume`: [how] is `absolute` (value = new volume), `relative` (value = amount to add) or `relative_step`
+     * (value = number of steps). Fails with a [TransportException] if the Core does not answer `Success`.
+     */
+    suspend fun changeVolume(outputId: String, how: String, value: Double) {
+        val body = buildJsonObject {
+            put("output_id", JsonPrimitive(outputId))
+            put("how", JsonPrimitive(how))
+            put("value", if (value == Math.floor(value) && Math.abs(value) < 1e12) JsonPrimitive(value.toLong()) else JsonPrimitive(value))
+        }
+        val reply = connection.call("$SERVICE/change_volume", body)
+        if (reply.verb != MooVerb.COMPLETE || reply.name != "Success") {
+            throw TransportException("change_volume $how failed: ${reply.name} ${reply.body?.decodeToString()}")
+        }
+    }
+
     companion object {
         const val SERVICE = "com.roonlabs.transport:2"
     }

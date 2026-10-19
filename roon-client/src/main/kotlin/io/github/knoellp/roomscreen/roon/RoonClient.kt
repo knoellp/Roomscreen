@@ -132,6 +132,11 @@ class RoonClient(
         s.transport.control(zoneId, control)
     }
 
+    suspend fun changeVolume(outputId: String, how: String, value: Double) {
+        val s = session ?: throw IllegalStateException("not connected")
+        s.transport.changeVolume(outputId, how, value)
+    }
+
     suspend fun getImage(imageKey: String, width: Int = 1080, height: Int = 1080): ImageResult {
         val s = session ?: throw IllegalStateException("not connected")
         return s.image.getImage(imageKey, "fit", width, height)

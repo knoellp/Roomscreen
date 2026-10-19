@@ -22,7 +22,30 @@ data class NowPlaying(
 data class Output(
     @SerialName("output_id") val outputId: String,
     @SerialName("display_name") val displayName: String? = null,
+    /** Null for fixed outputs (the Core has no volume control for them). */
+    val volume: Volume? = null,
 )
+
+/**
+ * Volume object of an output. [type] is `number`, `db` or `incremental`; an unknown type is treated like `number` ([kind]).
+ * An `incremental` output has no usable value or range, only relative steps.
+ */
+@Serializable
+data class Volume(
+    val type: String = "number",
+    val min: Double? = null,
+    val max: Double? = null,
+    val value: Double? = null,
+    val step: Double? = null,
+    @SerialName("is_muted") val isMuted: Boolean = false,
+    @SerialName("hard_limit_min") val hardLimitMin: Double? = null,
+    @SerialName("hard_limit_max") val hardLimitMax: Double? = null,
+    @SerialName("soft_limit") val softLimit: Double? = null,
+) {
+    val kind: VolumeKind get() = when (type) { "db" -> VolumeKind.DB; "incremental" -> VolumeKind.INCREMENTAL; else -> VolumeKind.NUMBER }
+}
+
+enum class VolumeKind { NUMBER, DB, INCREMENTAL }
 
 @Serializable
 data class Zone(

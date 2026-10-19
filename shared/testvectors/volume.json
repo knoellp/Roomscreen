@@ -1,0 +1,576 @@
+{
+ "description": "Group volume logic with Sonos semantics (docs/SPEC.md, section Volume; docs.sonos.com/docs/volume). Member: id, min, max, step, value, fixed (default false; fixed members are ignored). Kinds: average (members -> expected), group (snapshot members + newAverage -> expected map outputId -> value; fixed members have no entry), single (member + delta -> expected), nextAverage (members, current, direction +1/-1, clickIndex 1-based -> expected), clicks (directions -> expected step factors; a change of direction restarts the count). Numbers compare with a tolerance of 1e-9.",
+ "cases": [
+  {
+   "name": "average-of-controllable-members",
+   "kind": "average",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    },
+    {
+     "id": "f",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 77,
+     "fixed": true
+    }
+   ],
+   "expected": 25
+  },
+  {
+   "name": "average-without-controllable-members",
+   "kind": "average",
+   "members": [
+    {
+     "id": "f",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 77,
+     "fixed": true
+    }
+   ],
+   "expected": 0
+  },
+  {
+   "name": "group-plus-ten-percent-40-10-to-44-11",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "newAverage": 27.5,
+   "expected": {
+    "a": 44,
+    "b": 11
+   }
+  },
+  {
+   "name": "group-ceiling-clamps-the-louder-member",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 90
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 100
+    }
+   ],
+   "newAverage": 99,
+   "expected": {
+    "a": 94,
+    "b": 100
+   }
+  },
+  {
+   "name": "group-member-at-zero-stays-zero",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 0
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    }
+   ],
+   "newAverage": 25,
+   "expected": {
+    "a": 0,
+    "b": 50
+   }
+  },
+  {
+   "name": "group-target-zero-sets-all-to-zero",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "newAverage": 0,
+   "expected": {
+    "a": 0,
+    "b": 0
+   }
+  },
+  {
+   "name": "group-snapshot-average-zero-equalises",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 0
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 0
+    }
+   ],
+   "newAverage": 5,
+   "expected": {
+    "a": 5,
+    "b": 5
+   }
+  },
+  {
+   "name": "group-floor-rounds-small-members-to-zero",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 5
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 50
+    }
+   ],
+   "newAverage": 0.5,
+   "expected": {
+    "a": 0,
+    "b": 1
+   }
+  },
+  {
+   "name": "group-db-half-dB-steps-shift-by-the-difference",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": -80,
+     "max": 0,
+     "step": 0.5,
+     "value": -20
+    },
+    {
+     "id": "b",
+     "min": -80,
+     "max": 0,
+     "step": 0.5,
+     "value": -30
+    }
+   ],
+   "newAverage": -24,
+   "expected": {
+    "a": -19,
+    "b": -29
+   }
+  },
+  {
+   "name": "group-db-rounds-to-half-dB",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": -80,
+     "max": 0,
+     "step": 0.5,
+     "value": -20
+    },
+    {
+     "id": "b",
+     "min": -80,
+     "max": 0,
+     "step": 0.5,
+     "value": -30
+    }
+   ],
+   "newAverage": -24.3,
+   "expected": {
+    "a": -19.5,
+    "b": -29.5
+   }
+  },
+  {
+   "name": "group-fixed-member-is-ignored",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "f",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 0,
+     "fixed": true
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "newAverage": 27.5,
+   "expected": {
+    "a": 44,
+    "b": 11
+   }
+  },
+  {
+   "name": "group-rounds-to-the-members-own-step",
+   "kind": "group",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 2,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 2,
+     "value": 8
+    }
+   ],
+   "newAverage": 26.4,
+   "expected": {
+    "a": 44,
+    "b": 8
+   }
+  },
+  {
+   "name": "single-plus-one",
+   "kind": "single",
+   "member": {
+    "id": "a",
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "value": 41
+   },
+   "delta": 1,
+   "expected": 42
+  },
+  {
+   "name": "single-ceiling",
+   "kind": "single",
+   "member": {
+    "id": "a",
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "value": 100
+   },
+   "delta": 3,
+   "expected": 100
+  },
+  {
+   "name": "single-floor",
+   "kind": "single",
+   "member": {
+    "id": "a",
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "value": 2
+   },
+   "delta": -5,
+   "expected": 0
+  },
+  {
+   "name": "single-db-half-step",
+   "kind": "single",
+   "member": {
+    "id": "a",
+    "min": -80,
+    "max": 0,
+    "step": 0.5,
+    "value": -20.5
+   },
+   "delta": 0.5,
+   "expected": -20
+  },
+  {
+   "name": "single-db-ceiling",
+   "kind": "single",
+   "member": {
+    "id": "a",
+    "min": -80,
+    "max": 0,
+    "step": 0.5,
+    "value": -0.5
+   },
+   "delta": 2.5,
+   "expected": 0
+  },
+  {
+   "name": "next-average-first-click",
+   "kind": "nextAverage",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "current": 25,
+   "direction": 1,
+   "clickIndex": 1,
+   "expected": 26
+  },
+  {
+   "name": "next-average-fourth-click-steps-three",
+   "kind": "nextAverage",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "current": 25,
+   "direction": 1,
+   "clickIndex": 4,
+   "expected": 28
+  },
+  {
+   "name": "next-average-tenth-click-steps-five",
+   "kind": "nextAverage",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "current": 25,
+   "direction": 1,
+   "clickIndex": 10,
+   "expected": 30
+  },
+  {
+   "name": "next-average-down-stops-at-zero",
+   "kind": "nextAverage",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "current": 2,
+   "direction": -1,
+   "clickIndex": 10,
+   "expected": 0
+  },
+  {
+   "name": "next-average-up-stops-at-the-maximum",
+   "kind": "nextAverage",
+   "members": [
+    {
+     "id": "a",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 40
+    },
+    {
+     "id": "b",
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "value": 10
+    }
+   ],
+   "current": 99,
+   "direction": 1,
+   "clickIndex": 4,
+   "expected": 100
+  },
+  {
+   "name": "next-average-unit-is-the-smallest-member-step",
+   "kind": "nextAverage",
+   "members": [
+    {
+     "id": "a",
+     "min": -80,
+     "max": 0,
+     "step": 1,
+     "value": -20
+    },
+    {
+     "id": "b",
+     "min": -80,
+     "max": 0,
+     "step": 0.5,
+     "value": -30
+    }
+   ],
+   "current": -25,
+   "direction": 1,
+   "clickIndex": 1,
+   "expected": -24.5
+  },
+  {
+   "name": "clicks-one-direction",
+   "kind": "clicks",
+   "directions": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "expected": [
+    1,
+    1,
+    1,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "name": "clicks-direction-change-restarts",
+   "kind": "clicks",
+   "directions": [
+    1,
+    1,
+    1,
+    1,
+    -1,
+    -1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "expected": [
+    1,
+    1,
+    1,
+    3,
+    1,
+    1,
+    1,
+    1,
+    1,
+    3
+   ]
+  }
+ ]
+}
