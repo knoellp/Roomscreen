@@ -165,7 +165,7 @@ mutates its input. Cases: `shared/testvectors/zone-groups.json` with `shared/fix
   next and previous show nothing. The optimistic state is used only while the Core still reports the old state; it ends when the Core's state
   changes, after **3 s** (`pendingMs`), or when the command fails.
 - Media keys (`mapMediaKey`): play/pause -> playpause, play -> play, pause -> pause, rewind and media-previous -> previous, fast-forward and
-  media-next -> next. Android codes seen on the Fire TV remote: 85, 89, 90, 87, 88. A key acts once per press (key repeat ignored) and is
+  media-next -> next. Android codes seen on the Fire TV (injected, and from a Samsung TV remote over HDMI-CEC): 85, 89, 90, 87, 88; a TV remote's volume keys are handled by the TV and never reach the app. A key acts once per press (key repeat ignored) and is
   consumed when it maps to a control on the Now Playing screen; every other key goes to focus handling, except the D-pad direct control while the bar is hidden (section 6).
 
 ## 6. Control bar

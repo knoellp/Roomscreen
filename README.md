@@ -99,7 +99,7 @@ on the device, plus a lyrics cache (at most 300 files; "not found" for 7 days). 
 - There is no release download yet: the release pipeline is not built (planned). Install by ADB.
 - LRCLIB often answers "503 overloaded"; on those tracks no lyrics appear until the next track.
 - Plain-text lyrics and the "No lyrics found" line were only verified in tests and screenshots, not with a real track on the device.
-- The direct ring-key control (Left, Right, OK) was verified on the stick with injected key events; the physical remote was last checked with the previous build (media keys and bar navigation).
+- The direct ring-key control (Left, Right, OK) was verified on the stick with injected key events; the physical remote (a Samsung TV remote over HDMI-CEC) was last checked with the previous build (media keys and bar navigation). Volume keys of a TV remote stay in the TV; the app cannot route them to Roon.
 
 ## License
 

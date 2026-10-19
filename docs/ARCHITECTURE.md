@@ -691,9 +691,10 @@ seek_rate: 0 event(s) in 1800.0s                                  (CLI summary, 
 | `DUMP_STATE` at the end (23:24:08) | `"screen":"NowPlaying","connection":"Connected","zones":6,"endpoint":"192.168.1.194:9330","zone":"Büro"` |
 | CLI exit | 0, no abort |
 
-Physical remote (the user at the TV, 2026-10-18 23:59 to 2026-10-19 00:04 device time, zone Büro). The Fire TV remote sends `KEYCODE_MEDIA_FAST_FORWARD` (90) and
-`KEYCODE_MEDIA_REWIND` (89), not `MEDIA_NEXT`/`MEDIA_PREVIOUS`; `KeyMapping` maps both pairs to next/previous (`KeyMapping.kt` lines 15 and 16). The user pressed play/pause, fast forward and rewind
-on the physical remote; app log read at 23:59:49 (`logcat -d -s Roomscreen:V`, verbatim, key-up lines omitted):
+Physical remote (the user at the TV, 2026-10-18 23:59 to 2026-10-19 00:04 device time, zone Büro). The user operates the stick with the remote of a Samsung The Frame 2022
+over HDMI-CEC, not with the Fire TV remote (stated 2026-10-19). CEC delivers the transport keys as `KEYCODE_MEDIA_FAST_FORWARD` (90) and `KEYCODE_MEDIA_REWIND` (89),
+not `MEDIA_NEXT`/`MEDIA_PREVIOUS`; `KeyMapping` maps both pairs to next/previous (`KeyMapping.kt` lines 15 and 16). The TV remote's volume keys stay in the TV (CEC does not
+forward them to the source device), so the app never sees them. The user pressed play/pause, fast forward and rewind; app log read at 23:59:49 (`logcat -d -s Roomscreen:V`, verbatim, key-up lines omitted):
 
 ```
 10-18 23:59:30.663 22038 22038 I Roomscreen: key code=85 name=KEYCODE_MEDIA_PLAY_PAUSE action=0 repeat=0
@@ -813,7 +814,7 @@ remote was in use by the user and the flows were stale; run 2: same cause, the u
 
 ### 11.9 Direct D-pad control (2026-10-19)
 
-Reason: at the manual acceptance on 2026-10-19 the user found that the navigation ring of the Fire TV remote (Left/Right/OK) only moved the focus in the control bar; only the media keys acted directly (section 11.4).
+Reason: at the manual acceptance on 2026-10-19 the user found that the navigation ring of the TV remote (Samsung, over HDMI-CEC; Left/Right/OK) only moved the focus in the control bar; only the media keys acted directly (section 11.4).
 Wish: Left/Right = previous/next track, OK = play/pause, only Up/Down open the control bar. Rules (also `SPEC.md` section 6):
 
 | Bar | Left | Right | Center / Enter | Up / Down |
