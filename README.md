@@ -47,7 +47,7 @@ back when the group dissolves.
 | Left | previous track | moves to the next button on the left |
 | Right | next track | moves to the next button on the right |
 | Center / OK | play or pause, and shows the bar | presses the focused button |
-| Up / Down | shows the control bar | moves the focus, keeps the bar open |
+| Up / Down | shows the control bar | keeps the bar open |
 | Play/Pause, Rewind, Fast forward (media keys) | play or pause, previous, next - always, the bar stays hidden | same |
 | Back | closes Settings and the zone list, otherwise leaves the app | same |
 
@@ -91,17 +91,15 @@ on the device, plus a lyrics cache (at most 300 files; "not found" for 7 days). 
 - **The extension disappeared in Roon or Now Playing never appears:** open Roon, Settings → Extensions, and press Enable again.
 - **A hint "Core not reachable" appears after 20 seconds:** check that the Core is running and reachable from the TV; the app keeps trying and searches again after a few failures.
 - **`adb install -r` fails with a signature error:** the installed app was signed with another key. Compare the certificate SHA-256 digest of your APK with
-  `76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb` (also in `config/release-fingerprint.txt`). A different key needs a one-time uninstall and a new Enable in Roon; ask before doing that.
+  `76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb` (also in `config/release-fingerprint.txt`). A different key needs a one-time uninstall (the stored authorization is lost) and a new Enable in Roon.
 
 ## Known limitations
 
 - Only Fire OS / Android TV. Vega OS devices and the Echo Show 15 are not supported yet; Samsung Tizen is planned.
 - There is no release download yet: the release pipeline is not built (planned). Install by ADB.
 - LRCLIB often answers "503 overloaded"; on those tracks no lyrics appear until the next track.
-- Plain-text lyrics and the "No lyrics found" line were only checked in tests and screenshots on a device, not with a real track.
-- The physical Fire TV remote was pressed by the user for the media keys and the ring keys of the earlier build; the new direct D-pad control was proven with injected keys on the stick and awaits the user's check at the TV.
-- Memory: total PSS stays under 200 MB at the defined measuring point (196.3 MB after 30 track changes with lyrics and a sharp artist image), but peaks of up to 218 MB were measured in between.
-- The "via roon" hint (a round font for the word "roon") still needs the project owner's approval of its look.
+- Plain-text lyrics and the "No lyrics found" line were only verified in tests and screenshots, not with a real track on the device.
+- The direct ring-key control (Left, Right, OK) was verified on the stick with injected key events; the physical remote was last checked with the previous build (media keys and bar navigation).
 
 ## License
 
