@@ -15,7 +15,7 @@ class SettingsPrefsTest {
     @Test fun defaultsThenRoundTrip() = runBlocking {
         val prefs = Prefs(ApplicationProvider.getApplicationContext())
         assertEquals(AppSettings(), prefs.settings.first())
-        val changed = AppSettings(BackgroundSource.ARTIST, BackgroundSharpness.SHARP, BackgroundColor.WINE, ControlsMode.ALWAYS, ScreenOn.PLAYING, viaRoon = false, lrclib = false, lyricsOffsetMs = -1500)
+        val changed = AppSettings(BackgroundSource.ARTIST, BackgroundSharpness.SHARP, BackgroundColor.WINE, ControlsMode.ALWAYS, ScreenOn.PLAYING, viaRoon = false, lrclib = false, lyricsOffsetMs = -1500, keySounds = true)
         prefs.saveSettings(changed)
         // A second Prefs instance reads the same DataStore file: the values survive a "restart" of the view model.
         assertEquals(changed, Prefs(ApplicationProvider.getApplicationContext()).settings.first())

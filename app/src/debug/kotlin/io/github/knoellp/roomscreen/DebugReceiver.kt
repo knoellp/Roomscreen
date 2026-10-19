@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
  * (API 26+), so address the app: `adb shell am broadcast -p io.github.knoellp.roomscreen -a io.github.knoellp.roomscreen.DUMP_ZONES`.
  * DUMP_STATE logs the UI state as JSON; SET_HOST takes extras host and port;
  * SET_VIA_ROON (extra value=on|off) writes the "via roon" setting, also while the app is not running.
+ * SET_KEY_SOUNDS (extra value=on|off) writes the "Key sounds" setting, also while the app is not running.
  * SET_SHARPNESS (extra value=soft|sharp) writes the "Background sharpness" setting, also while the app is not running.
  * SET_BACKGROUND (extra value=cover|artist|color) writes the "Background" setting, also while the app is not running.
  * SET_LYRICS (extra value=on|off) presses the Lyrics button; DUMP_STATE then shows `lyrics` and `lyrics_on`.
@@ -35,6 +36,20 @@ class DebugReceiver : BroadcastReceiver() {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(viaRoon = on))
                     Log.i(AndroidLogger.TAG, "debug via_roon=${if (on) "on" else "off"}")
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
+        if (intent.action == "io.github.knoellp.roomscreen.SET_KEY_SOUNDS") {
+            val on = intent.getStringExtra("value") == "on"
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val prefs = Prefs(context)
+                    prefs.saveSettings(prefs.settings.first().copy(keySounds = on))
+                    Log.i(AndroidLogger.TAG, "debug key_sounds=${if (on) "on" else "off"}")
                 } finally {
                     pending.finish()
                 }

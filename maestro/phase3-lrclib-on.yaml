@@ -20,6 +20,8 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "Liedtexte \\(LRCLIB\\)"
     timeout: 5000
+# Rows before Liedtexte (LRCLIB): Hintergrund (focused), Schärfe, Farbe, Bedienelemente, Bildschirm, Tastentöne, via roon: seven down
+- pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down
 - pressKey: Remote Dpad Down

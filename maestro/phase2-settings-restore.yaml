@@ -1,6 +1,6 @@
 # Restores the default colour (Anthrazit) after the restart check: Mitternachtsblau -> ... -> Anthrazit is 5 steps.
 # State the wrapper script sets first (SET_LRCLIB on, SET_BACKGROUND cover): bar = Zonen, Einstellungen, Liedtexte, previous, play/pause, next;
-# settings rows = Hintergrund, Hintergrund-Schärfe, Hintergrundfarbe, Bedienelemente, Bildschirm an, via roon, Liedtexte (LRCLIB), Textversatz, Core neu suchen, Zone wechseln.
+# settings rows = Hintergrund, Hintergrund-Schärfe, Hintergrundfarbe, Bedienelemente, Bildschirm an, Tastentöne, via roon, Liedtexte (LRCLIB), Textversatz, Core neu suchen, Zone wechseln.
 appId: io.github.knoellp.roomscreen
 ---
 - launchApp

@@ -67,6 +67,7 @@ fun SettingsScreen(
         },
         SettingItem("controls", R.string.setting_controls, stringResource(settings.controls.label)) { onChange(settings.copy(controls = settings.controls.next())) },
         SettingItem("screen", R.string.setting_screen_on, stringResource(settings.screenOn.label)) { onChange(settings.copy(screenOn = settings.screenOn.next())) },
+        SettingItem("sounds", R.string.setting_key_sounds, stringResource(if (settings.keySounds) R.string.on else R.string.off)) { onChange(settings.copy(keySounds = !settings.keySounds)) },
         SettingItem("via", R.string.setting_via_roon, stringResource(if (settings.viaRoon) R.string.on else R.string.off)) { onChange(settings.copy(viaRoon = !settings.viaRoon)) },
         SettingItem("lrclib", R.string.setting_lrclib, stringResource(if (settings.lrclib) R.string.on else R.string.off)) { onChange(settings.copy(lrclib = !settings.lrclib)) },
         *(if (!settings.lrclib) emptyArray() else arrayOf(

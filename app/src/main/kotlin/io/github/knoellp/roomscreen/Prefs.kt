@@ -36,6 +36,7 @@ class Prefs(context: Context) : TokenStore {
     private val controlsKey = stringPreferencesKey("setting_controls")
     private val screenKey = stringPreferencesKey("setting_screen_on")
     private val viaKey = booleanPreferencesKey("setting_via_roon")
+    private val keySoundsKey = booleanPreferencesKey("setting_key_sounds")
     private val lrclibKey = booleanPreferencesKey("setting_lrclib")
     private val lyricsOffsetKey = intPreferencesKey("setting_lyrics_offset_ms")
     private val lyricsOnKey = booleanPreferencesKey("lyrics_on")
@@ -55,6 +56,7 @@ class Prefs(context: Context) : TokenStore {
             controls = p[controlsKey].asEnum() ?: d.controls,
             screenOn = p[screenKey].asEnum() ?: d.screenOn,
             viaRoon = p[viaKey] ?: d.viaRoon,
+            keySounds = p[keySoundsKey] ?: d.keySounds,
             lrclib = p[lrclibKey] ?: d.lrclib,
             lyricsOffsetMs = (p[lyricsOffsetKey] ?: d.lyricsOffsetMs).coerceIn(LYRICS_OFFSET_MIN_MS, LYRICS_OFFSET_MAX_MS),
         )
@@ -63,7 +65,7 @@ class Prefs(context: Context) : TokenStore {
     suspend fun saveSettings(s: AppSettings) {
         store.edit {
             it[bgKey] = s.background.name; it[sharpKey] = s.sharpness.name; it[colorKey] = s.backgroundColor.name; it[controlsKey] = s.controls.name
-            it[screenKey] = s.screenOn.name; it[viaKey] = s.viaRoon; it[lrclibKey] = s.lrclib; it[lyricsOffsetKey] = s.lyricsOffsetMs
+            it[screenKey] = s.screenOn.name; it[viaKey] = s.viaRoon; it[keySoundsKey] = s.keySounds; it[lrclibKey] = s.lrclib; it[lyricsOffsetKey] = s.lyricsOffsetMs
         }
     }
 

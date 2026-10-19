@@ -49,6 +49,8 @@ data class AppSettings(
     val lrclib: Boolean = true,
     /** Added to the playback position when choosing the active lyrics line: -3000 .. +3000 ms in 500 ms steps. */
     val lyricsOffsetMs: Int = 0,
+    /** Interaction sounds (focus move, click) played through the system. Off by default: HDMI audio switching can stop Roon zones on the TV. */
+    val keySounds: Boolean = false,
 )
 
 const val LYRICS_OFFSET_MIN_MS = -3000

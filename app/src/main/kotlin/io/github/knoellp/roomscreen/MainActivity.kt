@@ -52,6 +52,7 @@ private fun Root(vm: MainViewModel) {
     val saved by vm.savedEndpoint.collectAsState()
     val barVisible by vm.barVisible.collectAsState()
     val settings by vm.settings.collectAsState()
+    SoundEffectsScope(settings.keySounds) {
     when (val s = screen) {
         is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual, saved?.let { "${it.host}:${it.port}" })
         Screen.Manual -> {
@@ -69,5 +70,6 @@ private fun Root(vm: MainViewModel) {
             BackHandler { vm.closeSettings() }
             SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings)
         }
+    }
     }
 }

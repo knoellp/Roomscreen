@@ -71,6 +71,7 @@
     <string name="setting_screen_on">Bildschirm an</string>
     <string name="setting_screen_always">Immer</string>
     <string name="setting_screen_playing">Nur bei Wiedergabe</string>
+    <string name="setting_key_sounds">Tastentöne</string>
     <string name="setting_via_roon">\"via roon\" anzeigen</string>
     <string name="setting_lrclib">Liedtexte (LRCLIB)</string>
     <string name="setting_lyrics_offset">Textversatz</string>
