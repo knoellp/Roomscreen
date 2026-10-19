@@ -1,5 +1,7 @@
 # Roomscreen Architecture
 
+See also: `STATUS.md` (test and device status tables), `DEVELOPMENT.md` (build, scripts, debug hooks), `../README.md` (user guide).
+
 Status: Phase 4 (sections 8 to 10). Sections 1-6 were written in Phase 0; section 7 records
 what Phase 1 resolved against the real Core (2026-10-17). Items are marked **[verified]**
 (read in source and/or observed on the real Core in this repo's LAN),

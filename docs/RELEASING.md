@@ -19,7 +19,7 @@ Files (all gitignored, never commit them):
 **Back up `config/release.jks` and the passwords in a second place outside this machine. If the keystore is lost, no update can be
 installed over an existing installation any more.**
 
-The public certificate fingerprint is in `config/release-fingerprint.txt` and in the README. Check an APK with
+The public certificate fingerprint is in `config/release-fingerprint.txt` and in the README section Troubleshooting. Check an APK with
 `scripts/dock /opt/android-sdk/build-tools/36.0.0/apksigner verify --print-certs <apk>`.
 
 ### Creating the keystore (done once)

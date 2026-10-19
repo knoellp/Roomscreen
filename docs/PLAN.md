@@ -3,7 +3,7 @@
 > Auftrag an Claude Code. Dieses Dokument ersetzt `docs/PLAN.md` im Repository `knoellp/Roomscreen`. Arbeite selbstständig, aber halte dich an die Reihenfolge der Phasen. Prüfe alle technischen Annahmen selbst an der Quelle, bevor du darauf aufbaust.
 >
 > Kennzeichnung:
-> - **[verifiziert]** – im Repository belegt (Test, Gerätescreenshot, Log oder Live-Beobachtung am Core); Fundstelle steht dabei, meist `docs/ARCHITECTURE.md` oder die Statustabelle der README.
+> - **[verifiziert]** – im Repository belegt (Test, Gerätescreenshot, Log oder Live-Beobachtung am Core); Fundstelle steht dabei, meist `docs/ARCHITECTURE.md` oder die Statustabelle in `docs/STATUS.md`.
 > - **[geprüft]** – am 17. bzw. 18.10.2026 an der in Abschnitt 16 genannten Quelle nachgelesen, nicht auf dem Gerät erprobt.
 > - **[zu prüfen]** – nicht verifiziert. Vor der Verwendung klären und das Ergebnis in `docs/ARCHITECTURE.md` festhalten.
 >
@@ -116,7 +116,7 @@ Registriert sich eine zweite Verbindung mit derselben `extension_id`, bekommt di
 
 ## 3. Stand am 18.10.2026
 
-Quelle: Statustabelle der README und `docs/ARCHITECTURE.md` 7–9. Die Gerätenachweise (Screenshots, Logs) liegen laut Doku unter `build/device-artifacts/` und sind nicht eingecheckt. Ich selbst (Claude im Chat) konnte die Tests in meiner Umgebung nicht ausführen; die Angaben unten geben die Doku im Repo wieder.
+Quelle: Statustabelle in `docs/STATUS.md` und `docs/ARCHITECTURE.md` 7–9. Die Gerätenachweise (Screenshots, Logs) liegen laut Doku unter `build/device-artifacts/` und sind nicht eingecheckt. Ich selbst (Claude im Chat) konnte die Tests in meiner Umgebung nicht ausführen; die Angaben unten geben die Doku im Repo wieder.
 
 ### Fire TV – auf dem Gerät nachgewiesen
 
@@ -616,13 +616,13 @@ Vega:
 Appstore (nur bei Entscheidung 4):
 25. Feld für Prüfhinweise bzw. Demo-Zugang bei der Einreichung; Kosten des Entwicklerkontos; Bewertung der Media-Tasten-Nutzung und von „Bildschirm an“ im Prüfprozess.
 
-## 15. Erledigt (Nachweis in `docs/ARCHITECTURE.md` und README)
+## 15. Erledigt (Nachweis in `docs/ARCHITECTURE.md` und `docs/STATUS.md`)
 
 Menüpfad der Freigabe („Settings → Extensions“, Roon für Mac 2.73); `register` vor/nach Freigabe; `CONTINUE Registered`; Token-Wiederverwendung; Port aus SOOD; `three_line`-Belegung; Bilder per HTTP ohne Token; Künstlerbilder über `artist_image_keys`; Ping-Service; Seek-Rate 1,00 Hz; Ablauf beim Titelwechsel; Gruppenverhalten; Verdrängung bei gleicher `extension_id` und Kennung pro Installation; Fire OS 7.7.1.7 / SDK 28; Multicast mit `MulticastLock` auf Fire OS; Tastencodes eingespeister Media-Tasten; Hintergrund ohne Live-Blur; LRCLIB-Verhalten (404, 503, Varianten, Suche); Liedtext-Cache; Bildschirm-an per Wakelock.
 
 ## 16. Quellen (Stand 18.10.2026)
 
-- Repository, Statustabelle und Befunde: https://github.com/knoellp/Roomscreen (`README.md`, `docs/ARCHITECTURE.md`)
+- Repository, Statustabelle und Befunde: https://github.com/knoellp/Roomscreen (`README.md`, `docs/STATUS.md`, `docs/DEVELOPMENT.md`, `docs/ARCHITECTURE.md`)
 - Roon API für JavaScript, README: https://github.com/RoonLabs/node-roon-api
 - Roon-Community, Port nicht fest / Discovery verwenden: https://community.roonlabs.com/t/roon-api-on-build-880-connection-refused-error/181619 und https://community.roonlabs.com/t/port-change-for-roon-display/191382
 - Samsung Web Engine Specifications: https://developer.samsung.com/smarttv/develop/specifications/web-engine-specifications.html
