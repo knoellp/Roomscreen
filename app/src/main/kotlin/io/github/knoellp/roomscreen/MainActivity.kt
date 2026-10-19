@@ -52,6 +52,7 @@ private fun Root(vm: MainViewModel) {
     val saved by vm.savedEndpoint.collectAsState()
     val barVisible by vm.barVisible.collectAsState()
     val settings by vm.settings.collectAsState()
+    val volumePanel by vm.volumePanel.collectAsState()
     SoundEffectsScope(settings.keySounds) {
     when (val s = screen) {
         is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual, saved?.let { "${it.host}:${it.port}" })
@@ -65,7 +66,7 @@ private fun Root(vm: MainViewModel) {
             ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it) }
         }
         Screen.MissingZone -> MissingZoneScreen(onChoose = vm::openZoneList)
-        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, barVisible, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics)
+        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, barVisible, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics, vm::openVolume, volumePanel)
         is Screen.SettingsPage -> {
             BackHandler { vm.closeSettings() }
             SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings)

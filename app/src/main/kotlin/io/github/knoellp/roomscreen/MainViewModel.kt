@@ -218,17 +218,45 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun sortedZones(zoneMap: Map<String, Zone>) =
         zoneMap.values.sortedWith(compareBy(java.text.Collator.getInstance()) { it.displayName })
 
+    private val volume = VolumeController(
+        scope = viewModelScope,
+        log = log,
+        send = { outputId, how, value -> (client ?: throw IllegalStateException("not connected")).changeVolume(outputId, how, value) },
+    )
+
+    /** The volume panel (null while closed). */
+    val volumePanel: StateFlow<VolumePanelState?> = volume.state
+
     private val remoteKeys = RemoteKeys(
         scope = viewModelScope,
         onNowPlaying = { screen.value is Screen.NowPlaying },
         barAlways = { settings.value.controls == ControlsMode.ALWAYS },
         send = { control(it) },
         log = log,
+        volumeOpen = { volume.isOpen },
+        volumeKey = { code, repeat -> volume.key(code, repeat) },
+        volumeTouch = { volume.touch() },
     )
 
-    /** Whether the Now Playing control bar is shown: for [Tokens.barVisibleMs] after a bar-opening key, or always per setting. */
-    val barVisible: StateFlow<Boolean> = combine(remoteKeys.barShown, settings) { shown, st -> shown || st.controls == ControlsMode.ALWAYS }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    init {
+        // The panel follows the outputs of the shown zone and closes when another screen replaces Now Playing.
+        viewModelScope.launch {
+            screen.collect { s -> if (s is Screen.NowPlaying) volume.onOutputs(s.zone.outputs) else volume.close() }
+        }
+    }
+
+    /** Opens the volume panel for the shown zone (speaker button); the control bar hides while it is open. */
+    fun openVolume() {
+        val zone = currentZone ?: return
+        if (volume.open(zone.outputs)) remoteKeys.hideBar()
+    }
+
+    fun closeVolume() { volume.close() }
+
+    /** Whether the Now Playing control bar is shown: for [Tokens.barVisibleMs] after a bar-opening key, or always per setting; never with the volume panel. */
+    val barVisible: StateFlow<Boolean> = combine(remoteKeys.barShown, settings, volume.state) { shown, st, vp ->
+        vp == null && (shown || st.controls == ControlsMode.ALWAYS)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /**
      * Remote key from the activity. Returns true if the key was handled (consumed). Media keys and, while the bar is hidden,
@@ -459,6 +487,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- debug hooks (used only by the debug build's receiver) ----
 
+    private fun num(v: Double?): Number = v?.let { if (it == Math.floor(it)) it.toLong() else it } ?: 0
+
     fun dumpState(): String = buildJsonObject {
         put("screen", screen.value::class.simpleName ?: "?")
         put("connection", connection.value.toString())
@@ -474,6 +504,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             put("backdrop", s.backdropUrl ?: "")
             put("seek", s.zone.nowPlaying?.seekPosition ?: -1L)
         }
+        if (s is Screen.NowPlaying) {
+            put("volume", kotlinx.serialization.json.JsonArray(s.zone.outputs.mapNotNull { o -> o.volume?.let { v ->
+                buildJsonObject {
+                    put("name", o.displayName ?: o.outputId)
+                    put("value", num(v.value))
+                    put("min", num(v.min))
+                    put("max", num(v.max))
+                    put("muted", v.isMuted)
+                }
+            } }))
+        }
+        put("volume_panel", volume.state.value?.selected ?: -1)
         put("lyrics_on", lyricsOn.value)
         put("lyrics", when (val l = _lyrics.value) {
             LyricsState.Off -> "off"; LyricsState.Loading -> "loading"; LyricsState.None -> "none"; LyricsState.Unavailable -> "unavailable"
@@ -506,6 +548,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (zone == null) { log.info("debug select_zone=$name result=not_found"); return }
         selectZone(zone)
     }
+
+    /** Debug hook: opens the volume panel, the same as the speaker button. */
+    fun debugOpenVolume() { openVolume() }
 
     /** Debug hook: the "Lyrics (LRCLIB)" setting, the same as its row on the settings page. */
     fun debugSetLrclib(on: Boolean) { updateSettings(settings.value.copy(lrclib = on)) }

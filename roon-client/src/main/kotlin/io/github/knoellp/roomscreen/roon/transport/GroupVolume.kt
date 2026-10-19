@@ -83,9 +83,12 @@ object GroupVolume {
 /** Counts clicks in one direction for the 1/3/5 rule; a change of direction starts again at click 1. */
 class ClickCounter {
     private var direction = 0
-    private var count = 0
 
-    /** Registers a click ([direction] +1 or -1) and returns the step factor ([GroupVolume.stepFor]) of this click. */
+    /** Number of clicks in the current direction so far (1-based index of the last click). */
+    var count = 0
+        private set
+
+    /** Registers a click ([direction] +1 or -1) and returns the step factor ([GroupVolume.stepFor]) of this click; [count] is its index. */
     fun click(direction: Int): Int {
         if (direction != this.direction) { this.direction = direction; count = 0 }
         count++

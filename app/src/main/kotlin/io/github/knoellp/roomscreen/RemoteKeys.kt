@@ -16,6 +16,8 @@ import kotlinx.coroutines.launch
  * while it is visible (or always shown) the keys pass through to the focus system. Media keys always act directly.
  * On every other screen keys are never consumed; they only arm the bar so it is visible after returning to Now Playing.
  *
+ * While the volume panel is open ([volumeOpen]) it takes the D-pad, Center/Enter and Back; media keys still act (section 6.1 of the spec).
+ *
  * [onNowPlaying] and [barAlways] are read on every key; [send] performs the transport command.
  */
 class RemoteKeys(
@@ -25,6 +27,9 @@ class RemoteKeys(
     private val send: (TransportControl) -> Unit,
     private val log: Logger,
     private val barVisibleMs: Long = Tokens.barVisibleMs,
+    private val volumeOpen: () -> Boolean = { false },
+    private val volumeKey: (keyCode: Int, repeat: Boolean) -> Unit = { _, _ -> },
+    private val volumeTouch: () -> Unit = {},
 ) {
     private val shown = MutableStateFlow(false)
     private var hideJob: Job? = null
@@ -39,9 +44,25 @@ class RemoteKeys(
         hideJob = scope.launch { delay(barVisibleMs); shown.value = false }
     }
 
+    /** Hides the bar at once (the volume panel replaces it). */
+    fun hideBar() {
+        hideJob?.cancel(); hideJob = null
+        shown.value = false
+    }
+
     /** Returns true if the key event was handled (consumed). Acts only on the initial key down; down and up are both consumed. */
     fun onKey(keyCode: Int, isDown: Boolean, isRepeat: Boolean = false): Boolean {
         val isUp = !isDown && !isRepeat
+        // The open volume panel has priority: the D-pad, Center/Enter and Back belong to it (key repeat of Left/Right counts as clicks).
+        if (onNowPlaying() && volumeOpen() && keyCode.isPanelKey()) {
+            when {
+                isDown -> { volumeKey(keyCode, false); heldDirect.add(keyCode) }
+                isRepeat -> volumeKey(keyCode, true)
+                else -> heldDirect.remove(keyCode)
+            }
+            return true
+        }
+        if (onNowPlaying() && volumeOpen() && isDown) volumeTouch()
         // Release and key repeat of a key whose press was handled directly are consumed too (the bar may be visible by now).
         if (heldDirect.contains(keyCode) && !isDown) { if (isUp) heldDirect.remove(keyCode); return true }
         if (isRepeat) return onNowPlaying() && mapMediaKey(keyCode) != null
@@ -92,6 +113,8 @@ class RemoteKeys(
         }
         return false
     }
+
+    private fun Int.isPanelKey() = isDpad() || this == KeyEvent.KEYCODE_BACK
 
     private fun Int.isDpad() = this == KeyEvent.KEYCODE_DPAD_LEFT || this == KeyEvent.KEYCODE_DPAD_RIGHT ||
         this == KeyEvent.KEYCODE_DPAD_UP || this == KeyEvent.KEYCODE_DPAD_DOWN ||

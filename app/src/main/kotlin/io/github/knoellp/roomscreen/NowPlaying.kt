@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -97,6 +99,8 @@ fun NowPlayingScreen(
     lyricsAvailable: Boolean = false,
     lyricsOn: Boolean = false,
     onLyrics: () -> Unit = {},
+    onVolume: () -> Unit = {},
+    volumePanel: VolumePanelState? = null,
 ) {
     val context = LocalContext.current
     var cover by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -122,6 +126,7 @@ fun NowPlayingScreen(
         barVisible = barVisible, autoFocusBar = !always,
         onZones = onZones, onSettings = onSettings, onControl = onControl,
         lyrics = lyrics, lyricsAvailable = lyricsAvailable, lyricsOn = lyricsOn, onLyrics = onLyrics,
+        onVolume = onVolume, volumePanel = volumePanel,
     )
 }
 
@@ -144,6 +149,8 @@ fun NowPlayingContent(
     lyricsAvailable: Boolean = false,
     lyricsOn: Boolean = false,
     onLyrics: () -> Unit = {},
+    onVolume: () -> Unit = {},
+    volumePanel: VolumePanelState? = null,
 ) {
     val lines = zone.nowPlaying?.threeLine
     Box(Modifier.fillMaxSize().background(settings.backgroundColor.color)) {
@@ -181,9 +188,10 @@ fun NowPlayingContent(
                 Modifier.fillMaxWidth()
                     .background(Brush.verticalGradient(0f to Tokens.barScrim, 1f to Color.Transparent)),
             ) {
-                ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, lyricsAvailable, lyricsOn, onZones, onSettings, onLyrics, onControl)
+                ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, lyricsAvailable, lyricsOn, onZones, onSettings, onLyrics, onControl, onVolume)
             }
         }
+        if (volumePanel != null) VolumePanel(volumePanel, Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 40.dp))
     }
 }
 
@@ -263,6 +271,7 @@ private fun ControlBar(
     onSettings: () -> Unit,
     onLyrics: () -> Unit,
     onControl: (TransportControl) -> Unit,
+    onVolume: () -> Unit,
 ) {
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(autoFocus) { if (autoFocus) repeat(20) { if (runCatching { playFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; delay(50) } }
@@ -282,6 +291,11 @@ private fun ControlBar(
         }
         Spacer(Modifier.width(12.dp))
         BarButton({ onControl(TransportControl.NEXT) }, Modifier.size(Tokens.barButtonSize), description = stringResource(R.string.control_next)) { TransportIcon(Icon.Next) }
+        // The speaker button exists only when at least one output of the zone has a volume object.
+        if (zone.outputs.any { it.volume != null }) {
+            Spacer(Modifier.width(12.dp))
+            BarButton(onVolume, Modifier.size(Tokens.barButtonSize), description = stringResource(R.string.volume_button)) { TransportIcon(Icon.Volume) }
+        }
     }
 }
 
@@ -311,7 +325,7 @@ private fun Modifier.heightOrMin(): Modifier = this.then(Modifier.defaultMinSize
 private fun Modifier.semanticsDescription(text: String): Modifier =
     this.then(Modifier.semantics { contentDescription = text })
 
-enum class Icon { Previous, Play, Pause, Next }
+enum class Icon { Previous, Play, Pause, Next, Volume, VolumeMuted }
 
 /** Transport glyphs drawn as paths: font glyphs for these symbols are missing on some Android TV builds. */
 @Composable
@@ -336,6 +350,21 @@ fun TransportIcon(icon: Icon, modifier: Modifier = Modifier) {
             Icon.Previous -> {
                 drawPath(triangle(w * 0.3f, w, false), color)
                 drawRect(color, Offset(w * 0.04f, 0f), Size(w * 0.18f, h))
+            }
+            Icon.Volume, Icon.VolumeMuted -> {
+                // Speaker: a small box and a cone; sound waves when on, a diagonal strike-through when muted.
+                val body = Path().apply {
+                    moveTo(w * 0.04f, h * 0.36f); lineTo(w * 0.26f, h * 0.36f); lineTo(w * 0.52f, h * 0.12f); lineTo(w * 0.52f, h * 0.88f)
+                    lineTo(w * 0.26f, h * 0.64f); lineTo(w * 0.04f, h * 0.64f); close()
+                }
+                drawPath(body, color)
+                val stroke = Stroke(width = w * 0.09f, cap = StrokeCap.Round)
+                if (icon == Icon.Volume) {
+                    drawArc(color, -45f, 90f, false, Offset(w * 0.34f, h * 0.30f), Size(w * 0.4f, h * 0.4f), style = stroke)
+                    drawArc(color, -45f, 90f, false, Offset(w * 0.22f, h * 0.12f), Size(w * 0.76f, h * 0.76f), style = stroke)
+                } else {
+                    drawLine(color, Offset(w * 0.02f, h * 0.96f), Offset(w * 0.96f, h * 0.04f), stroke.width, StrokeCap.Round)
+                }
             }
         }
     }

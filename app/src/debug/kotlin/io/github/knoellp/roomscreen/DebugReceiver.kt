@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
  * SET_LYRICS (extra value=on|off) presses the Lyrics button; DUMP_STATE then shows `lyrics` and `lyrics_on`.
  * SET_SCREEN_ON (extra value=always|playing) writes the "Screen on" setting; SET_LYRICS_OFFSET (extra value=milliseconds, -3000..3000) the lyrics timing.
  * SET_LRCLIB (extra value=on|off) writes the "Lyrics (LRCLIB)" setting, the same as the settings row.
+ * OPEN_VOLUME opens the volume panel like the speaker button; DUMP_STATE then shows `volume_panel` (selected row, -1 = closed) and `volume`
+ * (name, value, min, max, muted of every controllable output of the shown zone).
  * SELECT_ZONE (extra name) selects a zone by display name without sending any command.
  * CLEAR_ENDPOINT forgets only the stored Core address (host, port, manual); token and zone stay. Works while the app is stopped;
  * restart the app afterwards to see discovery run. (RESET below also clears token and zone.)
@@ -138,6 +140,7 @@ class DebugReceiver : BroadcastReceiver() {
                 vm.debugSetHost(host, intent.getIntExtra("port", 9330))
             }
             "io.github.knoellp.roomscreen.SELECT_ZONE" -> vm.debugSelectZone(intent.getStringExtra("name") ?: return)
+            "io.github.knoellp.roomscreen.OPEN_VOLUME" -> vm.debugOpenVolume()
             "io.github.knoellp.roomscreen.SET_LYRICS" -> vm.setLyrics(intent.getStringExtra("value") == "on")
             "io.github.knoellp.roomscreen.SET_LRCLIB" -> vm.debugSetLrclib(intent.getStringExtra("value") == "on")
             "io.github.knoellp.roomscreen.RESET" -> vm.debugReset()

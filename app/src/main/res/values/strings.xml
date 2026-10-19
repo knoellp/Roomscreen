@@ -82,4 +82,8 @@
     <string name="setting_core_unknown">not connected</string>
     <string name="setting_rediscover">Search for Core again</string>
     <string name="setting_switch_zone">Switch zone</string>
+    <string name="volume_button">Volume</string>
+    <string name="volume_group">Group</string>
+    <string name="volume_fixed">fixed</string>
+    <string name="volume_muted">muted</string>
 </resources>

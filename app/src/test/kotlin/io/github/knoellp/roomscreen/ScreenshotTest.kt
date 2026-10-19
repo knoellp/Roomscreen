@@ -37,6 +37,9 @@ import androidx.tv.material3.darkColorScheme
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.knoellp.roomscreen.roon.transport.Lines
 import io.github.knoellp.roomscreen.roon.transport.NowPlaying
+import io.github.knoellp.roomscreen.roon.transport.Output
+import io.github.knoellp.roomscreen.roon.transport.Volume
+import io.github.knoellp.roomscreen.roon.transport.VolumeKind
 import io.github.knoellp.roomscreen.roon.transport.Zone
 import org.junit.Rule
 import org.junit.Test
@@ -54,6 +57,7 @@ class ScreenshotTest {
 
     private val playing = Zone(
         zoneId = "z1", displayName = "Büro", state = "playing", isPauseAllowed = true,
+        outputs = listOf(Output("o1", "Büro", Volume("number", 0.0, 100.0, 41.0, 1.0, softLimit = 100.0))),
         nowPlaying = NowPlaying(
             seekPosition = 42, length = 215, imageKey = "k",
             threeLine = Lines("Alive", "Pearl Jam", "Ten"),
@@ -181,6 +185,28 @@ class ScreenshotTest {
 
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
     fun lyricsNoneGerman() = lyrics("9d-lyrics-none-de", LyricsState.None, bar = true, on = false)
+
+    // ---- Volume panel ----
+
+    private fun volumeRow(id: String?, name: String, value: Double?, muted: Boolean = false, fixed: Boolean = false, kind: VolumeKind = VolumeKind.NUMBER, soft: Double? = null) =
+        VolumeRow(id, name, kind, value, 0.0, 100.0, soft, muted, fixed)
+
+    private fun volume(name: String, rows: List<VolumeRow>, selected: Int) =
+        shot(name) { NowPlayingContent(playing, pos, length, cover, backdrop, AppSettings(), barVisible = false, volumePanel = VolumePanelState(rows, selected)) }
+
+    @Test fun volumeSingle() = volume("10-volume-single", listOf(volumeRow("o1", "Büro", 41.0, soft = 85.0)), 0)
+
+    private val groupRows = listOf(
+        volumeRow(null, "", 26.5),
+        volumeRow("o1", "Büro", 41.0, soft = 85.0),
+        volumeRow("o2", "Küche", 12.0, muted = true),
+        volumeRow("o3", "Terrasse", null, fixed = true),
+    )
+
+    @Test fun volumeGroup() = volume("10b-volume-group", groupRows, 0)
+
+    @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
+    fun volumeGroupGerman() = volume("10c-volume-group-de", groupRows, 2)
 
     @Test fun settings() = shot("7-settings") { SettingsScreen(AppSettings(), "192.168.1.194:9330", {}, {}, {}) }
 

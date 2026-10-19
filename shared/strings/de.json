@@ -70,5 +70,9 @@
  "setting_connection": "Core",
  "setting_core_unknown": "nicht verbunden",
  "setting_rediscover": "Core neu suchen",
- "setting_switch_zone": "Zone wechseln"
+ "setting_switch_zone": "Zone wechseln",
+ "volume_button": "Lautstärke",
+ "volume_group": "Gruppe",
+ "volume_fixed": "fest",
+ "volume_muted": "stumm"
 }

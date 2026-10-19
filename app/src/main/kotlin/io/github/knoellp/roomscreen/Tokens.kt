@@ -89,6 +89,8 @@ object Tokens {
     val backdropScrimMiddle by color(0x59000000)
     /** Backdrop gradient, bottom. */
     val backdropScrimBottom by color(0xF0000000)
+    /** Background of the volume panel. */
+    val volumePanelBackground by color(0xFF0B1015)
     /** Gradient behind the control bar. */
     val barScrim by color(0xB0000000)
     /** Gradient at the top of the lyrics view. */
@@ -139,9 +141,11 @@ object Tokens {
     val lyricsCoverSize by dp(160)
     val barButtonSize by dp(56)
     val lyricsLineHeight by dp(50)
+    val volumePanelWidth by dp(460)
 
     // Durations
     val barVisibleMs by ms(5000L)
+    val volumePanelVisibleMs by ms(8000L)
     val crossfadeMs by ms(600L)
     val barFadeMs by ms(200L)
     val progressTickMs by ms(100L)
