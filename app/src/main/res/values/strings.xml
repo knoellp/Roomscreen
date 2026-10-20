@@ -40,11 +40,12 @@
     <string name="now_playing_unknown">Unknown</string>
     <string name="zones_button">Zones</string>
     <string name="zones_current">current</string>
-    <string name="zones_hint">Back keeps the current zone</string>
+    <string name="zones_hint">Back or Close keeps the current zone</string>
+    <string name="close">Close</string>
 
     <string name="settings_button">Settings</string>
     <string name="settings_title">Settings</string>
-    <string name="settings_hint">Select changes a value. Back returns.</string>
+    <string name="settings_hint">Select changes a value. Back or Close returns.</string>
     <string name="control_previous">Previous track</string>
     <string name="control_play_pause">Play or pause</string>
     <string name="control_next">Next track</string>

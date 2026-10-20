@@ -58,6 +58,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -104,6 +107,7 @@ fun NowPlayingScreen(
     onVolume: () -> Unit = {},
     volumePanel: VolumePanelState? = null,
     onCornerTap: () -> Unit = {},
+    onVolumePanelBounds: (Rect) -> Unit = {},
 ) {
     val context = LocalContext.current
     var cover by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -129,7 +133,7 @@ fun NowPlayingScreen(
         barVisible = barVisible, autoFocusBar = !always,
         onZones = onZones, onSettings = onSettings, onControl = onControl,
         lyrics = lyrics, lyricsAvailable = lyricsAvailable, lyricsOn = lyricsOn, onLyrics = onLyrics,
-        onVolume = onVolume, volumePanel = volumePanel, onCornerTap = onCornerTap,
+        onVolume = onVolume, volumePanel = volumePanel, onCornerTap = onCornerTap, onVolumePanelBounds = onVolumePanelBounds,
     )
 }
 
@@ -155,6 +159,7 @@ fun NowPlayingContent(
     onVolume: () -> Unit = {},
     volumePanel: VolumePanelState? = null,
     onCornerTap: () -> Unit = {},
+    onVolumePanelBounds: (Rect) -> Unit = {},
 ) {
     val lines = zone.nowPlaying?.threeLine
     Box(Modifier.fillMaxSize().background(settings.backgroundColor.color)) {
@@ -202,7 +207,7 @@ fun NowPlayingContent(
                 ControlBar(Modifier.padding(horizontal = 40.dp, vertical = 20.dp), zone, autoFocusBar, lyricsAvailable, lyricsOn, onZones, onSettings, onLyrics, onControl, onVolume)
             }
         }
-        if (volumePanel != null) VolumePanel(volumePanel, Modifier.align(Alignment.TopEnd).padding(end = 40.dp, top = 108.dp))
+        if (volumePanel != null) VolumePanel(volumePanel, Modifier.align(Alignment.TopEnd).padding(end = 40.dp, top = 108.dp).onGloballyPositioned { onVolumePanelBounds(it.boundsInWindow()) })
     }
 }
 
@@ -316,7 +321,7 @@ private fun ControlBar(
 private fun BarButton(onClick: () -> Unit, modifier: Modifier = Modifier, description: String? = null, selected: Boolean = false, content: @Composable () -> Unit) {
     Surface(
         onClick = onClick,
-        modifier = modifier.heightOrMin().then(if (description != null) Modifier.semanticsDescription(description) else Modifier),
+        modifier = modifier.heightOrMin().tapAction(onClick).then(if (description != null) Modifier.semanticsDescription(description) else Modifier),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(28.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) Tokens.barButtonSelected else Tokens.barButton,

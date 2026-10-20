@@ -240,6 +240,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         volumeOpen = { volume.isOpen },
         volumeKey = { code, repeat -> volume.key(code, repeat) },
         volumeTouch = { volume.touch() },
+        volumeClose = { volume.close() },
         // The open diagnostics overlay owns the keys: nothing behind it may act (volume panel, direct D-pad control).
         blocked = { _diagnosticsOpen.value },
     )
@@ -258,6 +259,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeVolume() { volume.close() }
+
+    @Volatile private var volumePanelBounds: androidx.compose.ui.geometry.Rect? = null
+    /** Window bounds of the open volume panel; used to tell a touch inside the panel from one outside. */
+    fun setVolumePanelBounds(bounds: androidx.compose.ui.geometry.Rect) { volumePanelBounds = bounds }
+
+    /** A finger went down at ([x], [y]) in window pixels: shows the bar on Now Playing, or serves the open volume panel (see [RemoteKeys.onTouch]). */
+    fun onTouch(x: Int, y: Int) {
+        val inside = volumePanelBounds?.contains(androidx.compose.ui.geometry.Offset(x.toFloat(), y.toFloat())) == true
+        remoteKeys.onTouch(inside)
+    }
 
     /** Whether the Now Playing control bar is shown: for [Tokens.barVisibleMs] after a bar-opening key, or always per setting; never with the volume panel. */
     val barVisible: StateFlow<Boolean> = combine(remoteKeys.barShown, settings, volume.state) { shown, st, vp ->

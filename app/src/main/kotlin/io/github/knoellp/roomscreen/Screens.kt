@@ -97,7 +97,7 @@ fun ConnectingContent(status: Status, onManual: () -> Unit, lastAddress: String?
             if (lastAddress != null) Body(stringResource(R.string.status_last_address, lastAddress), color = Tokens.textMuted)
         }
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onManual) { Text(stringResource(R.string.enter_manually)) }
+        Button(onClick = onManual, modifier = Modifier.tapAction(onManual)) { Text(stringResource(R.string.enter_manually)) }
     }
 }
 
@@ -125,11 +125,12 @@ fun ManualEntryScreen(
         }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Button(onClick = {
+            val test = {
                 val p = port.toIntOrNull()
                 if (host.isBlank() || p == null || p !in 1..65535) invalid = true else { invalid = false; onTest(host.trim(), p) }
-            }) { Text(stringResource(R.string.manual_test)) }
-            Button(onClick = onBack) { Text(stringResource(R.string.manual_back)) }
+            }
+            Button(onClick = test, modifier = Modifier.tapAction(test)) { Text(stringResource(R.string.manual_test)) }
+            Button(onClick = onBack, modifier = Modifier.tapAction(onBack)) { Text(stringResource(R.string.manual_back)) }
         }
         when {
             invalid -> Body(stringResource(R.string.manual_invalid), Tokens.error)
@@ -163,7 +164,7 @@ internal fun stateLabel(state: String) = stringResource(
 /** Screen 4: zone list. Selecting a zone only stores the choice. The current zone (if any) is marked and focused first. */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (Zone) -> Unit) {
+fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onClose: (() -> Unit)? = null, onSelect: (Zone) -> Unit) {
     // A row is always focused when the list opens: the current zone, else the first one.
     val focusId = zones.firstOrNull { it.zoneId == currentZoneId }?.zoneId ?: zones.firstOrNull()?.zoneId
     val initialFocus = remember { FocusRequester() }
@@ -192,6 +193,8 @@ fun ZoneListScreen(zones: List<Zone>, currentZoneId: String? = null, onSelect: (
             items(zones, key = { it.zoneId }) { zone ->
                 ZoneRow(zone, zone.zoneId == currentZoneId, if (zone.zoneId == focusId) initialFocus else null) { onSelect(zone) }
             }
+            // Touch users need a way out; the first-start list has nothing to return to (onClose is null).
+            if (onClose != null) item(key = "close") { CloseRow(onClose) }
         }
     }
     }
@@ -205,7 +208,7 @@ private fun ZoneRow(zone: Zone, isCurrent: Boolean, focus: FocusRequester?, onCl
     val detail = if (playing && lines != null) listOfNotNull(lines.line2, lines.line1).filter { it.isNotBlank() }.joinToString(" · ") else ""
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
+        modifier = Modifier.fillMaxWidth().then(if (focus != null) Modifier.focusRequester(focus) else Modifier).tapAction(onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Tokens.rowBackground,
@@ -241,6 +244,29 @@ private fun ZoneRow(zone: Zone, isCurrent: Boolean, focus: FocusRequester?, onCl
     }
 }
 
+/** Last row of the zone list and the settings list: looks like a row without state, focusable and tappable. */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+internal fun CloseRow(onClose: () -> Unit) {
+    Surface(
+        onClick = onClose,
+        modifier = Modifier.fillMaxWidth().tapAction(onClose),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Tokens.rowBackground,
+            focusedContainerColor = Tokens.rowFocused,
+            contentColor = Tokens.textSecondary,
+            focusedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Tokens.rowFocusBorder))),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Row(Modifier.fillMaxWidth().heightIn(min = Tokens.settingsRowHeight).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.close), fontSize = Tokens.fontRow, maxLines = 1)
+        }
+    }
+}
+
 /** Screen 5: the saved zone is not available (for example while it is grouped away). It returns here automatically. */
 @Composable
 fun MissingZoneScreen(onChoose: () -> Unit) = Page {
@@ -249,6 +275,6 @@ fun MissingZoneScreen(onChoose: () -> Unit) = Page {
     Column(Modifier.align(Alignment.Center).width(900.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Title(stringResource(R.string.missing_zone_title))
         Body(stringResource(R.string.missing_zone_body))
-        Button(onClick = onChoose, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.missing_zone_continue)) }
+        Button(onClick = onChoose, modifier = Modifier.focusRequester(focus).tapAction(onChoose)) { Text(stringResource(R.string.missing_zone_continue)) }
     }
 }

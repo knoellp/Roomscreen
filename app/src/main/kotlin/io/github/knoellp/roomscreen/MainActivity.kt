@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
         if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
             AndroidLogger.info("touch action=down x=${event.x.toInt()} y=${event.y.toInt()}")
             viewModel.recordTouch(event.x.toInt(), event.y.toInt())
+            viewModel.onTouch(event.x.toInt(), event.y.toInt())
         }
         return super.dispatchTouchEvent(event)
     }
@@ -73,13 +74,13 @@ private fun Root(vm: MainViewModel) {
         Screen.Authorization -> AuthorizationScreen(vm.extensionName)
         is Screen.ZoneList -> {
             if (s.canGoBack) BackHandler { vm.closeZoneList() }
-            ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it) }
+            ZoneListScreen(s.zones, s.currentZoneId, onClose = if (s.canGoBack) vm::closeZoneList else null) { vm.selectZone(it) }
         }
         Screen.MissingZone -> MissingZoneScreen(onChoose = vm::openZoneList)
-        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, barVisible, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics, vm::openVolume, volumePanel, vm::cornerTap)
+        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, barVisible, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics, vm::openVolume, volumePanel, vm::cornerTap, vm::setVolumePanelBounds)
         is Screen.SettingsPage -> {
             BackHandler { vm.closeSettings() }
-            SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings, vm::openDiagnostics)
+            SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings, vm::openDiagnostics, vm::closeSettings)
         }
     }
     if (diagnosticsOpen) {

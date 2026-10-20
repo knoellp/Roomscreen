@@ -57,6 +57,7 @@ fun SettingsScreen(
     onRediscover: () -> Unit,
     onSwitchZone: () -> Unit,
     onShowDiagnostics: () -> Unit = {},
+    onClose: () -> Unit = {},
 ) {
     val rows = listOf(
         SettingItem("bg", R.string.setting_background, stringResource(settings.background.label)) { onChange(settings.copy(background = settings.background.next())) },
@@ -79,6 +80,7 @@ fun SettingsScreen(
         SettingItem("rediscover", R.string.setting_rediscover, null, onSelect = onRediscover),
         SettingItem("diagnostics", R.string.setting_diagnostics, null, onSelect = onShowDiagnostics),
         SettingItem("zone", R.string.setting_switch_zone, null, onSelect = onSwitchZone),
+        SettingItem("close", R.string.close, null, onSelect = onClose),
     )
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { repeat(20) { if (runCatching { first.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; delay(50) } }
@@ -108,7 +110,7 @@ fun SettingsScreen(
 private fun SettingRow(row: SettingItem, focus: FocusRequester?) {
     Surface(
         onClick = row.onSelect,
-        modifier = Modifier.fillMaxWidth().then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
+        modifier = Modifier.fillMaxWidth().then(if (focus != null) Modifier.focusRequester(focus) else Modifier).tapAction(row.onSelect),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Tokens.rowBackground,
@@ -119,7 +121,7 @@ private fun SettingRow(row: SettingItem, focus: FocusRequester?) {
         border = ClickableSurfaceDefaults.border(focusedBorder = Border(BorderStroke(2.dp, Tokens.rowFocusBorder))),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     ) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 42.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = Tokens.settingsRowHeight).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(row.label), fontSize = Tokens.fontRow, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (row.hint != null) Text(stringResource(row.hint), fontSize = Tokens.fontCaption, color = Tokens.textHint, maxLines = 1)

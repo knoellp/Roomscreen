@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,7 +109,7 @@ fun DiagnosticsOverlay(info: DiagnosticsInfo, modifier: Modifier = Modifier) {
             }
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 Section(R.string.diag_inputs)
-                LazyColumn(Modifier.fillMaxWidth().height(150.dp)) {
+                LazyColumn(Modifier.fillMaxWidth().height(150.dp).clipToBounds()) {
                     items(info.inputs.asReversed()) { Mono("${formatClock(it.timeMs)}  ${it.text}") }
                 }
                 Spacer(Modifier.height(4.dp))

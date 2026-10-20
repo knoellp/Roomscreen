@@ -140,6 +140,8 @@ object Tokens {
     val coverSize by dp(200)
     val lyricsCoverSize by dp(160)
     val barButtonSize by dp(56)
+    /** Minimum height of a settings row and of the Close rows (touch target). */
+    val settingsRowHeight by dp(48)
     val lyricsLineHeight by dp(50)
     val volumePanelWidth by dp(460)
     /** Tap area in the bottom right corner that opens the diagnostics overlay (the via roon hint sits in it). */

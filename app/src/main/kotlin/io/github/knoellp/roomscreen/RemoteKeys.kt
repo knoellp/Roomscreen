@@ -30,6 +30,7 @@ class RemoteKeys(
     private val volumeOpen: () -> Boolean = { false },
     private val volumeKey: (keyCode: Int, repeat: Boolean) -> Unit = { _, _ -> },
     private val volumeTouch: () -> Unit = {},
+    private val volumeClose: () -> Unit = {},
     /** While true (diagnostics overlay open) no key is handled; everything passes through to the overlay. */
     private val blocked: () -> Boolean = { false },
 ) {
@@ -44,6 +45,17 @@ class RemoteKeys(
         shown.value = true
         hideJob?.cancel()
         hideJob = scope.launch { delay(barVisibleMs); shown.value = false }
+    }
+
+    /**
+     * A finger touched the screen. On Now Playing: with the volume panel open a touch inside it restarts its auto-close timer and
+     * a touch outside closes it; otherwise the bar is shown for the usual time (a further touch extends it). Nothing happens
+     * on other screens or while the diagnostics overlay is open ([blocked]).
+     */
+    fun onTouch(insideVolumePanel: Boolean = false) {
+        if (blocked() || !onNowPlaying()) return
+        if (volumeOpen()) { if (insideVolumePanel) volumeTouch() else volumeClose(); return }
+        showBar()
     }
 
     /** Hides the bar at once (the volume panel replaces it). */

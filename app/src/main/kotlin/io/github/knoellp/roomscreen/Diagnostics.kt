@@ -109,7 +109,9 @@ internal fun collectBuildInfo(ctx: Context): BuildInfo {
     val signature = cert?.let {
         MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).joinToString("") { b -> "%02x".format(b) }.take(8)
     } ?: "-"
-    val fire = systemProperty("ro.build.version.fireos")
+    // ro.build.version.fireos only says "7.0"; the real version is in ro.build.mktg.fireos ("Fire OS 7.7.1.7").
+    val fire = (systemProperty("ro.build.mktg.fireos") ?: systemProperty("ro.build.version.name") ?: systemProperty("ro.build.version.fireos"))
+        ?.removePrefix("Fire OS ")?.trim()
     val dm = ctx.resources.displayMetrics
     val conf = ctx.resources.configuration
     return BuildInfo(

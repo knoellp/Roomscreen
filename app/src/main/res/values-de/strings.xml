@@ -40,11 +40,12 @@
     <string name="now_playing_unknown">Unbekannt</string>
     <string name="zones_button">Zonen</string>
     <string name="zones_current">aktuell</string>
-    <string name="zones_hint">Zurück behält die aktuelle Zone</string>
+    <string name="zones_hint">Zurück oder Schließen behält die aktuelle Zone</string>
+    <string name="close">Schließen</string>
 
     <string name="settings_button">Einstellungen</string>
     <string name="settings_title">Einstellungen</string>
-    <string name="settings_hint">Auswahl ändert einen Wert. Zurück schließt.</string>
+    <string name="settings_hint">Auswahl ändert einen Wert. Zurück oder Schließen beendet.</string>
     <string name="control_previous">Vorheriger Titel</string>
     <string name="control_play_pause">Wiedergabe oder Pause</string>
     <string name="control_next">Nächster Titel</string>

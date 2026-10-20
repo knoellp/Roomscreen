@@ -27,7 +27,12 @@ class MainViewModelKeyTest {
 
     private var blocked = false
 
+    private var volumeOpen = false
+    private var volumeTouches = 0
+    private var volumeCloses = 0
+
     private fun keys(scope: TestScope) = RemoteKeys(
+        volumeOpen = { volumeOpen }, volumeTouch = { volumeTouches++ }, volumeClose = { volumeCloses++; volumeOpen = false },
         blocked = { blocked },
         scope = scope, onNowPlaying = { nowPlaying }, barAlways = { always },
         send = { sent += it },
@@ -172,5 +177,39 @@ class MainViewModelKeyTest {
         // hidden again: left controls directly
         assertTrue(k.press(KeyEvent.KEYCODE_DPAD_LEFT))
         assertEquals(listOf(TransportControl.PREVIOUS), sent)
+    }
+
+    @Test fun touchShowsTheBarForFiveSecondsAndASecondTouchExtendsIt() = runTest {
+        val k = keys(this)
+        k.onTouch()
+        assertTrue(k.barShown.value)
+        advanceTimeBy(4000); assertTrue(k.barShown.value)
+        k.onTouch() // extends
+        advanceTimeBy(4000); assertTrue(k.barShown.value, "extended")
+        advanceTimeBy(1100); assertFalse(k.barShown.value)
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test fun touchOutsideTheOpenVolumePanelClosesItAndInsideKeepsIt() = runTest {
+        val k = keys(this)
+        volumeOpen = true
+        k.onTouch(insideVolumePanel = true)
+        assertEquals(1, volumeTouches); assertEquals(0, volumeCloses); assertTrue(volumeOpen)
+        assertFalse(k.barShown.value, "a touch in the panel does not show the bar")
+        k.onTouch(insideVolumePanel = false)
+        assertEquals(1, volumeCloses); assertFalse(volumeOpen)
+        assertFalse(k.barShown.value, "the closing touch does not show the bar")
+        k.onTouch()
+        assertTrue(k.barShown.value, "the next touch does")
+    }
+
+    @Test fun touchDoesNothingOffNowPlayingOrBehindTheOverlay() = runTest {
+        val k = keys(this)
+        nowPlaying = false
+        k.onTouch(); assertFalse(k.barShown.value)
+        nowPlaying = true; blocked = true
+        k.onTouch(); assertFalse(k.barShown.value)
+        blocked = false
+        k.onTouch(); assertTrue(k.barShown.value)
     }
 }

@@ -32,6 +32,9 @@ import androidx.compose.foundation.layout.width
 import androidx.tv.material3.Text
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -182,6 +185,22 @@ class ScreenshotTest {
 
     @Test fun settings() = shot("7-settings") { SettingsScreen(AppSettings(), "192.168.1.194:9330", {}, {}, {}) }
 
+    /** The zone list scrolled to its end: the Close row below the last zone. */
+    @Test fun zoneListEnd() {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { ZoneListScreen(zones, currentZoneId = "z1", onClose = {}) {} } }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Close"))
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("src/test/screenshots/4c-zone-list-end.png")
+    }
+
+    /** The settings list scrolled to its end: the Close row below "Switch zone". */
+    @Test fun settingsEnd() {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { SettingsScreen(AppSettings(), "192.168.1.194:9330", {}, {}, {}) } }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Close"))
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("src/test/screenshots/7e-settings-end.png")
+    }
+
     @Test fun settingsLyricsOffset() = shot("7d-settings-offset") { SettingsScreen(AppSettings(lyricsOffsetMs = 1500), "192.168.1.194:9330", {}, {}, {}) }
 
     @Test fun settingsColor() = shot("7c-settings-color") {
@@ -218,7 +237,8 @@ class ScreenshotTest {
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
     fun diagnosticsGerman() = shot("11b-diagnostics-de") { DiagnosticsOverlay(Samples.diagnostics) }
 
-    @Test fun zoneListCurrentMarked() = shot("4b-zone-list-current") { ZoneListScreen(zones, currentZoneId = "z1") {} }
+    /** Reachable list (opened from Now Playing): the Close row is the last row. */
+    @Test fun zoneListCurrentMarked() = shot("4b-zone-list-current") { ZoneListScreen(zones, currentZoneId = "z1", onClose = {}) {} }
 
 
     @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
