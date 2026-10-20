@@ -2,6 +2,7 @@ FROM eclipse-temurin:17-jdk-jammy
 
 ARG CMDLINE_TOOLS=14742923
 ARG MAESTRO_VERSION=2.11.0
+ARG WITH_MAESTRO=1
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV MAESTRO_HOME=/opt/maestro
@@ -20,9 +21,11 @@ RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \
 RUN yes | sdkmanager --licenses >/dev/null \
     && sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-RUN curl -fsSL -o /tmp/maestro.zip https://github.com/mobile-dev-inc/maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip \
-    && unzip -q /tmp/maestro.zip -d /opt \
-    && rm /tmp/maestro.zip
+RUN if [ "$WITH_MAESTRO" = "1" ]; then \
+      curl -fsSL -o /tmp/maestro.zip https://github.com/mobile-dev-inc/maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip \
+      && unzip -q /tmp/maestro.zip -d /opt \
+      && rm /tmp/maestro.zip; \
+    fi
 
 WORKDIR /work
 

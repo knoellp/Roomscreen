@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/android-build
+          load: true
+          tags: roomscreen-android
+          build-args: |
+            WITH_MAESTRO=0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Prepare keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/keys/release.jks"
+          actual=$(sha256sum "$RUNNER_TEMP/keys/release.jks" | cut -d' ' -f1)
+          expected=59ee46a3bd37775e89a312a0acd84ef735ddd18ade745526904769359cf1c588
+          echo "keystore sha256: $actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "Keystore hash mismatch (expected $expected)" >&2
+            exit 1
+          fi
+          chmod 644 "$RUNNER_TEMP/keys/release.jks"
+
+      - name: Check version
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: scripts/release-check-version.sh "$TAG"
+
+      - name: Build
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD":/work \
+            -v "$RUNNER_TEMP/keys":/keys:ro \
+            -e RELEASE_KEYSTORE=/keys/release.jks \
+            -e RELEASE_KEYSTORE_PASSWORD \
+            -e RELEASE_KEY_ALIAS \
+            -e RELEASE_KEY_PASSWORD \
+            -e GRADLE_OPTS=-Xmx1g \
+            roomscreen-android bash scripts/release-build.sh
+
+      - name: Remove keystore
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/release/
+
+  publish:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+          path: build/release
+
+      - name: Upload release assets
+        run: |
+          gh release upload "$TAG" build/release/Roomscreen-*.apk build/release/Roomscreen.apk build/release/SHA256SUMS \
+            --clobber --repo "$GITHUB_REPOSITORY"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: repo
+
+      - name: Update releases/ on main
+        working-directory: repo
+        run: |
+          mkdir -p releases
+          cp ../build/release/Roomscreen-*-*.apk releases/
+          # keep the six highest versionCodes (current + five previous)
+          ls releases/Roomscreen-*-*.apk \
+            | sed -E 's/^(.*-([0-9]+)\.apk)$/\2 \1/' \
+            | sort -n -r \
+            | tail -n +7 | cut -d' ' -f2- | xargs -r rm -f
+          (cd releases && sha256sum Roomscreen-*-*.apk | sort -k2 -V > SHA256SUMS)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add releases
+          if git diff --cached --quiet; then
+            echo "releases/ unchanged; nothing to commit"
+          else
+            git commit -m "Release $TAG: APK in releases/"
+            git push origin HEAD:main
+          fi
