@@ -1,0 +1,36 @@
+# Touch: zone list by finger (German UI, zone Büro selected and paused). Tap the screen, tap "Zonen", tap the row of the test zone
+# (Now Playing again), open the list once more and leave it with the "Schließen" row.
+# Run: maestro test -e ROON_TEST_ZONE="$ROON_TEST_ZONE" maestro/touch-zones.yaml
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 30000
+- runFlow: touch-show-bar.yaml
+- tapOn: "Zonen"
+- extendedWaitUntil:
+    visible: "Zone wählen"
+    timeout: 10000
+- takeScreenshot: build/device-artifacts/p10-03-touch-zone-list
+# The row text is merged (name and state); match by prefix.
+- tapOn: "${ROON_TEST_ZONE}.*"
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 10000
+# Open again and close with the Close row (scroll to it: a Core with many zones pushes it below the screen).
+- runFlow: touch-show-bar.yaml
+- tapOn: "Zonen"
+- extendedWaitUntil:
+    visible: "Zone wählen"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Schließen"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Schließen"
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 10000
+- assertNotVisible: "Zone wählen"

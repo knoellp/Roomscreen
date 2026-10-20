@@ -1,0 +1,18 @@
+# Touch: settings by finger, part 2. The settings are still open with key sounds on: tap the row again (off), scroll with a swipe,
+# leave with the "Schließen" row. The script checks keySounds=false and screen NowPlaying afterwards.
+appId: io.github.knoellp.roomscreen
+---
+- tapOn: "Tastentöne.*"
+- swipe:
+    start: 50%,80%
+    end: 50%,30%
+- takeScreenshot: build/device-artifacts/p10-05-touch-settings-scrolled
+- scrollUntilVisible:
+    element: "Schließen"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Schließen"
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 10000
+- assertNotVisible: "Auswahl ändert.*"

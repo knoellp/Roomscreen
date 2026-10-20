@@ -1,0 +1,45 @@
+# Touch and remote mixed (German UI, zone Büro selected and paused, LRCLIB on so the bar is: Zonen, Einstellungen, Liedtexte, ...).
+# Tap -> keys -> tap -> keys; the focus survives a tap. The script asserts zone Büro, screen NowPlaying at the end.
+# Run: maestro test -e ROON_TEST_ZONE="$ROON_TEST_ZONE" maestro/touch-mixed.yaml
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 30000
+# Tap shows the bar (focus on play/pause when the bar appears); four Left presses reach Zonen (previous, Liedtexte, Einstellungen, Zonen).
+- runFlow: touch-show-bar.yaml
+- repeat:
+    times: 4
+    commands:
+      - pressKey: Remote Dpad Left
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Zone wählen"
+    timeout: 10000
+# Tap on the zone row returns to Now Playing.
+- tapOn: "${ROON_TEST_ZONE}.*"
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 10000
+# Key (Up shows the bar), tap on "Einstellungen", keys in the list: Down five times reaches "Tastentöne" (Hintergrund, Schärfe, Farbe,
+# Bedienelemente, Bildschirm an, Tastentöne), Center toggles it (the script restores it), Back returns.
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- tapOn: "Einstellungen"
+- extendedWaitUntil:
+    visible: "Auswahl ändert.*"
+    timeout: 10000
+- repeat:
+    times: 5
+    commands:
+      - pressKey: Remote Dpad Down
+- pressKey: Remote Dpad Center
+- takeScreenshot: build/device-artifacts/p10-08-touch-mixed-settings
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 10000

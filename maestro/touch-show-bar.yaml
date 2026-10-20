@@ -1,0 +1,17 @@
+# Sub-flow of the touch flows (not run on its own): a tap on the middle of the screen shows the control bar.
+# If the bar is still visible from an earlier input, wait until it has faded, then tap again (the bar hides 5 s after the last input).
+# German UI.
+appId: io.github.knoellp.roomscreen
+---
+- extendedWaitUntil:
+    notVisible: "Einstellungen"
+    timeout: 12000
+    optional: true
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          point: 50%,50%
+      - extendedWaitUntil:
+          visible: "Einstellungen"
+          timeout: 5000

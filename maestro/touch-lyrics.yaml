@@ -1,0 +1,13 @@
+# Touch: lyrics button by finger (German UI, LRCLIB on so the "Liedtexte" bar button exists, zone Büro paused).
+# One tap on the button toggles the lyrics view; scripts/f3b-touch.sh runs this flow twice and checks lyrics_on=true, then false,
+# in DUMP_STATE (the lyrics themselves depend on LRCLIB having the track and are not asserted).
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- runFlow: touch-show-bar.yaml
+- extendedWaitUntil:
+    visible: "Liedtexte"
+    timeout: 5000
+- tapOn: "Liedtexte"
+- takeScreenshot: build/device-artifacts/p10-06-touch-lyrics-toggled

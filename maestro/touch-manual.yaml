@@ -1,0 +1,25 @@
+# Touch: manual entry by finger. Start state (scripts/f3b-touch.sh, as scripts/f3-manual-entry.sh): the saved Core address points at
+# an unused address, so the Connecting screen with the "Adresse manuell eingeben" button is shown. German UI.
+# Taps the button, taps the host field (the keyboard must open: the screenshot shows it), closes the keyboard and taps "Zurück".
+# The typed character stays local to the screen (nothing is tested or saved); the script restores the real address afterwards.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Adresse manuell eingeben"
+    timeout: 30000
+- tapOn: "Adresse manuell eingeben"
+- extendedWaitUntil:
+    visible: "Manuell verbinden"
+    timeout: 10000
+- tapOn: "Host oder IP-Adresse.*"
+# Proof that the tap focused the field: typing works only in a focused field and the keyboard is open.
+- inputText: "1"
+- takeScreenshot: build/device-artifacts/p10-07-touch-manual-keyboard
+- hideKeyboard
+- tapOn: "Zurück"
+- extendedWaitUntil:
+    visible: "Adresse manuell eingeben"
+    timeout: 10000
+- assertNotVisible: "Manuell verbinden"

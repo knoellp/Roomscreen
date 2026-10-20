@@ -1,0 +1,17 @@
+# Touch: settings by finger, part 1 (German UI, zone Büro paused, key sounds off set by the script). Opens the settings and taps the
+# "Tastentöne" row once; scripts/f3b-touch.sh then checks keySounds=true in DUMP_STATE and runs touch-settings-2.yaml.
+appId: io.github.knoellp.roomscreen
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "${ROON_TEST_ZONE} · .*"
+    timeout: 30000
+- runFlow: touch-show-bar.yaml
+- tapOn: "Einstellungen"
+- extendedWaitUntil:
+    visible: "Auswahl ändert.*"
+    timeout: 10000
+- takeScreenshot: build/device-artifacts/p10-04-touch-settings
+# Rows are merged nodes (label and value); match by prefix.
+- tapOn: "Tastentöne.*"
