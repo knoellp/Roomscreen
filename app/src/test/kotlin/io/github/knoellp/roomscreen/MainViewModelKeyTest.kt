@@ -25,7 +25,10 @@ class MainViewModelKeyTest {
     private var nowPlaying = true
     private var always = false
 
+    private var blocked = false
+
     private fun keys(scope: TestScope) = RemoteKeys(
+        blocked = { blocked },
         scope = scope, onNowPlaying = { nowPlaying }, barAlways = { always },
         send = { sent += it },
         log = object : Logger {
@@ -40,6 +43,20 @@ class MainViewModelKeyTest {
         val down = onKey(code, isDown = true)
         val up = onKey(code, isDown = false)
         return down && up
+    }
+
+    @Test fun nothingIsHandledWhileTheDiagnosticsOverlayIsOpen() = runTest {
+        blocked = true
+        val k = keys(this)
+        for (code in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) {
+            assertFalse(k.onKey(code, isDown = true), "down $code")
+            assertFalse(k.onKey(code, isDown = false), "up $code")
+        }
+        assertTrue(sent.isEmpty())
+        assertFalse(k.barShown.value)
+        blocked = false
+        assertTrue(k.press(KeyEvent.KEYCODE_DPAD_LEFT), "keys act again after the overlay closed")
     }
 
     @Test fun hiddenBarLeftRightCenterControlDirectly() = runTest {

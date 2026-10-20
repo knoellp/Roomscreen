@@ -7,6 +7,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.knoellp.roomscreen.roon.ConnectionDiagnostics
 import io.github.knoellp.roomscreen.roon.ConnectionState
 import io.github.knoellp.roomscreen.roon.Endpoint
 import io.github.knoellp.roomscreen.roon.ExtensionIdentity
@@ -32,6 +33,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import io.github.knoellp.roomscreen.lyrics.FileLyricsCache
 import io.github.knoellp.roomscreen.lyrics.LrclibClient
 import io.github.knoellp.roomscreen.lyrics.LyricsQuery
@@ -236,6 +240,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         volumeOpen = { volume.isOpen },
         volumeKey = { code, repeat -> volume.key(code, repeat) },
         volumeTouch = { volume.touch() },
+        // The open diagnostics overlay owns the keys: nothing behind it may act (volume panel, direct D-pad control).
+        blocked = { _diagnosticsOpen.value },
     )
 
     init {
@@ -301,6 +307,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.IO) { identity() }
             val manual = prefs.manual()
             val fixed = if (manual) prefs.lastEndpoint() else null
+            discoverySource = null; discoveryResult = null
             val c = RoonClient(
                 identity = identity(),
                 tokens = prefs,
@@ -310,6 +317,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             client = c
             mirror = launch {
+                launch { c.diagnostics.collect { clientDiagnostics.value = it } }
                 launch {
                     c.state.collect {
                         connection.value = it
@@ -388,10 +396,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (skipCachedEndpoint) {
             skipCachedEndpoint = false
             log.info("endpoint=cache_skipped (search again)")
+            discoverySource = "cache_skipped"
             return discoverWithMulticast()
         }
         val cached = kotlinx.coroutines.runBlocking { prefs.lastEndpoint() }
-        return resolveEndpoint(cached, log) { discoverWithMulticast() }
+        return resolveEndpoint(cached, log, onSource = { discoverySource = it }) { discoverWithMulticast() }
     }
 
     /** The multicast lock is held only while discovering. */
@@ -401,7 +410,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val lock = wifi?.createMulticastLock("roomscreen-sood")?.also { it.setReferenceCounted(false); it.acquire() }
         try {
             val core = SoodDiscovery(log).discover().firstOrNull()
-            log.info("discovery result=${if (core != null) "found host=${core.host} port=${core.httpPort}" else "none"}")
+            val result = if (core != null) "found host=${core.host} port=${core.httpPort}" else "none"
+            log.info("discovery result=$result")
+            discoveryResult = if (core != null) "found ${core.host}:${core.httpPort}" else "none"
             return core?.let { Endpoint(it.host, it.httpPort) }
         } finally {
             lock?.release()
@@ -411,6 +422,59 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile private var cachedIdentity: ExtensionIdentity? = null
     val extensionName: String get() = cachedIdentity?.displayName ?: "Roomscreen"
 
+    // ---- diagnostics ----
+
+    private val buildInfo: BuildInfo by lazy { collectBuildInfo(getApplication()) }
+    private val inputTrace = InputTrace()
+    private val tapCounter = TapCounter()
+    private val clientDiagnostics = MutableStateFlow(ConnectionDiagnostics())
+    @Volatile private var discoverySource: String? = null
+    @Volatile private var discoveryResult: String? = null
+    @Volatile private var foregroundSinceMs: Long? = null
+
+    private val _diagnosticsOpen = MutableStateFlow(false)
+    /** Whether the diagnostics overlay is shown. */
+    val diagnosticsOpen: StateFlow<Boolean> = _diagnosticsOpen
+
+    private fun diagnosticsSnapshot(): DiagnosticsInfo {
+        val c = clientDiagnostics.value
+        return DiagnosticsInfo(
+            build = buildInfo,
+            state = connection.value.toString(),
+            core = (endpoint.value ?: savedEndpoint.value)?.let { "${it.host}:${it.port}" } ?: "",
+            connection = c.copy(endpointSource = discoverySource ?: c.endpointSource, discoveryResult = discoveryResult ?: c.discoveryResult),
+            foregroundSinceMs = foregroundSinceMs,
+            nowMs = System.currentTimeMillis(),
+            inputs = inputTrace.snapshot(),
+            log = AndroidLogger.buffer.snapshot(),
+        )
+    }
+
+    /** Facts for the overlay; refreshed twice a second while the overlay is open. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val diagnostics: StateFlow<DiagnosticsInfo> = _diagnosticsOpen
+        .flatMapLatest { open ->
+            if (!open) flowOf(diagnosticsSnapshot())
+            else flow { while (true) { emit(diagnosticsSnapshot()); delay(500) } }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, diagnosticsSnapshot())
+
+    fun openDiagnostics() { _diagnosticsOpen.value = true; log.info("diagnostics open=true") }
+    fun closeDiagnostics() { _diagnosticsOpen.value = false; log.info("diagnostics open=false") }
+
+    /** A tap on the bottom right corner of Now Playing; the fifth within the window opens the diagnostics. */
+    fun cornerTap() { if (tapCounter.tap(System.currentTimeMillis())) openDiagnostics() }
+
+    /** Called from onStart / onStop; the overlay shows how long the app has been in front. */
+    fun onForeground() { foregroundSinceMs = System.currentTimeMillis() }
+    fun onBackground() { foregroundSinceMs = null }
+
+    /** A key press (initial key down only) for the overlay's input list. */
+    fun recordKey(code: Int, name: String) { inputTrace.add("key ${name.removePrefix("KEYCODE_")} ($code)") }
+
+    /** A finger touching down at [x], [y] (pixels) for the overlay's input list. */
+    fun recordTouch(x: Int, y: Int) { inputTrace.add("touch $x,$y") }
+
     private fun identity(): ExtensionIdentity = cachedIdentity ?: buildIdentity().also { cachedIdentity = it }
 
     private fun buildIdentity(): ExtensionIdentity {
@@ -419,7 +483,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return ExtensionIdentity(
             extensionId = "io.github.knoellp.roomscreen.${prefs.installId()}",
             displayName = "Roomscreen ($device)",
-            displayVersion = "0.1.0",
+            displayVersion = buildInfo.version,
             publisher = "knoellp",
             email = "knoellp@users.noreply.github.com",
         )
@@ -515,6 +579,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } }))
         }
+        put("diagnostics_open", _diagnosticsOpen.value)
         put("volume_panel", volume.state.value?.selected ?: -1)
         put("lyrics_on", lyricsOn.value)
         put("lyrics", when (val l = _lyrics.value) {

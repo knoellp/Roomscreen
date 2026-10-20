@@ -56,6 +56,7 @@ fun SettingsScreen(
     onChange: (AppSettings) -> Unit,
     onRediscover: () -> Unit,
     onSwitchZone: () -> Unit,
+    onShowDiagnostics: () -> Unit = {},
 ) {
     val rows = listOf(
         SettingItem("bg", R.string.setting_background, stringResource(settings.background.label)) { onChange(settings.copy(background = settings.background.next())) },
@@ -76,6 +77,7 @@ fun SettingsScreen(
             },
         )),
         SettingItem("rediscover", R.string.setting_rediscover, null, onSelect = onRediscover),
+        SettingItem("diagnostics", R.string.setting_diagnostics, null, onSelect = onShowDiagnostics),
         SettingItem("zone", R.string.setting_switch_zone, null, onSelect = onSwitchZone),
     )
     val first = remember { FocusRequester() }

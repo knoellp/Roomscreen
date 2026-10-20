@@ -3,7 +3,6 @@ package io.github.knoellp.roomscreen
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -22,6 +21,7 @@ import kotlinx.coroutines.launch
  * SET_LRCLIB (extra value=on|off) writes the "Lyrics (LRCLIB)" setting, the same as the settings row.
  * OPEN_VOLUME opens the volume panel like the speaker button; DUMP_STATE then shows `volume_panel` (selected row, -1 = closed) and `volume`
  * (name, value, min, max, muted of every controllable output of the shown zone).
+ * OPEN_DIAGNOSTICS opens the diagnostics overlay (Back closes it); DUMP_STATE then shows `diagnostics_open`.
  * SELECT_ZONE (extra name) selects a zone by display name without sending any command.
  * CLEAR_ENDPOINT forgets only the stored Core address (host, port, manual); token and zone stay. Works while the app is stopped;
  * restart the app afterwards to see discovery run. (RESET below also clears token and zone.)
@@ -37,7 +37,7 @@ class DebugReceiver : BroadcastReceiver() {
                 try {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(viaRoon = on))
-                    Log.i(AndroidLogger.TAG, "debug via_roon=${if (on) "on" else "off"}")
+                    AndroidLogger.info("debug via_roon=${if (on) "on" else "off"}")
                 } finally {
                     pending.finish()
                 }
@@ -51,7 +51,7 @@ class DebugReceiver : BroadcastReceiver() {
                 try {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(keySounds = on))
-                    Log.i(AndroidLogger.TAG, "debug key_sounds=${if (on) "on" else "off"}")
+                    AndroidLogger.info("debug key_sounds=${if (on) "on" else "off"}")
                 } finally {
                     pending.finish()
                 }
@@ -63,7 +63,7 @@ class DebugReceiver : BroadcastReceiver() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     Prefs(context).clearEndpoint()
-                    Log.i(AndroidLogger.TAG, "debug endpoint=cleared")
+                    AndroidLogger.info("debug endpoint=cleared")
                 } finally {
                     pending.finish()
                 }
@@ -77,7 +77,7 @@ class DebugReceiver : BroadcastReceiver() {
                 try {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(sharpness = sharp))
-                    Log.i(AndroidLogger.TAG, "debug sharpness=${sharp.name}")
+                    AndroidLogger.info("debug sharpness=${sharp.name}")
                 } finally {
                     pending.finish()
                 }
@@ -95,7 +95,7 @@ class DebugReceiver : BroadcastReceiver() {
                 try {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(background = src))
-                    Log.i(AndroidLogger.TAG, "debug background=${src.name}")
+                    AndroidLogger.info("debug background=${src.name}")
                 } finally {
                     pending.finish()
                 }
@@ -109,7 +109,7 @@ class DebugReceiver : BroadcastReceiver() {
                 try {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(lyricsOffsetMs = ms))
-                    Log.i(AndroidLogger.TAG, "debug lyrics_offset_ms=$ms")
+                    AndroidLogger.info("debug lyrics_offset_ms=$ms")
                 } finally {
                     pending.finish()
                 }
@@ -123,7 +123,7 @@ class DebugReceiver : BroadcastReceiver() {
                 try {
                     val prefs = Prefs(context)
                     prefs.saveSettings(prefs.settings.first().copy(screenOn = mode))
-                    Log.i(AndroidLogger.TAG, "debug screen_on=${mode.name}")
+                    AndroidLogger.info("debug screen_on=${mode.name}")
                 } finally {
                     pending.finish()
                 }
@@ -131,9 +131,9 @@ class DebugReceiver : BroadcastReceiver() {
             return
         }
         val vm = StateRegistry.current
-        if (vm == null) { Log.w(AndroidLogger.TAG, "debug action=${intent.action} result=no_viewmodel"); return }
+        if (vm == null) { AndroidLogger.warn("debug action=${intent.action} result=no_viewmodel"); return }
         when (intent.action) {
-            "io.github.knoellp.roomscreen.DUMP_STATE" -> Log.i(AndroidLogger.TAG, "state ${vm.dumpState()}")
+            "io.github.knoellp.roomscreen.DUMP_STATE" -> AndroidLogger.info("state ${vm.dumpState()}")
             "io.github.knoellp.roomscreen.DUMP_ZONES" -> vm.dumpZones()
             "io.github.knoellp.roomscreen.SET_HOST" -> {
                 val host = intent.getStringExtra("host") ?: return
@@ -141,6 +141,7 @@ class DebugReceiver : BroadcastReceiver() {
             }
             "io.github.knoellp.roomscreen.SELECT_ZONE" -> vm.debugSelectZone(intent.getStringExtra("name") ?: return)
             "io.github.knoellp.roomscreen.OPEN_VOLUME" -> vm.debugOpenVolume()
+            "io.github.knoellp.roomscreen.OPEN_DIAGNOSTICS" -> vm.openDiagnostics()
             "io.github.knoellp.roomscreen.SET_LYRICS" -> vm.setLyrics(intent.getStringExtra("value") == "on")
             "io.github.knoellp.roomscreen.SET_LRCLIB" -> vm.debugSetLrclib(intent.getStringExtra("value") == "on")
             "io.github.knoellp.roomscreen.RESET" -> vm.debugReset()

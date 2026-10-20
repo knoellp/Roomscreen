@@ -55,24 +55,8 @@ import org.robolectric.annotation.GraphicsMode
 class ScreenshotTest {
     @get:Rule val rule = createComposeRule()
 
-    private val playing = Zone(
-        zoneId = "z1", displayName = "Büro", state = "playing", isPauseAllowed = true,
-        outputs = listOf(Output("o1", "Büro", Volume("number", 0.0, 100.0, 41.0, 1.0, softLimit = 100.0))),
-        nowPlaying = NowPlaying(
-            seekPosition = 42, length = 215, imageKey = "k",
-            threeLine = Lines("Alive", "Pearl Jam", "Ten"),
-        ),
-    )
-    private val zones = listOf(
-        playing,
-        Zone("z2", "Kamin", state = "paused"),
-        Zone("z3", "Schlafzimmer", state = "stopped"),
-        Zone("z4", "Bad", state = "paused"),
-        Zone("z5", "Fernseher", state = "playing", nowPlaying = NowPlaying(threeLine = Lines("Concierto de Aranjuez for Guitar and Orchestra: 1. Allegro con spirito", "Joaquín Rodrigo / Pepe Romero / Neville Marriner", "The Best Ever Guitar Collection"))),
-        Zone("z6", "MacBook Pro", state = "paused"),
-        Zone("z7", "Küche", state = "stopped"),
-        Zone("z8", "Terrasse", state = "loading"),
-    )
+    private val playing = Samples.playing
+    private val zones = Samples.zones
 
     private fun shot(name: String, content: @Composable () -> Unit) {
         rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { content() } }
@@ -95,20 +79,9 @@ class ScreenshotTest {
 
     // ---- Now Playing (Phase 2) ----
 
-    /** A synthetic album cover: gradient plus circles, so crop, blur and crossfade are visible without network. */
-    private fun fakeCover(top: Int, bottom: Int, ring: Int): Bitmap {
-        val b = Bitmap.createBitmap(600, 600, Bitmap.Config.ARGB_8888)
-        val c = Canvas(b)
-        val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        p.shader = LinearGradient(0f, 0f, 0f, 600f, top, bottom, Shader.TileMode.CLAMP)
-        c.drawRect(0f, 0f, 600f, 600f, p)
-        p.shader = null; p.color = ring; p.style = Paint.Style.STROKE; p.strokeWidth = 40f
-        c.drawCircle(300f, 300f, 180f, p)
-        p.style = Paint.Style.FILL; p.color = 0xFFFFFFFF.toInt(); c.drawCircle(300f, 300f, 60f, p)
-        return b
-    }
+    private fun fakeCover(top: Int, bottom: Int, ring: Int) = Samples.fakeCover(top, bottom, ring)
 
-    private val coverBitmap by lazy { fakeCover(0xFFD9822B.toInt(), 0xFF7A1F2B.toInt(), 0xFF1D1D1D.toInt()) }
+    private val coverBitmap get() = Samples.coverBitmap
     private val cover by lazy { coverBitmap.asImageBitmap() }
     private val backdrop by lazy { BackdropBlur.compute(coverBitmap).asImageBitmap() }
     private val pos = { 42_000L }
@@ -150,9 +123,8 @@ class ScreenshotTest {
 
     // ---- Lyrics (Phase 3). Placeholder text only; no real song lyrics in the repository. ----
 
-    private val sampleLines = (1..14).map { io.github.knoellp.roomscreen.lyrics.LrcLine(it * 10_000L, "Sample lyric line number $it goes here") }
-        .toMutableList().apply { this[8] = io.github.knoellp.roomscreen.lyrics.LrcLine(90_000L, "") }
-    private val lyricsZone = playing.copy(nowPlaying = playing.nowPlaying!!.copy(threeLine = Lines("Fortress Around Your Heart", "Sting", "The Dream Of The Blue Turtles"), seekPosition = 62, length = 280))
+    private val sampleLines = Samples.sampleLines
+    private val lyricsZone = Samples.lyricsZone
 
     private fun lyrics(name: String, state: LyricsState, positionMs: Long = 62_000L, zone: Zone = lyricsZone, bar: Boolean = false, on: Boolean = true) =
         shot(name) { NowPlayingContent(zone, { positionMs }, 280_000L, cover, backdrop, AppSettings(), barVisible = bar, lyrics = state, lyricsAvailable = true, lyricsOn = on) }
@@ -189,7 +161,7 @@ class ScreenshotTest {
     // ---- Volume panel ----
 
     private fun volumeRow(id: String?, name: String, value: Double?, muted: Boolean = false, fixed: Boolean = false, kind: VolumeKind = VolumeKind.NUMBER, soft: Double? = null) =
-        VolumeRow(id, name, kind, value, 0.0, 100.0, soft, muted, fixed)
+        Samples.volumeRow(id, name, value, muted, fixed, kind, soft)
 
     private fun volume(name: String, rows: List<VolumeRow>, selected: Int) =
         shot(name) { NowPlayingContent(playing, pos, length, cover, backdrop, AppSettings(), barVisible = false, volumePanel = VolumePanelState(rows, selected)) }
@@ -240,6 +212,11 @@ class ScreenshotTest {
             }
         }
     }
+
+    @Test fun diagnostics() = shot("11-diagnostics") { DiagnosticsOverlay(Samples.diagnostics) }
+
+    @Test @Config(qualifiers = "de-w960dp-h540dp-xhdpi")
+    fun diagnosticsGerman() = shot("11b-diagnostics-de") { DiagnosticsOverlay(Samples.diagnostics) }
 
     @Test fun zoneListCurrentMarked() = shot("4b-zone-list-current") { ZoneListScreen(zones, currentZoneId = "z1") {} }
 

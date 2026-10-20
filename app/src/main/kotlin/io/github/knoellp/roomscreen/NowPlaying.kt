@@ -12,6 +12,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -101,6 +103,7 @@ fun NowPlayingScreen(
     onLyrics: () -> Unit = {},
     onVolume: () -> Unit = {},
     volumePanel: VolumePanelState? = null,
+    onCornerTap: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var cover by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -126,7 +129,7 @@ fun NowPlayingScreen(
         barVisible = barVisible, autoFocusBar = !always,
         onZones = onZones, onSettings = onSettings, onControl = onControl,
         lyrics = lyrics, lyricsAvailable = lyricsAvailable, lyricsOn = lyricsOn, onLyrics = onLyrics,
-        onVolume = onVolume, volumePanel = volumePanel,
+        onVolume = onVolume, volumePanel = volumePanel, onCornerTap = onCornerTap,
     )
 }
 
@@ -151,6 +154,7 @@ fun NowPlayingContent(
     onLyrics: () -> Unit = {},
     onVolume: () -> Unit = {},
     volumePanel: VolumePanelState? = null,
+    onCornerTap: () -> Unit = {},
 ) {
     val lines = zone.nowPlaying?.threeLine
     Box(Modifier.fillMaxSize().background(settings.backgroundColor.color)) {
@@ -177,7 +181,14 @@ fun NowPlayingContent(
         } else {
             InfoStrip(Modifier.align(Alignment.BottomCenter), zone, positionMs, lengthMs, cover, noLyrics = lyrics is LyricsState.None)
         }
-        if (settings.viaRoon) ViaRoon(Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 14.dp))
+        // The corner counts taps for the diagnostics overlay; it is there whether or not the hint is shown.
+        Box(
+            Modifier.align(Alignment.BottomEnd).size(Tokens.diagnosticsCornerWidth, Tokens.diagnosticsCornerHeight)
+                .pointerInput(Unit) { detectTapGestures { onCornerTap() } },
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            if (settings.viaRoon) ViaRoon(Modifier.padding(end = 48.dp, bottom = 14.dp))
+        }
         AnimatedVisibility(
             visible = barVisible,
             modifier = Modifier.align(Alignment.TopCenter),

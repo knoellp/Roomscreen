@@ -30,6 +30,8 @@ class RemoteKeys(
     private val volumeOpen: () -> Boolean = { false },
     private val volumeKey: (keyCode: Int, repeat: Boolean) -> Unit = { _, _ -> },
     private val volumeTouch: () -> Unit = {},
+    /** While true (diagnostics overlay open) no key is handled; everything passes through to the overlay. */
+    private val blocked: () -> Boolean = { false },
 ) {
     private val shown = MutableStateFlow(false)
     private var hideJob: Job? = null
@@ -52,6 +54,7 @@ class RemoteKeys(
 
     /** Returns true if the key event was handled (consumed). Acts only on the initial key down; down and up are both consumed. */
     fun onKey(keyCode: Int, isDown: Boolean, isRepeat: Boolean = false): Boolean {
+        if (blocked()) return false
         val isUp = !isDown && !isRepeat
         // The open volume panel has priority: the D-pad, Center/Enter and Back belong to it (key repeat of Left/Right counts as clicks).
         if (onNowPlaying() && volumeOpen() && keyCode.isPanelKey()) {

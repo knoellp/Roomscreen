@@ -36,13 +36,22 @@ class MainActivity : ComponentActivity() {
         AndroidLogger.info("key code=${event.keyCode} name=${android.view.KeyEvent.keyCodeToString(event.keyCode)} action=${event.action} repeat=${event.repeatCount}")
         // Act once per press (ignore key repeat); both down and up are consumed when handled.
         val down = event.action == android.view.KeyEvent.ACTION_DOWN
+        if (down && event.repeatCount == 0) viewModel.recordKey(event.keyCode, android.view.KeyEvent.keyCodeToString(event.keyCode))
         if (viewModel.onKey(event.keyCode, isDown = down && event.repeatCount == 0, isRepeat = down && event.repeatCount > 0)) return true
         return super.dispatchKeyEvent(event)
     }
 
-    override fun onStart() { super.onStart(); StateRegistry.current = viewModel; viewModel.connect() }
+    override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
+        if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+            AndroidLogger.info("touch action=down x=${event.x.toInt()} y=${event.y.toInt()}")
+            viewModel.recordTouch(event.x.toInt(), event.y.toInt())
+        }
+        return super.dispatchTouchEvent(event)
+    }
 
-    override fun onStop() { viewModel.disconnectDelayed(); super.onStop() }
+    override fun onStart() { super.onStart(); StateRegistry.current = viewModel; viewModel.onForeground(); viewModel.connect() }
+
+    override fun onStop() { viewModel.onBackground(); viewModel.disconnectDelayed(); super.onStop() }
 }
 
 @Composable
@@ -53,6 +62,7 @@ private fun Root(vm: MainViewModel) {
     val barVisible by vm.barVisible.collectAsState()
     val settings by vm.settings.collectAsState()
     val volumePanel by vm.volumePanel.collectAsState()
+    val diagnosticsOpen by vm.diagnosticsOpen.collectAsState()
     SoundEffectsScope(settings.keySounds) {
     when (val s = screen) {
         is Screen.Connecting -> ConnectingScreen(s.status, vm::openManual, saved?.let { "${it.host}:${it.port}" })
@@ -66,11 +76,16 @@ private fun Root(vm: MainViewModel) {
             ZoneListScreen(s.zones, s.currentZoneId) { vm.selectZone(it) }
         }
         Screen.MissingZone -> MissingZoneScreen(onChoose = vm::openZoneList)
-        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, barVisible, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics, vm::openVolume, volumePanel)
+        is Screen.NowPlaying -> NowPlayingScreen(s.zone, s.coverUrl, s.backdropUrl, settings, barVisible, vm::openZoneList, vm::openSettings, vm::control, s.lyrics, s.lyricsAvailable, s.lyricsOn, vm::toggleLyrics, vm::openVolume, volumePanel, vm::cornerTap)
         is Screen.SettingsPage -> {
             BackHandler { vm.closeSettings() }
-            SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings)
+            SettingsScreen(settings, s.coreAddress, vm::updateSettings, vm::rediscover, vm::switchZoneFromSettings, vm::openDiagnostics)
         }
+    }
+    if (diagnosticsOpen) {
+        BackHandler { vm.closeDiagnostics() }
+        val info by vm.diagnostics.collectAsState()
+        DiagnosticsOverlay(info)
     }
     }
 }
