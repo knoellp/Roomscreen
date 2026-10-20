@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    override fun onStart() { super.onStart(); viewModel.connect() }
+    override fun onStart() { super.onStart(); StateRegistry.current = viewModel; viewModel.connect() }
 
     override fun onStop() { viewModel.disconnectDelayed(); super.onStop() }
 }

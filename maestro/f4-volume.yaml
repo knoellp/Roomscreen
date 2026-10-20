@@ -1,9 +1,13 @@
 # Volume panel (docs/SPEC.md section 6.1), German UI, zone "Büro" selected and connected. Driven in steps by scripts/f4-volume.sh:
-# the script reads DUMP_STATE (volume, volume_panel) and `roon-cli zones` between the steps. Not run yet (device part pending).
-# STEP=open   : Up shows the bar, Right Right moves from Play to the speaker button, Center opens the panel; the bar is hidden then.
-# STEP=up3    : Right x3 in the panel (three clicks of one step each).
-# STEP=down3  : Left x3 in the panel (back to the start value).
-# STEP=back   : Back closes the panel and the app stays in the foreground.
+# the script reads DUMP_STATE (volume, volume_panel) and `roon-cli zones` after each step.
+# Timing on the stick: the control bar hides 5 s after the last key and the panel closes 8 s after the last key, while a
+# Maestro takeScreenshot takes more than 5 s. So every step opens the panel itself (Up, Right, Right, Center) with no
+# screenshot or wait between the keys, and the panel checks are Maestro assertions right after the keys.
+# STEP=open   : open; the panel row "Büro" is visible and the bar is hidden (checked here: by the time the script reads
+#               DUMP_STATE after the flow, the 8 s may be over).
+# STEP=up3    : open, Right x3 (three clicks of one step each); the row shows the start value + 3 (VALUE).
+# STEP=down3  : open, Left x3; the row shows the start value (VALUE).
+# STEP=back   : open, Back; the panel is gone and the app stays on Now Playing.
 # Screenshots go to build/device-artifacts/p7-*.png.
 appId: io.github.knoellp.roomscreen
 ---
@@ -12,22 +16,23 @@ appId: io.github.knoellp.roomscreen
 - extendedWaitUntil:
     visible: "Büro · .*"
     timeout: 30000
+- pressKey: Remote Dpad Up
+- extendedWaitUntil:
+    visible: "Einstellungen"
+    timeout: 5000
+- pressKey: Remote Dpad Right
+- pressKey: Remote Dpad Right
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    notVisible: "Einstellungen"
+    timeout: 5000
 - runFlow:
     when:
       true: ${STEP == 'open'}
     commands:
-      - pressKey: Remote Dpad Up
-      - extendedWaitUntil:
-          visible: "Einstellungen"
-          timeout: 5000
-      - pressKey: Remote Dpad Right
-      - pressKey: Remote Dpad Right
-      - takeScreenshot: build/device-artifacts/p7-01-speaker-focused
-      - pressKey: Remote Dpad Center
-      - extendedWaitUntil:
-          notVisible: "Einstellungen"
-          timeout: 5000
-      - takeScreenshot: build/device-artifacts/p7-02-panel-open
+      - assertVisible: "Büro"
+      - assertNotVisible: "Einstellungen"
+      - takeScreenshot: build/device-artifacts/p7-01-panel-open
 - runFlow:
     when:
       true: ${STEP == 'up3'}
@@ -35,6 +40,7 @@ appId: io.github.knoellp.roomscreen
       - pressKey: Remote Dpad Right
       - pressKey: Remote Dpad Right
       - pressKey: Remote Dpad Right
+      - assertVisible: ${VALUE}
       - takeScreenshot: build/device-artifacts/p7-03-after-right-3
 - runFlow:
     when:
@@ -43,6 +49,7 @@ appId: io.github.knoellp.roomscreen
       - pressKey: Remote Dpad Left
       - pressKey: Remote Dpad Left
       - pressKey: Remote Dpad Left
+      - assertVisible: ${VALUE}
       - takeScreenshot: build/device-artifacts/p7-04-after-left-3
 - runFlow:
     when:
