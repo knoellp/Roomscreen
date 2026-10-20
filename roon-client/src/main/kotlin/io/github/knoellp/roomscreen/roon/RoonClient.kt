@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -39,6 +40,17 @@ sealed interface ConnectionState {
     data object Connected : ConnectionState
     data class Reconnecting(val attempt: Int) : ConnectionState
 }
+
+/**
+ * What the diagnostics overlay shows about the connection. [endpointSource] is `fixed` when the client was given an
+ * endpoint (manual), cached / cached_unreachable / rediscover / cache_skipped when the app's discovery lambda reports it.
+ */
+data class ConnectionDiagnostics(
+    val endpointSource: String? = null,
+    val discoveryResult: String? = null,
+    val tokenPresent: Boolean? = null,
+    val lastError: String? = null,
+)
 
 /** A raw `subscribe_zones` message together with its arrival time (from the injected clock). */
 data class ZoneEvent(val name: String, val body: JsonObject, val atMs: Long)
@@ -58,14 +70,22 @@ data class Endpoint(val host: String, val port: Int) {
  * Cached endpoint first: if [cached] accepts a TCP connection it is used and [discover] is not
  * called (no multicast needed). Otherwise [discover] runs. Blocking; called on every connect attempt.
  */
-fun resolveEndpoint(cached: Endpoint?, logger: Logger, probeTimeoutMs: Int = 1500, discover: () -> Endpoint?): Endpoint? {
+fun resolveEndpoint(
+    cached: Endpoint?,
+    logger: Logger,
+    probeTimeoutMs: Int = 1500,
+    onSource: (String) -> Unit = {},
+    discover: () -> Endpoint?,
+): Endpoint? {
     if (cached != null) {
         if (cached.isReachable(probeTimeoutMs)) {
+            onSource("cached")
             logger.info("endpoint=cached host=${cached.host} port=${cached.port}")
             return cached
         }
         logger.info("endpoint=cached_unreachable host=${cached.host} port=${cached.port}")
         logger.info("endpoint=rediscover reason=unreachable")
+        onSource("cached_unreachable")
     }
     return discover()
 }
@@ -94,6 +114,10 @@ class RoonClient(
 ) {
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Idle)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
+
+    private val _diagnostics = MutableStateFlow(ConnectionDiagnostics(endpointSource = if (fixed != null) "fixed" else null))
+    /** Connection facts for the diagnostics overlay (token, last error, fixed endpoint). */
+    val diagnostics: StateFlow<ConnectionDiagnostics> = _diagnostics.asStateFlow()
 
     private val _zones = MutableStateFlow<Map<String, Zone>>(emptyMap())
     val zones: StateFlow<Map<String, Zone>> = _zones.asStateFlow()
@@ -155,7 +179,10 @@ class RoonClient(
             }
             try {
                 val endpoint = if (fixed != null && attempt < rediscoverAfter) fixed else {
-                    if (fixed != null) logger.info("endpoint=rediscover reason=unreachable attempts=$attempt host=${fixed.host} port=${fixed.port}")
+                    if (fixed != null) {
+                        logger.info("endpoint=rediscover reason=unreachable attempts=$attempt host=${fixed.host} port=${fixed.port}")
+                        _diagnostics.update { it.copy(endpointSource = "rediscover") }
+                    }
                     withContext(Dispatchers.IO) { discover() }
                 } ?: throw IllegalStateException("no Core found")
                 _state.value = if (attempt == 0) ConnectionState.Connecting else ConnectionState.Reconnecting(attempt)
@@ -163,10 +190,12 @@ class RoonClient(
             } catch (e: TimeoutCancellationException) {
                 // A timeout (connect, info, register) is a failed attempt, not a cancellation of the loop.
                 logger.warn("conn=session_failed error=timeout: ${e.message}")
+                recordError("timeout: ${e.message}")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.warn("conn=session_failed error=${e.javaClass.simpleName}: ${e.message}")
+                recordError("${e.javaClass.simpleName}: ${e.message}")
             }
             session = null
             _zones.value = emptyMap()
@@ -176,6 +205,11 @@ class RoonClient(
             logger.info("conn=reconnect_in ms=$wait attempt=$attempt")
             delay(wait)
         }
+    }
+
+    private fun recordError(text: String) {
+        val t = java.time.LocalTime.ofSecondOfDay((clock() / 1000) % 86_400).toString()
+        _diagnostics.update { it.copy(lastError = "$text ($t UTC)") }
     }
 
     /** Runs one connection until it closes. Returns true if it reached Connected. */
@@ -199,6 +233,7 @@ class RoonClient(
             delay(tick)
             if (connection.silentForMs() >= silenceTimeoutMs) {
                 logger.warn("conn watchdog=silence seconds=${silenceTimeoutMs / 1000}")
+                recordError("watchdog: no frame for ${silenceTimeoutMs / 1000} s")
                 connection.abort()
                 return
             }
@@ -212,7 +247,7 @@ class RoonClient(
 
         coroutineScope {
             val registration = async {
-                registry.register(info.coreId, authTimeoutMs) { _state.value = ConnectionState.AwaitingAuthorization }
+                registry.register(info.coreId, authTimeoutMs, onTokenChecked = { present -> _diagnostics.update { it.copy(tokenPresent = present) } }) { _state.value = ConnectionState.AwaitingAuthorization }
             }
             // A stored token answers at once; a slow answer means the user must enable the extension in Roon.
             if (withTimeoutOrNull(AUTH_NOTICE_MS) { registration.await() } == null) {

@@ -101,6 +101,36 @@ class RoonClientFakeCoreTest {
     }
 
     @Test
+    fun `diagnostics show the fixed endpoint and the token state`() = runBlocking {
+        val withToken = MemoryTokenStore().also { it.put(core.coreId, core.token) }
+        val c = client(withToken)
+        assertEquals(ConnectionDiagnostics(endpointSource = "fixed"), c.diagnostics.value)
+        c.start(scope)
+        c.await(ConnectionState.Connected)
+        assertEquals("fixed", c.diagnostics.value.endpointSource)
+        assertEquals(true, c.diagnostics.value.tokenPresent)
+        assertNull(c.diagnostics.value.lastError)
+        c.stop()
+
+        core.requireEnable = false
+        val fresh = client(MemoryTokenStore(), rediscover = true)
+        assertNull(fresh.diagnostics.value.endpointSource)
+        fresh.start(scope)
+        fresh.await(ConnectionState.Connected)
+        assertEquals(false, fresh.diagnostics.value.tokenPresent)
+        fresh.stop()
+    }
+
+    @Test
+    fun `diagnostics keep the last session error`() = runBlocking {
+        val c = RoonClient(identity, MemoryTokenStore(), discover = { null }, backoff = Backoff(baseMs = 50, maxMs = 200))
+        c.start(scope)
+        val d = withTimeout(10_000) { c.diagnostics.first { it.lastError != null } }
+        assertTrue(d.lastError!!.contains("no Core found"), d.lastError)
+        c.stop()
+    }
+
+    @Test
     fun `stored token is reused without a new authorization`() = runBlocking {
         val tokens = MemoryTokenStore().also { it.put(core.coreId, core.token) }
         val c = client(tokens)

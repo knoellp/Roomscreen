@@ -142,6 +142,9 @@ object Tokens {
     val barButtonSize by dp(56)
     val lyricsLineHeight by dp(50)
     val volumePanelWidth by dp(460)
+    /** Tap area in the bottom right corner that opens the diagnostics overlay (the via roon hint sits in it). */
+    val diagnosticsCornerWidth by dp(160)
+    val diagnosticsCornerHeight by dp(60)
 
     // Durations
     val barVisibleMs by ms(5000L)
@@ -152,6 +155,8 @@ object Tokens {
     val connectHintAfterMs by ms(20000L)
     val pendingMs by ms(3000L)
     val disconnectDelayMs by ms(2000L)
+    /** Window in which the corner must be tapped [diagnosticsTapCount] times. */
+    val diagnosticsTapWindowMs by ms(3000L)
 
     // Factors
     val lyricsActiveScale by factor(1.13)
@@ -161,4 +166,6 @@ object Tokens {
     val lyricsAlphaDistance2 by factor(0.42)
     val lyricsAlphaDistance3 by factor(0.28)
     val lyricsAlphaFarther by factor(0.16)
+    /** Number of corner taps that open the diagnostics overlay (a whole number). */
+    val diagnosticsTapCount by factor(5.0)
 }

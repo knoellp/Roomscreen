@@ -58,6 +58,7 @@ class Registry(
     suspend fun register(
         coreId: String,
         authTimeoutMs: Long = 10 * 60_000L,
+        onTokenChecked: (Boolean) -> Unit = {},
         onPending: () -> Unit = {},
     ): String {
         val stored = tokens.get(coreId)
@@ -72,6 +73,7 @@ class Registry(
             put("provided_services", JsonArray(listOf(JsonPrimitive("com.roonlabs.ping:1"))))
             if (stored != null) put("token", JsonPrimitive(stored))
         }
+        onTokenChecked(stored != null)
         logger.info("registry=register_sent core_id=$coreId token_present=${stored != null}")
 
         val result = CompletableDeferred<String>()

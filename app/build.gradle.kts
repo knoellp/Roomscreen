@@ -3,6 +3,18 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/** Short hash of the checked-out commit for the diagnostics overlay; "unknown" without git or without a repository. */
+fun gitShortHash(): String = try {
+    val process = ProcessBuilder("git", "-c", "safe.directory=*", "rev-parse", "--short", "HEAD")
+        .directory(rootProject.projectDir)
+        .redirectError(ProcessBuilder.Redirect.DISCARD)
+        .start()
+    val out = process.inputStream.bufferedReader().readText().trim()
+    if (process.waitFor() == 0 && out.isNotEmpty()) out else "unknown"
+} catch (e: Exception) {
+    "unknown"
+}
+
 android {
     namespace = "io.github.knoellp.roomscreen"
     compileSdk = 37
@@ -13,6 +25,7 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "1.0.0"
+        buildConfigField("String", "GIT_COMMIT", "\"${gitShortHash()}\"")
     }
 
     // Release key from the environment (config/signing.env via scripts/dock). Without it the debug build keeps the
@@ -41,7 +54,10 @@ android {
         }
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
