@@ -39,8 +39,15 @@ shot p10-00-start
 echo "== 1. touch-bar: tap shows the bar, play/pause, next, play/pause"
 prep; T0=$(field title)
 run touch-bar maestro/touch-bar.yaml
-check "touch-bar zone paused again" paused "$(field state)"
-differs "touch-bar next changed the title" "$T0" "$(field title)"
+check "touch-bar play by tap: zone playing" playing "$(field state)"
+# While playing, Maestro is too slow for the 5 s bar (see the flow header); the next and pause taps are injected directly.
+# Bar buttons on the 1920x1080 stick: y=96, play/pause x=1512, next x=1648 (from the touch log of the Maestro tap by text).
+sh input tap 960 540; sh input tap 1648 96; sleep 4
+differs "touch-bar next by tap changed the title" "$T0" "$(field title)"
+sh input tap 960 540; sh input tap 1512 96; sleep 3
+check "touch-bar pause by tap: zone paused" paused "$(field state)"
+applog | grep -E "control send=(playpause|next)" | tail -3 | sed 's/^[0-9-]* //;s/ [0-9]* [0-9]* I Roomscreen:/ /'
+
 
 echo "== 2. touch-zones: Zonen -> row -> Now Playing; Zonen -> Schließen -> Now Playing"
 prep

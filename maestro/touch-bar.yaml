@@ -1,6 +1,8 @@
 # Touch: control bar by finger (German UI, zone Büro selected and paused; scripts/f3b-touch.sh sets that up).
-# A tap on the screen shows the bar; play/pause and next are tapped by their content descriptions. The effect is read from the
-# info strip ("Büro · Spielt"/"Büro · Pausiert") and, afterwards, from DUMP_STATE by the script (title changed, zone paused).
+# A tap on the screen shows the bar; play/pause is tapped by its content description while the zone is paused. While the zone
+# plays, Maestro needs more than the 5 s the bar stays for an element lookup or for its idle wait (the progress bar animates, see
+# ARCHITECTURE.md 9.6), so the next and pause taps while playing are injected by scripts/f3b-touch.sh with `input tap` and
+# checked through DUMP_STATE.
 # Run: maestro test -e ROON_TEST_ZONE="$ROON_TEST_ZONE" maestro/touch-bar.yaml
 appId: io.github.knoellp.roomscreen
 ---
@@ -11,24 +13,11 @@ appId: io.github.knoellp.roomscreen
     timeout: 30000
 - assertNotVisible: "Einstellungen"
 # 1. A tap shows the bar.
+# No screenshot between the tap that shows the bar and the tap on a button: a screenshot takes more than the 5 s the bar stays.
 - runFlow: touch-show-bar.yaml
-- takeScreenshot: build/device-artifacts/p10-01-touch-bar
 # 2. Play/pause by tap: playing.
 - tapOn: "Wiedergabe oder Pause"
 - extendedWaitUntil:
     visible: "${ROON_TEST_ZONE} · Spielt"
     timeout: 10000
-# 3. Next track by tap (the script compares the title with the one before the flow).
-- runFlow: touch-show-bar.yaml
-- tapOn: "Nächster Titel"
-- extendedWaitUntil:
-    visible: "this text never appears"
-    timeout: 4000
-    optional: true
-# 4. Play/pause by tap again: paused.
-- runFlow: touch-show-bar.yaml
-- tapOn: "Wiedergabe oder Pause"
-- extendedWaitUntil:
-    visible: "${ROON_TEST_ZONE} · Pausiert"
-    timeout: 10000
-- takeScreenshot: build/device-artifacts/p10-02-touch-bar-paused
+- takeScreenshot: build/device-artifacts/p10-01-touch-bar-playing

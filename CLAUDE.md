@@ -31,3 +31,8 @@ All tooling runs in Docker (no local JDK/SDK; no sudo):
 ## Git
 - Commit and push after each meaningful step. Never commit secrets (keystores, tokens, local.env).
 - Commit messages: plain English, no tool/assistant attribution, no Co-Authored-By.
+
+## Releases
+- `docs/RELEASING.md` is the procedure. `versionCode` rises with every release, the tag is `v<versionName>`, `CHANGELOG.md` gets a heading per version first.
+- Only release builds signed with the release key are published; never a debug build. The workflow refuses a wrong keystore, certificate, tag or version code.
+- The user creates the GitHub release (`gh release create`); the workflow uploads the assets and commits `releases/`.

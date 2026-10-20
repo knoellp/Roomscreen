@@ -401,11 +401,11 @@ Die App läuft stundenlang ohne Interaktion. Abzudecken: Verbindungsabbruch, Cor
 ## 10. Phasen
 
 ### Erledigt (Fire TV)
-v1-Phasen 1 (Roon-Verbindung), 2 (TV-Oberfläche), 3 (Liedtexte) und Teile von 4 (Hintergrundvarianten, gehärteter Reconnect, Liedtext-Timing). Nachweise wie in Abschnitt 3.
+v1-Phasen 1 (Roon-Verbindung), 2 (TV-Oberfläche), 3 (Liedtexte) und 4 (Stabilität), F3 (Abnahme, Release-Signierung, Übergabe; `ARCHITECTURE.md` Kapitel 11) und F3b (Release-Pipeline, Diagnose-Overlay, Touch, LAT-Vorbereitung; `ARCHITECTURE.md` Kapitel 12, Stand `STATUS.md`). Nachweise wie in Abschnitt 3.
 
 ### Teil A – Fire TV (Fire OS) abschließen
 
-**F3 – Abnahme Fire TV Version 1, Release-Signierung, Übergabe** (nächster Schritt)
+**F3 – Abnahme Fire TV Version 1, Release-Signierung, Übergabe** (erledigt 2026-10-19)
 1. **Entscheidungen einholen** (Abschnitt 14): Speicher-Toleranz im Liedtext-Modus, „via roon“-Hinweis, Release-Schlüssel.
 2. **Release-Signierung:** eigenen Release-Keystore anlegen (außerhalb des Repos, Pfad und Passwörter in `config/local.env` oder einer eigenen gitignored Datei), `signingConfig` für `release`, Build einer Release-APK. Der Wechsel vom Debug- auf den Release-Schlüssel erfordert auf dem Fire TV **einmal** Deinstallation und neues „Enable“ in Roon; vorher mich fragen. Danach nur noch mit dem Release-Schlüssel installieren.
 3. **Restpunkte auf dem Gerät nachweisen:**
@@ -424,6 +424,14 @@ v1-Phasen 1 (Roon-Verbindung), 2 (TV-Oberfläche), 3 (Liedtexte) und Teile von 4
    - Testvektoren nach `shared/testvectors/` als JSON: Fortschritt (aus `ProgressInterpolatorTest`), Zonen-Resolver/Gruppen, LRC-Parser, Sync inkl. Offset und Timing, Query-Varianten, LRCLIB-Antworten (200/404/503) und erwartete Ergebnisse. Die Kotlin-Tests lesen diese Dateien.
    - Design-Tokens nach `shared/design/`, Texte nach `shared/strings/`; Android-Ressourcen werden daraus erzeugt oder gegen sie geprüft (Test, der Abweichungen meldet).
    - README auf Stand Fire TV Version 1, mit dem Hinweis, dass Geräte mit Vega OS nicht unterstützt werden.
+
+**F3b – Release-Pipeline, Touch, Diagnose-Overlay, LAT-Vorbereitung** (Auftrag `PLAN-F3b.md`; Umsetzung 2026-10-20/21, Nachweise `ARCHITECTURE.md` Kapitel 12)
+1. GitHub-Actions-Workflow (Release-Ereignis und Probelauf), signiert mit dem Schlüssel aus den Secrets, Prüfung von Keystore, Zertifikat, Version und Changelog, Assets plus `releases/` im Repo (aktuelle und fünf Vorversionen), `CHANGELOG.md`.
+2. Release v1.0.0 (versionCode 2) und v1.1.0 (versionCode 3, Touch und Overlay), Installation ohne ADB über Downloader und die stabile Adresse, Update-Test ohne neues Enable.
+3. Touch: Tipp zeigt die Leiste, alle Knöpfe und Zeilen tippbar, Schließen-Zeilen in Zonenliste und Einstellungen, Trefferflächen mindestens 48 dp; Maestro-Touch-Flows und Regression auf dem AFTSS.
+4. Diagnose-Overlay (Build, Gerät, Verbindung, letzte 20 Eingaben, 200 Logzeilen), geöffnet per fünfmal Tippen unten rechts, Einstellungszeile oder Debug-Broadcast; kein HTTP-Export (Entscheidung 8.3: später).
+5. Manifest-Test, Roborazzi in tvdpi und hdpi, Konfigurationswechsel-Test, Lebenszyklus-Test, kein Audio-Fokus.
+6. `docs/store/`: Metadaten en/de, Datenschutz-Entwurf, Kriterien-Checkliste, Icons; Screenshots folgen mit dem Nutzer.
 
 ### Teil B – Web-Kern und Samsung Tizen
 
