@@ -24,8 +24,8 @@ class DiagnosticsTest {
 
     @Test fun buildFactsAreFilled() {
         val b = vm().diagnostics.value.build
-        assertEquals("1.0.0", b.version)
-        assertEquals(2L, b.versionCode)
+        assertEquals("1.1.0", b.version)
+        assertEquals(3L, b.versionCode)
         assertTrue(b.commit.isNotBlank(), "commit")
         assertTrue(b.model.isNotBlank(), "model")
         assertEquals("xhdpi (320 dpi)", b.density)

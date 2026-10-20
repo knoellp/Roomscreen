@@ -14,7 +14,7 @@ Signing: debug and release builds are signed with the same release key when `con
 without it the debug build uses the Android debug key). Certificate SHA-256 digest (also in `config/release-fingerprint.txt`):
 `76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb`. Check an APK with
 `scripts/dock /opt/android-sdk/build-tools/36.0.0/apksigner verify --print-certs <apk>`. Release build: `scripts/dock ./gradlew :app:assembleRelease`
-(`app/build/outputs/apk/release/app-release.apk`, version 1.0.0, no R8). The key move from the old debug key to this key needs a one-time
+(`app/build/outputs/apk/release/app-release.apk`, no R8). The key move from the old debug key to this key needs a one-time
 uninstall on the stick and a new "Enable" in Roon (done once on 2026-10-18, see `ARCHITECTURE.md` section 11).
 Always sign with the same key and use `install -r` so updates keep the stored token.
 `scripts/deploy-test.sh [--flow maestro/phase1.yaml]` does build, install, start, flow, screenshot and logcat in one go
