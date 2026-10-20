@@ -23,3 +23,4 @@ out/
 ?/
 config/debug-keystore-fingerprint.txt
 docs/*.png
+.kotlin/

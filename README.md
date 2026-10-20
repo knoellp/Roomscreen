@@ -16,11 +16,22 @@ There is no helper service, no bridge and no web page to host.
 
 ## Install
 
-There is no download page yet (see Known limitations). Install the APK with ADB, either one you were given or one you build.
+Signed release APKs are on the [Releases page](https://github.com/knoellp/Roomscreen/releases); the newest one is always at the stable address
+`https://github.com/knoellp/Roomscreen/releases/latest/download/Roomscreen.apk`. The APK runs on Fire OS and Android TV only (not on Vega OS; the Echo Show 15 accepts no sideloaded apps,
+see Known limitations). Every release is signed with the same key, certificate SHA-256 `76bd1d41f70843b362806bbb81cc1a7dce77c51d87ccbd27059edafb18b3c6fb`; updates install over the previous version and keep the Roon authorization.
 
-1. On the Fire TV: Settings, My Fire TV, Developer options: turn on ADB debugging (and "Apps from unknown sources").
+**Without a computer (Downloader app).** Verified on a Fire TV Stick HD with Fire OS 7.7.1.7; menu names from the German firmware in brackets.
+
+1. Install "Downloader" from the Amazon Appstore.
+2. Settings → My Fire TV → Developer options → Install unknown apps ("Einstellungen → Mein Fire TV → Entwickleroptionen → Unbekannte Apps installieren") and switch Downloader to ON.
+3. In Downloader open `https://github.com/knoellp/Roomscreen/releases/latest/download/Roomscreen.apk`, then Install. Updates: the same address again; Downloader offers "Install" over the existing app.
+4. Start Roomscreen from the apps list.
+
+**With ADB (developers).**
+
+1. Settings → My Fire TV → Developer options: turn on ADB debugging.
 2. `adb connect <fire-tv-ip>:5555` and confirm the dialog on the TV.
-3. `adb install -r app-debug.apk`
+3. `adb install -r Roomscreen.apk`
 4. Start Roomscreen from the apps list.
 
 Build it yourself (needs Docker, no local JDK or Android SDK):
@@ -113,7 +124,6 @@ on the device, plus a lyrics cache (at most 300 files; "not found" for 7 days). 
 ## Known limitations
 
 - Only Fire OS / Android TV. Vega OS devices and the Echo Show 15 are not supported yet; Samsung Tizen is planned.
-- There is no release download yet: the release pipeline is not built (planned). Install by ADB.
 - LRCLIB often answers "503 overloaded"; on those tracks no lyrics appear until the next track.
 - Plain-text lyrics and the "No lyrics found" line were only verified in tests and screenshots, not with a real track on the device.
 - The direct ring-key control (Left, Right, OK) was verified on the stick with injected key events; the physical remote (a Samsung TV remote over HDMI-CEC) was last checked with the previous build (media keys and bar navigation). Volume keys of a TV remote stay in the TV; the app cannot route them to Roon.
